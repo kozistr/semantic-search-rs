@@ -69,15 +69,22 @@ fn main() -> anyhow::Result<()> {
     let json = fs::read_to_string("data/books.json")?;
     let library: Library = serde_json::from_str(&json)?;
 
-    let now = Instant::now();
-    let mut embeddedbooks = Vec::new();
+    let mut sentences = Vec::new();
     for book in library.books.clone() {
-        let embeddings = model.encode(&[book.clone().summary])?;
-
-        embeddedbooks.push(book.to_embedded(to_array(embeddings[0].as_slice())));
+        sentences.push(book.summary);
     }
+
+    // batch inference
+    let now = Instant::now();
+    let embeddings = model.encode(&sentences)?;
     let elapsed = now.elapsed();
     println!("Elapsed: {:.2?}", elapsed);
+
+    let mut embeddedbooks = Vec::new();
+    for it in library.books.iter().zip(embeddings.iter()) {
+        let (book, embedding) = it;
+        embeddedbooks.push(book.clone().to_embedded(to_array(embedding)));
+    }
 
     let query = "asdf asdf asdf asdf asdf asdf asdf asdf";
     println!("Querying: {}", query);
@@ -92,7 +99,7 @@ fn main() -> anyhow::Result<()> {
             .unwrap()
     });
 
-    let nearests = kdtree.nearests(&query_topic, 3);
+    let nearests = kdtree.nearests(&query_topic, 5);
     for nearest in nearests {
         println!("nearest: {:?}", nearest.item.title);
         println!("distance: {:?}", nearest.squared_distance);
