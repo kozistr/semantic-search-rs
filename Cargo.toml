@@ -1,0 +1,28 @@
+[package]
+name = "semantic-search"
+version = "0.0.1"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "search-client"
+path = "src/client.rs"
+
+[[bin]]
+name = "search-server"
+path = "src/server.rs"
+
+[dependencies]
+serde_json = "1.0.99"
+serde = { version = "1.0.166", features = ["derive"] }
+rust-bert = "0.21.0"
+anyhow = "1.0.71"
+kd-tree = "0.5.1"
+typenum = "1.16.0"
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "fat"
+panic = "abort"
