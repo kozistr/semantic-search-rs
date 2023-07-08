@@ -3,7 +3,7 @@ use std::fs;
 use std::time::Instant;
 
 use rust_bert::pipelines::sentence_embeddings::{
-    SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
+    SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType::AllMiniLmL12V2,
 };
 use serde::Deserialize;
 
@@ -61,19 +61,20 @@ fn to_array(barry: &[f32]) -> [f32; 384] {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL12V2)
-        .create_model()?;
+    let model: SentenceEmbeddingsModel =
+        SentenceEmbeddingsBuilder::remote(AllMiniLmL12V2).create_model()?;
 
-    let json = fs::read_to_string("data/books.json")?;
+    let now: Instant = Instant::now();
+    let json: String = fs::read_to_string("data/books.json")?;
     let library: Library = serde_json::from_str(&json)?;
+    println!("load data : {:?}", now.elapsed());
 
-    let mut sentences = Vec::new();
+    let mut sentences: Vec<String> = Vec::new();
     for book in library.books.clone() {
         sentences.push(book.summary);
     }
 
-    // batch inference
-    let now = Instant::now();
+    let now: Instant = Instant::now();
     let embeddings: Vec<Vec<f32>> = model.encode(&sentences)?;
     println!(
         "batch inference ({:?} documents) : {:?}",
@@ -81,33 +82,33 @@ fn main() -> Result<(), Box<dyn Error>> {
         now.elapsed()
     );
 
-    let mut embeddedbooks = Vec::new();
+    let mut embeddedbooks: Vec<EmbeddedBook> = Vec::new();
     for (book, embedding) in library.books.iter().zip(embeddings.iter()) {
         embeddedbooks.push(book.clone().to_embedded(to_array(embedding)));
     }
 
-    // init index
-    let now = Instant::now();
-    let mut index = HNSWIndex::<f32, usize>::new(384, &HNSWParams::<f32>::default());
+    let now: Instant = Instant::now();
+    let mut index: HNSWIndex<f32, usize> =
+        HNSWIndex::<f32, usize>::new(384, &HNSWParams::<f32>::default());
     for (i, sample) in embeddings.iter().enumerate() {
         index.add(sample, i).unwrap();
     }
     index.build(Euclidean).unwrap();
     println!("set index : {:?}", now.elapsed());
 
-    let query = "The story about prep school";
+    let query: &str = "The story about prep school";
     println!("Querying: {}", query);
 
-    let query_embeddings = model.encode(&[query])?;
+    let query_embeddings: Vec<Vec<f32>> = model.encode(&[query])?;
     // let query_embedding = to_array(query_embeddings[0].as_slice());
     // let query_topic = EmbeddedBook::topic(query_embedding);
 
-    let now = Instant::now();
-    let neighbor_index = index.search(&query_embeddings[0], 5);
+    let now: Instant = Instant::now();
+    let neighbor_index: Vec<usize> = index.search(&query_embeddings[0], 5);
     println!("search speed : {:?}", now.elapsed());
 
     for (k, idx) in neighbor_index.iter().enumerate() {
-        let book = embeddedbooks[*idx].clone();
+        let book: EmbeddedBook = embeddedbooks[*idx].clone();
         println!("top {:?}, title : {:?}", k + 1, book.title);
     }
 
