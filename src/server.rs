@@ -1,12 +1,19 @@
 use std::fs;
 
-use kd_tree::KdPoint;
+use anyhow::Ok;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
 use serde::Deserialize;
 
-use std::time::Instant;
+use hora::core::{
+    ann_index::ANNIndex,
+    metrics::Metric::Euclidean,
+}
+use hora::index::{
+    hnsw_idx::HNSWIndex,
+    hnsw_params::HNSWParams,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct Library {
@@ -54,13 +61,6 @@ impl EmbeddedBook {
     }
 }
 
-impl KdPoint for EmbeddedBook {
-    type Scalar = f32;
-    type Dim = typenum::U2;
-    fn at(&self, k: usize) -> Self::Scalar {
-        self.embeddings[k]
-    }
-}
 
 fn main() -> anyhow::Result<()> {
     let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL12V2)
@@ -75,34 +75,33 @@ fn main() -> anyhow::Result<()> {
     }
 
     // batch inference
-    let now = Instant::now();
     let embeddings = model.encode(&sentences)?;
-    let elapsed = now.elapsed();
-    println!("Elapsed: {:.2?}", elapsed);
-
     let mut embeddedbooks = Vec::new();
     for it in library.books.iter().zip(embeddings.iter()) {
         let (book, embedding) = it;
         embeddedbooks.push(book.clone().to_embedded(to_array(embedding)));
     }
 
-    let query = "asdf asdf asdf asdf asdf asdf asdf asdf";
+    // init index
+    let mut index = HNSWIndex::<f32, usize>::new(384, &HNSWParams::<f32>::default());
+    for (i, sample) in embeddings.iter().enumerate() {
+        index.add(sample, i).unwrap();
+    }
+    index.build(Euclidean).unwrap();
+
+    let query = "What Gatsby does?";
     println!("Querying: {}", query);
 
     let query_embeddings = model.encode(&[query])?;
-    let query_embedding = to_array(query_embeddings[0].as_slice());
-    let query_topic = EmbeddedBook::topic(query_embedding);
+    // let query_embedding = to_array(query_embeddings[0].as_slice());
+    // let query_topic = EmbeddedBook::topic(query_embedding);
 
-    let kdtree = kd_tree::KdSlice::sort_by(&mut embeddedbooks, |item1, item2, k| {
-        item1.embeddings[k]
-            .partial_cmp(&item2.embeddings[k])
-            .unwrap()
-    });
+    let neighbor_index = index.search(&query_embeddings[0], 5);
+    println!("neighbors : {:?}", neighbor_index);
 
-    let nearests = kdtree.nearests(&query_topic, 5);
-    for nearest in nearests {
-        println!("nearest: {:?}", nearest.item.title);
-        println!("distance: {:?}", nearest.squared_distance);
+    for (k, idx) in neighbor_index.iter().enumerate() {
+        let book = embeddedbooks[*idx];
+        println!("top {:?}, title : {:?}", k + 1, book.title);
     }
 
     Ok(())
