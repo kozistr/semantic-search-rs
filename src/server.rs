@@ -1,18 +1,14 @@
+use std::error::Error;
 use std::fs;
+use std::time::Instant;
 
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
 use serde::Deserialize;
 
-use hora::core::{
-    ann_index::ANNIndex,
-    metrics::Metric::Euclidean,
-};
-use hora::index::{
-    hnsw_idx::HNSWIndex,
-    hnsw_params::HNSWParams,
-};
+use hora::core::{ann_index::ANNIndex, metrics::Metric::Euclidean};
+use hora::index::{hnsw_idx::HNSWIndex, hnsw_params::HNSWParams};
 
 #[derive(Debug, Deserialize)]
 pub struct Library {
@@ -38,7 +34,7 @@ impl Book {
         }
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EmbeddedBook {
     pub title: Option<String>,
 
@@ -60,8 +56,7 @@ impl EmbeddedBook {
     }
 }
 
-
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<(), Box<dyn Error>> {
     let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL12V2)
         .create_model()?;
 
@@ -74,7 +69,14 @@ fn main() -> anyhow::Result<()> {
     }
 
     // batch inference
-    let embeddings = model.encode(&sentences)?;
+    let now = Instant::now();
+    let embeddings: Vec<Vec<f32>> = model.encode(&sentences)?;
+    println!(
+        "batch inference ({:?} documents) : {:?}",
+        sentences.len(),
+        now.elapsed()
+    );
+
     let mut embeddedbooks = Vec::new();
     for it in library.books.iter().zip(embeddings.iter()) {
         let (book, embedding) = it;
@@ -82,11 +84,13 @@ fn main() -> anyhow::Result<()> {
     }
 
     // init index
+    let now = Instant::now();
     let mut index = HNSWIndex::<f32, usize>::new(384, &HNSWParams::<f32>::default());
     for (i, sample) in embeddings.iter().enumerate() {
         index.add(sample, i).unwrap();
     }
     index.build(Euclidean).unwrap();
+    println!("set index : {:?}", now.elapsed());
 
     let query = "What Gatsby does?";
     println!("Querying: {}", query);
@@ -95,11 +99,12 @@ fn main() -> anyhow::Result<()> {
     // let query_embedding = to_array(query_embeddings[0].as_slice());
     // let query_topic = EmbeddedBook::topic(query_embedding);
 
+    let now = Instant::now();
     let neighbor_index = index.search(&query_embeddings[0], 5);
-    println!("neighbors : {:?}", neighbor_index);
+    println!("search : {:?}", now.elapsed());
 
     for (k, idx) in neighbor_index.iter().enumerate() {
-        let book = embeddedbooks[*idx];
+        let book = embeddedbooks[*idx].clone();
         println!("top {:?}, title : {:?}", k + 1, book.title);
     }
 
