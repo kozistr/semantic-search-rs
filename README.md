@@ -30,10 +30,11 @@ cargo run --release --bin search-server
   * distance measure : L2
 
 ```text
-batch inference (10 documents) : 283.055ms
-set index : 123.1µs
+load data : 97.2µs
+batch inference (10 documents) : 296.2011ms
+set index : 128.1µs
 Querying: The story about prep school
-search speed : 16.8µs
+search speed : 16.6µs
 top 1, title : Some("The Catcher in the Rye")
 top 2, title : Some("The Great Gatsby")
 top 3, title : Some("The Grapes of Wrath 4")
