@@ -9,11 +9,11 @@ use serde::Deserialize;
 use hora::core::{
     ann_index::ANNIndex,
     metrics::Metric::Euclidean,
-}
+};
 use hora::index::{
     hnsw_idx::HNSWIndex,
     hnsw_params::HNSWParams,
-}
+};
 
 #[derive(Debug, Deserialize)]
 pub struct Library {
