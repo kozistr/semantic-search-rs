@@ -45,15 +45,19 @@ pub struct EmbeddedBook {
     pub embeddings: [f32; 384],
 }
 
-impl EmbeddedBook {
-    fn topic(embeddings: [f32; 384]) -> Self {
-        Self {
-            title: None,
-            author: None,
-            summary: None,
-            embeddings,
-        }
-    }
+// impl EmbeddedBook {
+//     fn topic(embeddings: [f32; 384]) -> Self {
+//         Self {
+//             title: None,
+//             author: None,
+//             summary: None,
+//             embeddings,
+//         }
+//     }
+// }
+
+fn to_array(barry: &[f32]) -> [f32; 384] {
+    barry.try_into().expect("slice with incorrect length")
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -78,8 +82,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     let mut embeddedbooks = Vec::new();
-    for it in library.books.iter().zip(embeddings.iter()) {
-        let (book, embedding) = it;
+    for (book, embedding) in library.books.iter().zip(embeddings.iter()) {
         embeddedbooks.push(book.clone().to_embedded(to_array(embedding)));
     }
 
@@ -92,7 +95,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     index.build(Euclidean).unwrap();
     println!("set index : {:?}", now.elapsed());
 
-    let query = "What Gatsby does?";
+    let query = "The story about prep school";
     println!("Querying: {}", query);
 
     let query_embeddings = model.encode(&[query])?;
@@ -101,7 +104,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let now = Instant::now();
     let neighbor_index = index.search(&query_embeddings[0], 5);
-    println!("search : {:?}", now.elapsed());
+    println!("search speed : {:?}", now.elapsed());
 
     for (k, idx) in neighbor_index.iter().enumerate() {
         let book = embeddedbooks[*idx].clone();
@@ -109,8 +112,4 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
-}
-
-fn to_array(barry: &[f32]) -> [f32; 384] {
-    barry.try_into().expect("slice with incorrect length")
 }
