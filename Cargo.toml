@@ -2,8 +2,16 @@
 name = "semantic-search"
 version = "0.0.1"
 edition = "2021"
+license = "Apache-2.0"
+authors = ["kozistr <kozistr@gmail.com>"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "navie semantic search demo with gRPC server in Rust"
+homepage = "https://github.com/kozistr/semantic-search-rs"
+readme = "README.md"
+repository = "https://github.com/kozistr/semantic-search-rs"
+
+categories = ["search", "retrival"]
+keywords = ["semantic-search", "nlp", "bert"]
 
 [[bin]]
 name = "search-client"
@@ -14,12 +22,22 @@ name = "search-server"
 path = "src/server.rs"
 
 [dependencies]
-serde_json = "1.0.100"
-serde = { version = "1.0.166", features = ["derive"] }
-rust-bert = "0.21.0"
-anyhow = "1.0.71"
-kd-tree = "0.5.1"
-typenum = "1.16.0"
+serde_json = "^1.0.100"
+serde = { version = "^1.0.166", features = ["derive"] }
+rust-bert = "^0.21.0"
+anyhow = "^1.0.71"
+hora = "^0.1.1"
+
+[profile.dev]
+opt-level = 0
+codegen-units = 4
+incremental = true
+lto = false
+panic = "unwind"
+debug = 1
+debug-assertions = true
+overflow-checks = false
+rpath = false
 
 [profile.release]
 opt-level = 3
@@ -27,3 +45,7 @@ codegen-units = 1
 incremental = true
 lto = "fat"
 panic = "abort"
+debug = false
+debug-assertions = false
+overflow-checks = false
+rpath = false
