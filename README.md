@@ -1,6 +1,6 @@
 # semantic-search-rs
 
-navie semantic search demo with gRPC server in Rust
+navie semantic search demo in Rust
 
 ## Requirements
 
