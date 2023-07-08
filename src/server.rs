@@ -1,6 +1,5 @@
 use std::fs;
 
-use anyhow::Ok;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
