@@ -31,6 +31,7 @@ cargo +nightly run --release --bin server
   * embedding dimenstion : 384
   * distance measure : L2
   * num of docs : 16,559 documents
+  * k : 10
 
 ```text
 load model : 3.0573662s
