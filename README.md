@@ -25,7 +25,7 @@ cargo +nightly run --release --bin server
 ### Example
 
 * GPU : GTX 1060 6G (used at extracting embedding)
-* CPU : i7700K
+* CPU : i7-7700K
 * Info
   * packages are compiled with `AVX2`, `FMA` flags
   * HNSW index is used
