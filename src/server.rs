@@ -8,6 +8,11 @@ use std::{error::Error, fs, path::Path, time::Instant};
 use hora::core::{ann_index::ANNIndex, metrics::Metric::Euclidean};
 use hora::index::{hnsw_idx::HNSWIndex, hnsw_params::HNSWParams};
 
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
 #[derive(Debug, Deserialize)]
 pub struct Library {
     pub books: Vec<Book>,
@@ -102,13 +107,19 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         let now: Instant = Instant::now();
-        let mut index: HNSWIndex<f32, usize> =
-            HNSWIndex::<f32, usize>::new(384, &HNSWParams::<f32>::default());
-        for (i, embedding) in embeddings.iter().enumerate() {
-            index.add(embedding, i).unwrap();
-        }
-        index.build(Euclidean).unwrap();
-        index.dump("index.hora").unwrap();
+        let index: HNSWIndex<f32, usize> = {
+            let mut index: HNSWIndex<f32, usize> =
+                HNSWIndex::<f32, usize>::new(384, &HNSWParams::<f32>::default());
+
+            for (i, embedding) in embeddings.iter().enumerate() {
+                index.add(embedding, i).unwrap();
+            }
+
+            index.build(Euclidean).unwrap();
+            index.dump("index.hora").unwrap();
+
+            index
+        };
         println!("build index : {:?}", now.elapsed());
 
         ret = (index, embeddedbooks);
