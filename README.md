@@ -7,6 +7,7 @@ navie semantic search demo in Rust
 * libtorch
 * rust-bert
 * hora (ANN)
+* simd-json
 
 ## Run
 
@@ -32,40 +33,27 @@ cargo +nightly run --release --bin server
   * do some optimization at compile-time
   * embedding dimenstion : 384
   * distance measure : L2
-
-`hora` without `simd` feature.
-
-```text
-load data : 97.2µs
-batch inference (10 documents) : 296.2011ms
-set index : 128.1µs
-Querying: The story about prep school
-search speed : 16.6µs
-top 1, title : Some("The Catcher in the Rye")
-top 2, title : Some("The Great Gatsby")
-top 3, title : Some("The Grapes of Wrath 4")
-top 4, title : Some("The Grapes of Wrath 2")
-top 5, title : Some("The Grapes of Wrath 3")
-```
+  * num of docs : 16,559 documents
 
 `hora` with `simd` feature. (need nightly build)
 
 ```text
-load data : 101.8µs
-batch inference (10 documents) : 281.4479ms
-set index : 106.2µs
-Querying: The story about prep school
-search speed : 6.2µs
-top 1, title : Some("The Catcher in the Rye")
-top 2, title : Some("The Great Gatsby")
-top 3, title : Some("The Grapes of Wrath 4")
-top 4, title : Some("The Grapes of Wrath 2")
-top 5, title : Some("The Grapes of Wrath 5")
+load model : 2.7863302s
+load data : 70.4098ms
+inference (16559 documents) : 257.928047s
+build index : 7.1119105s
+query : The story about prep school
+search speed : 167.7µs
+top 1, title : Some("Prayer for the Living")
+top 2, title : Some("The Princess Diaries, Volume VI: Princess in Training")
+top 3, title : Some("School Days")
+top 4, title : Some("The Fall of Doctor Onslow")
+top 5, title : Some("Love Lessons")
 ```
 
-## Reference
+## Dataset
 
-* https://sachaarbonel.medium.com/how-to-build-a-semantic-search-engine-in-rust-e96e6378cfd9
+* https://www.kaggle.com/datasets/ymaricar/cmu-book-summary-dataset
 
 ## Maintainer
 
