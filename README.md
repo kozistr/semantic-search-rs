@@ -13,7 +13,11 @@ navie semantic search demo in Rust
 ### Server
 
 ```shell
-cargo run --release --bin search-server 
+cargo run --release --bin server 
+```
+
+```shell
+cargo +nightly run --release --bin server 
 ```
 
 ## Performance
@@ -23,11 +27,13 @@ cargo run --release --bin search-server
 * GPU : GTX 1060 6G (used at extracting embedding)
 * CPU : i7700K
 * Info
-  * packages are compiled with `AVX2`, `FMA` flags (but not for `hora`)
+  * packages are compiled with `AVX2`, `FMA` flags
   * HNSW index is used
   * do some optimization at compile-time
   * embedding dimenstion : 384
   * distance measure : L2
+
+`hora` without `simd` feature.
 
 ```text
 load data : 97.2µs
@@ -40,6 +46,21 @@ top 2, title : Some("The Great Gatsby")
 top 3, title : Some("The Grapes of Wrath 4")
 top 4, title : Some("The Grapes of Wrath 2")
 top 5, title : Some("The Grapes of Wrath 3")
+```
+
+`hora` with `simd` feature. (need nightly build)
+
+```text
+load data : 101.8µs
+batch inference (10 documents) : 281.4479ms
+set index : 106.2µs
+Querying: The story about prep school
+search speed : 6.2µs
+top 1, title : Some("The Catcher in the Rye")
+top 2, title : Some("The Great Gatsby")
+top 3, title : Some("The Grapes of Wrath 4")
+top 4, title : Some("The Grapes of Wrath 2")
+top 5, title : Some("The Grapes of Wrath 5")
 ```
 
 ## Reference
