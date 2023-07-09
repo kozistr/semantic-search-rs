@@ -7,6 +7,7 @@ navie semantic search demo in Rust
 * libtorch 2.0 (cuda)
 * rust-bert
 * hora (ANN)
+* minmalloc
 
 ## Run
 
@@ -22,25 +23,25 @@ cargo +nightly run --release --bin server
 
 ## Performance
 
-* GPU : GTX 1060 6G (used at extracting embedding)
+* GPU : GTX 1060 6G (CUDA 11.8, CuDNN 8.8.x)
 * CPU : i7-7700K
 * Info
-  * packages are compiled with `AVX2`, `FMA` flags
-  * HNSW index is used
-  * do some optimization at compile-time
+  * packages are compiled with `AVX2`, `FMA` flags (RUSTCFLAGS)
+  * do some optimizations at compile-time
+  * indexing : HNSW
   * embedding dimenstion : 384
   * distance measure : L2
-  * num of docs : 16,559 documents
+  * num of documents : 16,559 documents
   * k : 10
 
 ```text
-load model : 3.0573662s
-load data : 70.7628ms
+load model : 3.1107782s
+load data : 71.7013ms
 [-] there's no index file.
-inference (16559 documents) : 258.2525774s
-build index : 6.4137312s
+inference (16559 documents) : 91.7753841s
+build index : 6.4097303s
 query : The story about prep school
-search speed : 191µs
+search speed : 288.5µs
 top 1, title : Some("Prayer for the Living")
 top 2, title : Some("The Princess Diaries, Volume VI: Princess in Training")
 top 3, title : Some("School Days")
@@ -54,11 +55,11 @@ top 10, title : Some("Truancy")
 ```
 
 ```text
-load model : 2.7463482s
-load data : 69.8375ms
+load model : 3.0460236s
+load data : 70.939ms
 [+] there's an index file.
 query : The story about prep school
-search speed : 252.2µs
+search speed : 255.8µs
 top 1, title : Some("Prayer for the Living")
 top 2, title : Some("The Princess Diaries, Volume VI: Princess in Training")
 top 3, title : Some("School Days")
