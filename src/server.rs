@@ -1,11 +1,9 @@
-use std::error::Error;
-use std::fs;
-use std::time::Instant;
-
+use hora::core::ann_index::SerializableIndex;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType::AllMiniLmL12V2,
 };
 use serde::Deserialize;
+use std::{error::Error, fs, path::Path, time::Instant};
 
 use hora::core::{ann_index::ANNIndex, metrics::Metric::Euclidean};
 use hora::index::{hnsw_idx::HNSWIndex, hnsw_params::HNSWParams};
@@ -25,6 +23,15 @@ pub struct Book {
 }
 
 impl Book {
+    fn to_default_embedded(self) -> EmbeddedBook {
+        EmbeddedBook {
+            title: Some(self.title),
+            author: Some(self.author),
+            summary: Some(self.summary),
+            embeddings: to_array(&vec![0f32; 384]),
+        }
+    }
+
     fn to_embedded(self, embeddings: [f32; 384]) -> EmbeddedBook {
         EmbeddedBook {
             title: Some(self.title),
@@ -60,44 +67,65 @@ fn main() -> Result<(), Box<dyn Error>> {
     let library: Library = serde_json::from_str(&json)?;
     println!("load data : {:?}", now.elapsed());
 
-    // let mut summaries: Vec<String> = Vec::new();
-    // for book in library.books.clone() {
-    //     summaries.push(book.summary);
-    // }
+    let ret: (HNSWIndex<f32, usize>, Vec<EmbeddedBook>);
+    if Path::new("index.hora").exists() == false {
+        println!("[-] there's no index file.");
 
-    // let now: Instant = Instant::now();
-    // let embeddings: Vec<Vec<f32>> = model.encode(&summaries)?;
-    // println!(
-    //     "batch inference ({:?} documents) : {:?}",
-    //     summaries.len(),
-    //     now.elapsed()
-    // );
+        // let mut summaries: Vec<String> = Vec::new();
+        // for book in library.books.clone() {
+        //     summaries.push(book.summary);
+        // }
 
-    let now: Instant = Instant::now();
-    let mut embeddings: Vec<[f32; 384]> = Vec::new();
-    for book in library.books.iter() {
-        let embedding: Vec<Vec<f32>> = model.encode(&[book.clone().summary])?;
-        embeddings.push(to_array(&embedding[0]));
-    }
-    println!(
-        "inference ({:?} documents) : {:?}",
-        embeddings.len(),
-        now.elapsed()
-    );
+        // let now: Instant = Instant::now();
+        // let embeddings: Vec<Vec<f32>> = model.encode(&summaries)?;
+        // println!(
+        //     "batch inference ({:?} documents) : {:?}",
+        //     summaries.len(),
+        //     now.elapsed()
+        // );
 
-    let mut embeddedbooks: Vec<EmbeddedBook> = Vec::new();
-    for (book, embedding) in library.books.iter().zip(embeddings.iter()) {
-        embeddedbooks.push(book.clone().to_embedded(to_array(embedding)));
-    }
+        let now: Instant = Instant::now();
+        let mut embeddings: Vec<[f32; 384]> = Vec::new();
+        for book in library.books.iter() {
+            let embedding: Vec<Vec<f32>> = model.encode(&[book.clone().summary])?;
+            embeddings.push(to_array(&embedding[0]));
+        }
+        println!(
+            "inference ({:?} documents) : {:?}",
+            embeddings.len(),
+            now.elapsed()
+        );
 
-    let now: Instant = Instant::now();
-    let mut index: HNSWIndex<f32, usize> =
-        HNSWIndex::<f32, usize>::new(384, &HNSWParams::<f32>::default());
-    for (i, embedding) in embeddings.iter().enumerate() {
-        index.add(embedding, i).unwrap();
-    }
-    index.build(Euclidean).unwrap();
-    println!("build index : {:?}", now.elapsed());
+        let mut embeddedbooks: Vec<EmbeddedBook> = Vec::new();
+        for (book, embedding) in library.books.iter().zip(embeddings.iter()) {
+            embeddedbooks.push(book.clone().to_embedded(to_array(embedding)));
+        }
+
+        let now: Instant = Instant::now();
+        let mut index: HNSWIndex<f32, usize> =
+            HNSWIndex::<f32, usize>::new(384, &HNSWParams::<f32>::default());
+        for (i, embedding) in embeddings.iter().enumerate() {
+            index.add(embedding, i).unwrap();
+        }
+        index.build(Euclidean).unwrap();
+        index.dump("index.hora").unwrap();
+        println!("build index : {:?}", now.elapsed());
+
+        ret = (index, embeddedbooks);
+    } else {
+        println!("[+] there's an index file.");
+
+        let mut embeddedbooks: Vec<EmbeddedBook> = Vec::new();
+        for book in library.books {
+            embeddedbooks.push(book.clone().to_default_embedded());
+        }
+
+        let index = HNSWIndex::<f32, usize>::load("index.hora").unwrap();
+
+        ret = (index, embeddedbooks);
+    };
+
+    let (index, embeddedbooks) = ret;
 
     let query: &str = "The story about prep school";
     println!("query : {}", query);
