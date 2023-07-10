@@ -76,19 +76,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     if Path::new("index.hora").exists() == false {
         println!("[-] there's no index file.");
 
-        // let mut summaries: Vec<String> = Vec::new();
-        // for book in library.books.clone() {
-        //     summaries.push(book.summary);
-        // }
-
-        // let now: Instant = Instant::now();
-        // let embeddings: Vec<Vec<f32>> = model.encode(&summaries)?;
-        // println!(
-        //     "batch inference ({:?} documents) : {:?}",
-        //     summaries.len(),
-        //     now.elapsed()
-        // );
-
         let now: Instant = Instant::now();
         let mut embeddings: Vec<[f32; 384]> = Vec::new();
         for book in library.books.iter() {
