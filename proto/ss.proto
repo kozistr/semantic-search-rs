@@ -1,0 +1,23 @@
+syntax = "proto3";
+package search;
+
+service Inference {
+    rpc Predict(PredictRequest) returns (PredictResponse);
+}
+
+message PredictRequest {
+    repeated Features features = 1;
+}
+
+message Features {
+    string query = 1;
+    int32 k = 2;
+}
+
+message PredictResponse {
+    repeated Index indices = 1;
+}
+
+message Index {
+    int32 index = 1;
+}
