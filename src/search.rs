@@ -1,13 +1,11 @@
+use hora::core::ann_index::{ANNIndex, SerializableIndex};
+use hora::index::hnsw_idx::HNSWIndex;
+use mimalloc::MiMalloc;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType::AllMiniLmL12V2,
 };
-use std::{error::Error, fs};
 
-use hora::index::hnsw_idx::HNSWIndex;
-
-use mimalloc::MiMalloc;
-
-use crate::search::{Features, Index, PredictRequest, PredictResponse};
+use crate::ss::{Features, Index, PredictRequest, PredictResponse};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -24,26 +22,29 @@ fn load_model() -> SentenceEmbeddingsModel {
 }
 
 fn load_index() -> HNSWIndex<f32, usize> {
-    SHNSWIndex::<f32, usize>::load("index.hora").unwrap()
+    HNSWIndex::<f32, usize>::load("index.hora").unwrap()
 }
 
 pub fn search(request: PredictRequest) -> PredictResponse {
-    let query: String = &request.query;
-    let k: i32 = &request.k;
+    let feature: &Features = &request.features.first().clone().unwrap();
+    let query = feature.query.clone();
+    let k: usize = feature.k.clone() as usize;
 
     // let now: Instant = Instant::now();
-    let query_embeddings: Vec<Vec<f32>> = MODEL.encode(&[query])?;
+    let query_embeddings: Vec<Vec<f32>> =
+        MODEL.with(|model: &SentenceEmbeddingsModel| model.encode(&[query]).unwrap());
     // println!("embedding : {:?}", now.elapsed());
 
     // let now: Instant = Instant::now();
-    let neighbor_index: Vec<usize> = INDEX.search(&query_embeddings[0], k);
+    let neighbor_index: Vec<usize> =
+        INDEX.with(|index: &HNSWIndex<f32, usize>| index.search(&query_embeddings[0], k));
     // println!("search : {:?}", now.elapsed());
 
     PredictResponse {
         indices: neighbor_index
             .iter()
-            .map(|score| Prediction {
-                score: *score as i32,
+            .map(|index| Index {
+                index: *index as i32,
             })
             .collect(),
     }
