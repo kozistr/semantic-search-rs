@@ -11,7 +11,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let mut client = ss::inference_client::InferenceClient::connect("127.0.0.1:50051").await?;
+    let mut client = ss::inference_client::InferenceClient::connect("http://127.0.0.1:50051").await?;
 
     let request = ss::PredictRequest {
         features: vec![
@@ -22,11 +22,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             1
         ],
     };
-
-    // warm up 10 times
-    for _ in 0..10 {
-        _ = client.predict(request.clone()).await?;
-    }
 
     let result = client.predict(request.clone()).await?;
     println!("result : {:?}", result);
