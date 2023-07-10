@@ -56,14 +56,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut index: HNSWIndex<f32, usize> =
         HNSWIndex::<f32, usize>::new(384, &HNSWParams::<f32>::default());
 
-    for (idx, book) in library.books.iter().enumerate() {
-        let embedding: Vec<Vec<f32>> = model.encode(&[book.clone().summary])?;
-        index.add(&embedding[0], idx).unwrap();
-    }
+    library.books.iter().enumerate().for_each(|(idx, book)| {
+        if let Ok(embedding) = model.encode(&[book.summary.clone()]) {
+            index.add(&embedding[0], idx).unwrap();
+        }
+    });
 
-    index.build(Euclidean).unwrap();
+    index.build(Euclidean)?;
 
-    index.dump("index.hora").unwrap();
+    index.dump("index.hora")?;
 
     Ok(())
 }
