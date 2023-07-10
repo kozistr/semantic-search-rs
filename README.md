@@ -1,6 +1,6 @@
 # semantic-search-rs
 
-navie semantic search demo in Rust
+navie semantic search demo with gRPC server in Rust
 
 ## Requirements
 
@@ -8,30 +8,25 @@ navie semantic search demo in Rust
 * rust-bert
 * hora (ANN)
 * minmalloc
+* protobuf
 
 ## Run
 
 ### Build index
 
 ```shell
-cargo +nightly run --release --bin embedding
-or
 make run-builder
 ```
 
 ### Client
 
 ```shell
-cargo +nightly run --release --bin client
-or
 make run-client
 ```
 
 ### Server
 
 ```shell
-cargo +nightly run --release --bin server
-or
 make run-server
 ```
 
