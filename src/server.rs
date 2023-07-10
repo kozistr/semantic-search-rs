@@ -1,6 +1,8 @@
 use std::error::Error;
 use tonic::{transport::Server, Request, Response, Status};
 
+use mimalloc::MiMalloc;
+
 mod search;
 use search::search;
 

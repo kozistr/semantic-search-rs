@@ -1,5 +1,7 @@
 use std::error::Error;
 
+use mimalloc::MiMalloc;
+
 pub mod ss {
     tonic::include_proto!("ss");
 }
