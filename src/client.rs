@@ -18,7 +18,7 @@ fn main() {
                 query: "The story about the school life",
                 k: 10,
             };
-            8
+            1
         ],
     };
 
