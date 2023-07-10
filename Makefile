@@ -3,8 +3,11 @@
 format:
 	cargo fmt
 
-build:
-	cargo run --release --bin server
+run-client:
+	cargo +nightly run --release --bin client
 
-build-nightly:
+run-server:
 	cargo +nightly run --release --bin server
+
+run-builder:
+	cargo +nightly run --release --bin embedding

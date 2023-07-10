@@ -18,6 +18,10 @@ name = "client"
 path = "src/client.rs"
 
 [[bin]]
+name = "embedding"
+path = "src/embeddings.rs"
+
+[[bin]]
 name = "server"
 path = "src/server.rs"
 
