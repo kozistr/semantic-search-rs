@@ -9,13 +9,14 @@ pub mod ss {
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-fn main() {
-    let mut client = ss::inference_client::VectorSearchService::connect("127.0.0.1:50051").await?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let mut client = ss::inference_client::InferenceClient::connect("127.0.0.1:50051").await?;
 
     let request = ss::PredictRequest {
         features: vec![
             ss::Features {
-                query: "The story about the school life",
+                query: "The story about the school life".to_string(),
                 k: 10,
             };
             1
@@ -24,10 +25,10 @@ fn main() {
 
     // warm up 10 times
     for _ in 0..10 {
-        _ = client.search(request.clone()).await?;
+        _ = client.predict(request.clone()).await?;
     }
 
-    let result = client.search(request.clone()).await?;
+    let result = client.predict(request.clone()).await?;
     println!("result : {:?}", result);
 
     Ok(())
