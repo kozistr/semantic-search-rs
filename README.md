@@ -14,23 +14,25 @@ navie semantic search demo in Rust
 ### Build index
 
 ```shell
-cargo +nightly run --release --bin embedding 
+cargo +nightly run --release --bin embedding
+or
+make run-builder
+```
+
+### Client
+
+```shell
+cargo +nightly run --release --bin client
+or
+make run-client
 ```
 
 ### Server
 
 ```shell
-cargo run --release --bin server 
-```
-
-```shell
-cargo +nightly run --release --bin server 
-```
-
+cargo +nightly run --release --bin server
 or
-
-```shell
-make build-hora
+make run-server
 ```
 
 ## Performance
