@@ -1,0 +1,69 @@
+use hora::core::{ann_index::ANNIndex, ann_index::SerializableIndex, metrics::Metric::Euclidean};
+use hora::index::{hnsw_idx::HNSWIndex, hnsw_params::HNSWParams};
+use rust_bert::pipelines::sentence_embeddings::{
+    SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType::AllMiniLmL12V2,
+};
+use serde::Deserialize;
+use std::{error::Error, fs};
+
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
+#[derive(Debug, Deserialize)]
+pub struct Library {
+    pub books: Vec<Book>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Book {
+    pub title: String,
+
+    pub author: String,
+
+    pub summary: String,
+}
+
+impl Book {
+    fn to_embedded(self, embeddings: [f32; 384]) -> EmbeddedBook {
+        EmbeddedBook {
+            title: Some(self.title),
+            author: Some(self.author),
+            summary: Some(self.summary),
+            embeddings,
+        }
+    }
+}
+#[derive(Debug, Clone)]
+pub struct EmbeddedBook {
+    pub title: Option<String>,
+
+    pub author: Option<String>,
+
+    pub summary: Option<String>,
+
+    pub embeddings: [f32; 384],
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let model: SentenceEmbeddingsModel =
+        SentenceEmbeddingsBuilder::remote(AllMiniLmL12V2).create_model()?;
+
+    let json: String = fs::read_to_string("data/books.json")?;
+    let library: Library = serde_json::from_str(&json)?;
+
+    let mut index: HNSWIndex<f32, usize> =
+        HNSWIndex::<f32, usize>::new(384, &HNSWParams::<f32>::default());
+
+    for (idx, book) in library.books.iter().enumerate() {
+        let embedding: Vec<Vec<f32>> = model.encode(&[book.clone().summary])?;
+        index.add(&embedding[0], idx).unwrap();
+    }
+
+    index.build(Euclidean).unwrap();
+
+    index.dump("index.hora").unwrap();
+
+    Ok(())
+}
