@@ -11,6 +11,12 @@ navie semantic search demo in Rust
 
 ## Run
 
+### Build index
+
+```shell
+cargo +nightly run --release --bin embedding 
+```
+
 ### Server
 
 ```shell
@@ -19,6 +25,12 @@ cargo run --release --bin server
 
 ```shell
 cargo +nightly run --release --bin server 
+```
+
+or
+
+```shell
+make build-hora
 ```
 
 ## Performance
