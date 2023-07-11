@@ -11,10 +11,8 @@ navie semantic search demo with gRPC server in Rust
 ## Non-Goal
 
 * filter-aware search
-* distributed index build / search
-* CRUD for index
-* code-level optimization for indexing algorithm
-* reduce num of embedding dimension
+* distributed & shareded index build / search
+* rewrite & optimize indexing algorithm
 
 ## To-Do
 
@@ -31,7 +29,6 @@ TBD
 * embedding model (Mini-LM L12 v2) runs on a single GPU
   * model info : [hf](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)
 * support dynamic batch (not yet)
-* (currently) single-threaded index search
 
 ### Data
 
