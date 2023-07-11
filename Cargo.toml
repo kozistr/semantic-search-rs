@@ -10,8 +10,8 @@ homepage = "https://github.com/kozistr/semantic-search-rs"
 readme = "README.md"
 repository = "https://github.com/kozistr/semantic-search-rs"
 
-categories = ["search", "retrival"]
-keywords = ["semantic-search", "nlp", "bert"]
+categories = ["search", "retrival", "server"]
+keywords = ["semantic-search", "nlp", "bert", "gRPC", "vector-search", "embedding"]
 
 [[bin]]
 name = "client"
