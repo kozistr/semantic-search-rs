@@ -82,8 +82,9 @@ make run-server
 
 | batch size | requests |   k    |  type  |   mean   |   p95    |   p99    |   p99.9  |    max    |
 |   :---:    |  :---:   | :---:  | :---:  |  :---:   |  :---:   |   :---:  |   :---:  |   :---:   |
-| 1          |   10k    |        | model  | 7.240 ms | 7.485 ms | 7.830 ms | 9.250 ms | 12.263 ms |
-|            |          |   10   | search | 0.141 ms | 0.209 ms | 0.247 ms | 0.310 ms | 0.376 ms  |
+|     1      |   10k    |   10   | total  | 7.335 ms | 7.623 ms | 8.159 ms | 8.754 ms | 10.203 ms |
+|            |          |        | model  | 7.067 ms | 7.279 ms | 7.734 ms | 8.312 ms | 9.710 ms  |
+|            |          |        | search | 0.151 ms | 0.220 ms | 0.267 ms | 0.312 ms | 0.346 ms  |
 
 ### Example
 
