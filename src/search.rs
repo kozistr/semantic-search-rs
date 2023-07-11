@@ -1,5 +1,7 @@
-use hora::core::ann_index::{ANNIndex, SerializableIndex};
-use hora::index::hnsw_idx::HNSWIndex;
+use hora::{
+    core::ann_index::{ANNIndex, SerializableIndex},
+    index::hnsw_idx::HNSWIndex,
+};
 use mimalloc::MiMalloc;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType::AllMiniLmL12V2,

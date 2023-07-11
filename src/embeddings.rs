@@ -1,12 +1,14 @@
-use hora::core::{ann_index::ANNIndex, ann_index::SerializableIndex, metrics::Metric::Euclidean};
-use hora::index::{hnsw_idx::HNSWIndex, hnsw_params::HNSWParams};
+use anyhow::Result;
+use hora::{
+    core::{ann_index::ANNIndex, ann_index::SerializableIndex, metrics::Metric::Euclidean},
+    index::{hnsw_idx::HNSWIndex, hnsw_params::HNSWParams},
+};
+use mimalloc::MiMalloc;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType::AllMiniLmL12V2,
 };
 use serde::Deserialize;
-use std::{error::Error, fs};
-
-use mimalloc::MiMalloc;
+use std::fs;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -46,7 +48,7 @@ pub struct EmbeddedBook {
     pub embeddings: [f32; 384],
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     let model: SentenceEmbeddingsModel =
         SentenceEmbeddingsBuilder::remote(AllMiniLmL12V2).create_model()?;
 

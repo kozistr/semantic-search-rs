@@ -1,4 +1,5 @@
-use std::{error::Error, net::SocketAddr};
+use anyhow::Result;
+use std::net::SocketAddr;
 use tokio;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -18,14 +19,14 @@ impl ss::inference_server::Inference for VectorSearchService {
         &self,
         request: Request<ss::PredictRequest>,
     ) -> Result<Response<ss::PredictResponse>, Status> {
-        let reply = search(request.into_inner());
+        let reply: ss::PredictResponse = search(request.into_inner());
 
         Ok(Response::new(reply))
     }
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<()> {
     let addr: SocketAddr = "127.0.0.1:50051".parse()?;
     let service: VectorSearchService = VectorSearchService::default();
 

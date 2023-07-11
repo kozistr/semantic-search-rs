@@ -1,8 +1,10 @@
+use anyhow::Result;
 use mimalloc::MiMalloc;
-use std::error::Error;
-use std::sync::mpsc;
-use std::time::{Duration, Instant};
-use std::{env, process};
+use std::{
+    env, process,
+    sync::mpsc,
+    time::{Duration, Instant},
+};
 use tokio;
 
 pub mod ss {
@@ -39,7 +41,7 @@ struct Metrics {
     total_lat: Vec<u64>,
 }
 
-async fn execute(config: &Config) -> Result<Metrics, Box<dyn Error>> {
+async fn execute(config: &Config) -> Result<Metrics> {
     let mut client: ss::inference_client::InferenceClient<tonic::transport::Channel> =
         ss::inference_client::InferenceClient::connect("http://127.0.0.1:50051").await?;
 
@@ -79,7 +81,7 @@ async fn execute(config: &Config) -> Result<Metrics, Box<dyn Error>> {
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 8)]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     let config: Config = Config::new(&args).unwrap_or_else(|err: &str| {
@@ -88,7 +90,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         process::exit(1);
     });
 
-    println!("num_users : {}, num_iters : {}, k : {}", config.u, config.n, config.k);
+    println!(
+        "num_users : {}, num_iters : {}, k : {}",
+        config.u, config.n, config.k
+    );
 
     let (tx, rx) = mpsc::channel::<Metrics>();
 
@@ -103,7 +108,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let mut metrics: Metrics = Metrics::default();
-    for _ in 0..config.u { 
+    for _ in 0..config.u {
         let result: Metrics = rx.recv().unwrap();
         metrics.model_lat.extend(result.model_lat.iter());
         metrics.search_lat.extend(result.search_lat.iter());
