@@ -131,7 +131,7 @@ fn log_stats(
             .collect();
 
         println!(
-            "model latency : {} Mean={:1.3}ms Max={:1.3}m Count={:>7} {}",
+            "model latency  : {} Mean={:1.3}ms Max={:1.3}m Count={:>7} {}",
             i,
             mean as f64 * 1e-6,
             max as f64 * 1e-6,
@@ -153,7 +153,7 @@ fn log_stats(
             .collect();
 
         println!(
-            "search latency {} Mean={:1.3}ms Max={:1.3}m Count={:>7} {}",
+            "search latency : {} Mean={:1.3}ms Max={:1.3}m Count={:>7} {}",
             i,
             mean as f64 * 1e-6,
             max as f64 * 1e-6,
