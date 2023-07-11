@@ -51,7 +51,7 @@ pub fn search(request: PredictRequest) -> PredictResponse {
 
     let start: Instant = Instant::now();
     let query_embeddings: Vec<Vec<f32>> =
-        MODEL.with(|model: &SentenceEmbeddingsModel| model.encode(&query).unwrap());
+        MODEL.with(|model: &SentenceEmbeddingsModel| model.encode(&[query]).unwrap());
     let model_latency: u64 = start.elapsed().as_nanos() as u64;
 
     let start: Instant = Instant::now();
