@@ -112,12 +112,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn log_stats(
-    i: usize,
-    model_latencies: &Vec<u64>,
-    search_latencies: &Vec<u64>,
-    take: usize,
-) {
+fn log_stats(i: usize, model_latencies: &Vec<u64>, search_latencies: &Vec<u64>, take: usize) {
     {
         let lats = model_latencies.iter().take(take);
 
@@ -174,10 +169,5 @@ fn percentiles(ps: Vec<f64>, latencies: &Vec<u64>, take: usize) -> Vec<(f64, u64
 
 fn report(config: &Config, metrics: &Metrics) {
     println!("REPORT =====================================================================");
-    log_stats(
-        config.n,
-        &metrics.model_lat,
-        &metrics.search_lat,
-        config.n,
-    );
+    log_stats(config.n, &metrics.model_lat, &metrics.search_lat, config.n);
 }
