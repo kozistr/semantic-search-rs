@@ -11,7 +11,7 @@ navie semantic search demo with gRPC server in Rust
 ## Non-Goal
 
 * filter-aware search
-* distributed & shareded index build / search
+* distributed & sharded index build / search
 * rewrite & optimize indexing algorithm
 
 ## To-Do
