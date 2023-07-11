@@ -26,6 +26,17 @@ navie semantic search demo with gRPC server in Rust
 
 TBD
 
+### Spec
+
+* embedding model (Mini-LM L12 v2) runs on a single GPU
+* support dynamic batch (not yet)
+* (option) multi-threaded index search
+
+### Data
+
+* Input  : query (utf-8). String type.
+* Output : top k indices. list of int32.
+
 ## Requirements
 
 * libtorch 2.0 (cuda)
