@@ -18,13 +18,13 @@ navie semantic search demo with gRPC server in Rust
 make run-builder
 ```
 
-### Client
+### gRPC Client
 
 ```shell
 make run-client
 ```
 
-### Server
+### gRPC Server
 
 ```shell
 make run-server
@@ -45,7 +45,12 @@ make run-server
 
 ### Benchmark
 
+* warm up with 10 times
 
+| batch size | requests |   k    |  type  |   mean   |   p95    |   p99    |   p99.9  |    max    |
+|   :---:    |  :---:   | :---:  | :---:  |  :---:   |  :---:   |   :---:  |   :---:  |   :---:   |
+| 1          |   10k    |        | model  | 7.240 ms | 7.485 ms | 7.830 ms | 9.250 ms | 12.263 ms |
+|            |          |   10   | search | 0.141 ms | 0.209 ms | 0.247 ms | 0.310 ms | 0.376 ms  |
 
 ### Example
 
