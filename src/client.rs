@@ -14,6 +14,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 #[derive(Debug, Clone)]
 struct Config {
+    u: usize,
     n: usize,
     k: i32,
 }
@@ -23,10 +24,11 @@ impl Config {
             return Err("not enough arguments");
         }
 
-        let n: usize = args[1].parse().unwrap();
-        let k: i32 = args[2].parse().unwrap();
+        let u: usize = args[1].parse().unwrap();
+        let n: usize = args[2].parse().unwrap();
+        let k: i32 = args[3].parse().unwrap();
 
-        Ok(Config { n, k })
+        Ok(Config { u, n, k })
     }
 }
 
@@ -82,15 +84,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let config: Config = Config::new(&args).unwrap_or_else(|err: &str| {
         println!("Problem parsing arguments: {}", err);
-        println!("Usage: client num_iters k");
+        println!("Usage: client num_users num_iters k");
         process::exit(1);
     });
 
-    println!("num_iters : {}, k : {}", config.n, config.k);
+    println!("num_users : {}, num_iters : {}, k : {}", config.u, config.n, config.k);
 
     let (tx, rx) = mpsc::channel::<Metrics>();
 
-    {
+    for _ in 0..config.u {
         let config: Config = config.clone();
         let tx: mpsc::Sender<Metrics> = tx.clone();
 
@@ -100,12 +102,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         });
     }
 
-    let result: Metrics = rx.recv().unwrap();
-
     let mut metrics: Metrics = Metrics::default();
-    metrics.model_lat.extend(result.model_lat.iter());
-    metrics.search_lat.extend(result.search_lat.iter());
-    metrics.total_lat.extend(result.total_lat.iter());
+    for _ in 0..config.u { 
+        let result: Metrics = rx.recv().unwrap();
+        metrics.model_lat.extend(result.model_lat.iter());
+        metrics.search_lat.extend(result.search_lat.iter());
+        metrics.total_lat.extend(result.total_lat.iter());
+    }
 
     tokio::time::sleep(Duration::from_secs(1)).await;
 
