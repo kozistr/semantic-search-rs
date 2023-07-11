@@ -1,7 +1,7 @@
 use mimalloc::MiMalloc;
 use std::error::Error;
 use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{env, process};
 use tokio;
 
@@ -34,6 +34,7 @@ impl Config {
 struct Metrics {
     model_lat: Vec<u64>,
     search_lat: Vec<u64>,
+    total_lat: Vec<u64>,
 }
 
 async fn execute(config: &Config) -> Result<Metrics, Box<dyn Error>> {
@@ -57,10 +58,13 @@ async fn execute(config: &Config) -> Result<Metrics, Box<dyn Error>> {
 
     let mut model_lat: Vec<u64> = vec![0u64; config.n];
     let mut search_lat: Vec<u64> = vec![0u64; config.n];
+    let mut total_lat: Vec<u64> = vec![0u64; config.n];
 
     for i in 1..config.n {
+        let start: Instant = Instant::now();
         let response: ss::PredictResponse = client.predict(request.clone()).await?.into_inner();
 
+        total_lat[i] = start.elapsed().as_nanos() as u64;
         model_lat[i] = response.model_latency;
         search_lat[i] = response.search_latency;
     }
@@ -68,6 +72,7 @@ async fn execute(config: &Config) -> Result<Metrics, Box<dyn Error>> {
     Ok(Metrics {
         model_lat,
         search_lat,
+        total_lat,
     })
 }
 
@@ -99,11 +104,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
         });
     }
 
-    let result = rx.recv().unwrap();
+    let result: Metrics = rx.recv().unwrap();
 
     let mut metrics: Metrics = Metrics::default();
     metrics.model_lat.extend(result.model_lat.iter());
     metrics.search_lat.extend(result.search_lat.iter());
+    metrics.total_lat.extend(result.total_lat.iter());
 
     tokio::time::sleep(Duration::from_secs(1)).await;
 
@@ -112,25 +118,29 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn log_stats(i: usize, model_latencies: &Vec<u64>, search_latencies: &Vec<u64>, take: usize) {
+fn log_stats(
+    i: usize,
+    model_latencies: &Vec<u64>,
+    search_latencies: &Vec<u64>,
+    total_latencies: &Vec<u64>,
+    take: usize,
+) {
     {
         let lats = model_latencies.iter().take(take);
 
         let mean: u64 = lats.clone().sum::<u64>() / i as u64;
         let max: u64 = *lats.clone().max().unwrap();
-        let count: usize = lats.clone().collect::<Vec<&u64>>().len();
 
-        let ps: Vec<String> = percentiles(vec![0.95, 0.99, 0.999], model_latencies, take)
+        let ps: Vec<String> = percentiles(&[0.95, 0.99, 0.999], model_latencies, take)
             .iter()
             .map(|(p, x)| format!("p{:2.1}={:1.3}ms", 100.0 * p, *x as f64 * 1e-6))
             .collect();
 
         println!(
-            "model latency  : {} Mean={:1.3}ms Max={:1.3}m Count={:>7} {}",
+            "model latency  : {} Mean={:1.3}ms Max={:1.3}m {}",
             i,
             mean as f64 * 1e-6,
             max as f64 * 1e-6,
-            count,
             ps.join(" ")
         );
     }
@@ -140,34 +150,58 @@ fn log_stats(i: usize, model_latencies: &Vec<u64>, search_latencies: &Vec<u64>, 
 
         let mean: u64 = lats.clone().sum::<u64>() / i as u64;
         let max: u64 = *lats.clone().max().unwrap();
-        let count: usize = lats.clone().collect::<Vec<&u64>>().len();
 
-        let ps: Vec<String> = percentiles(vec![0.95, 0.99, 0.999], search_latencies, take)
+        let ps: Vec<String> = percentiles(&[0.95, 0.99, 0.999], search_latencies, take)
             .iter()
             .map(|(p, x)| format!("p{:2.1}={:1.3}ms", 100.0 * p, *x as f64 * 1e-6))
             .collect();
 
         println!(
-            "search latency : {} Mean={:1.3}ms Max={:1.3}m Count={:>7} {}",
+            "search latency : {} Mean={:1.3}ms Max={:1.3}m {}",
             i,
             mean as f64 * 1e-6,
             max as f64 * 1e-6,
-            count,
+            ps.join(" ")
+        );
+    }
+
+    {
+        let lats = total_latencies.iter().take(take);
+
+        let mean: u64 = lats.clone().sum::<u64>() / i as u64;
+        let max: u64 = *lats.clone().max().unwrap();
+
+        let ps: Vec<String> = percentiles(&[0.95, 0.99, 0.999], search_latencies, take)
+            .iter()
+            .map(|(p, x)| format!("p{:2.1}={:1.3}ms", 100.0 * p, *x as f64 * 1e-6))
+            .collect();
+
+        println!(
+            "total latency : {} Mean={:1.3}ms Max={:1.3}m {}",
+            i,
+            mean as f64 * 1e-6,
+            max as f64 * 1e-6,
             ps.join(" ")
         );
     }
 }
 
-fn percentiles(ps: Vec<f64>, latencies: &Vec<u64>, take: usize) -> Vec<(f64, u64)> {
-    let mut sorted: Vec<&u64> = latencies.iter().take(take).collect();
+fn percentiles(ps: &[f64], latencies: &Vec<u64>, take: usize) -> Vec<(f64, u64)> {
+    let mut sorted: Vec<u64> = latencies.iter().take(take).copied().collect();
     sorted.sort();
 
     ps.iter()
-        .map(|p: &f64| (*p, *sorted[(sorted.len() as f64 * p) as usize]))
+        .map(|p: &f64| (*p, sorted[((sorted.len() as f64) * p) as usize]))
         .collect()
 }
 
 fn report(config: &Config, metrics: &Metrics) {
     println!("REPORT =====================================================================");
-    log_stats(config.n, &metrics.model_lat, &metrics.search_lat, config.n);
+    log_stats(
+        config.n,
+        &metrics.model_lat,
+        &metrics.search_lat,
+        &metrics.total_lat,
+        config.n,
+    );
 }
