@@ -30,7 +30,7 @@ TBD
 
 * embedding model (Mini-LM L12 v2) runs on a single GPU
 * support dynamic batch (not yet)
-* (option) multi-threaded index search
+* (currently) single-threaded index search
 
 ### Data
 
