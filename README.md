@@ -2,6 +2,28 @@
 
 navie semantic search demo with gRPC server in Rust
 
+## Goal
+
+* cost-effective billion-scale vector serach in a single digit latency (< 10 ms)
+  * single machine, single thread
+* stateless searcher
+
+## Non-Goal
+
+* distributed index build / search
+* CRUD for index
+* code-level optimization for indexing algorithm
+* reduce num of embedding dimension
+
+## To-Do
+
+* [ ] faiss-rs with GPU
+* [ ] hybrid HNSW-IF indexing
+
+## Architecture
+
+TBD
+
 ## Requirements
 
 * libtorch 2.0 (cuda)
