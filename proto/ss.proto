@@ -16,6 +16,8 @@ message Features {
 
 message PredictResponse {
     repeated Index indices = 1;
+    uint64 model_latency = 2;
+    uint64 search_latency = 3;
 }
 
 message Index {
