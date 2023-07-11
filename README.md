@@ -43,32 +43,15 @@ make run-server
   * num of documents : 16,559 documents
   * k : 10
 
-```text
-load model : 3.1107782s
-load data : 71.7013ms
-[-] there's no index file.
-inference (16559 documents) : 91.7753841s
-build index : 6.4097303s
-query : The story about prep school
-search speed : 288.5µs
-top 1, title : Some("Prayer for the Living")
-top 2, title : Some("The Princess Diaries, Volume VI: Princess in Training")
-top 3, title : Some("School Days")
-top 4, title : Some("The Fall of Doctor Onslow")
-top 5, title : Some("Love Lessons")
-top 6, title : Some("The Turbulent Term of Tyke Tiler")
-top 7, title : Some("The Fabled Fourth Graders of Aesop Elementary School")
-top 8, title : Some("Flour Babies")
-top 9, title : Some("The Freedom Writers Diary")
-top 10, title : Some("Truancy")
-```
+### Benchmark
+
+
+
+### Example
 
 ```text
-load model : 3.0460236s
-load data : 70.939ms
-[+] there's an index file.
 query : The story about prep school
-search speed : 255.8µs
+search speed : 288.5µs
 top 1, title : Some("Prayer for the Living")
 top 2, title : Some("The Princess Diaries, Volume VI: Princess in Training")
 top 3, title : Some("School Days")
