@@ -46,7 +46,7 @@ pub fn preprocess(features: &Vec<Features>) -> (Vec<Vec<String>>, Vec<Vec<usize>
 pub fn search(request: PredictRequest) -> PredictResponse {
     // let (query, k) = preprocess(&request.features);
     let feature: &Features = &request.features.first().clone().unwrap();
-    let query = feature.query.clone();
+    let query: String = feature.query.clone();
     let k: usize = feature.k.clone() as usize;
 
     let start: Instant = Instant::now();
