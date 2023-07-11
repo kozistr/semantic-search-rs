@@ -29,6 +29,7 @@ TBD
 ### Spec
 
 * embedding model (Mini-LM L12 v2) runs on a single GPU
+  * model info : [hf](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)
 * support dynamic batch (not yet)
 * (currently) single-threaded index search
 
