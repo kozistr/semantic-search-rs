@@ -78,19 +78,15 @@ async fn execute(config: &Config) -> Result<Metrics, Box<dyn Error>> {
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 8)]
 async fn main() -> Result<(), Box<dyn Error>> {
-    println!("==================================================================");
-    println!("Usage: client num_iters k");
-
     let args: Vec<String> = env::args().collect();
 
     let config: Config = Config::new(&args).unwrap_or_else(|err: &str| {
         println!("Problem parsing arguments: {}", err);
+        println!("Usage: client num_iters k");
         process::exit(1);
     });
 
     println!("num_iters : {}, k : {}", config.n, config.k);
-
-    println!("==================================================================");
 
     let (tx, rx) = mpsc::channel::<Metrics>();
 
@@ -118,72 +114,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn log_stats(
-    i: usize,
-    model_latencies: &Vec<u64>,
-    search_latencies: &Vec<u64>,
-    total_latencies: &Vec<u64>,
-    take: usize,
-) {
-    {
-        let lats = model_latencies.iter().take(take);
+fn log_stats(description: &str, i: usize, latencies: &Vec<u64>, take: usize) {
+    let lats = latencies.iter().take(take);
 
-        let mean: u64 = lats.clone().sum::<u64>() / i as u64;
-        let max: u64 = *lats.clone().max().unwrap();
+    let mean: u64 = lats.clone().sum::<u64>() / i as u64;
+    let max: u64 = *lats.clone().max().unwrap();
 
-        let ps: Vec<String> = percentiles(&[0.95, 0.99, 0.999], model_latencies, take)
-            .iter()
-            .map(|(p, x)| format!("p{:2.1}={:1.3}ms", 100.0 * p, *x as f64 * 1e-6))
-            .collect();
+    let ps: Vec<String> = percentiles(&[0.95, 0.99, 0.999], latencies, take)
+        .iter()
+        .map(|(p, x)| format!("p{:2.1}={:1.3}ms", 100.0 * p, *x as f64 * 1e-6))
+        .collect();
 
-        println!(
-            "model latency  : {} Mean={:1.3}ms Max={:1.3}m {}",
-            i,
-            mean as f64 * 1e-6,
-            max as f64 * 1e-6,
-            ps.join(" ")
-        );
-    }
-
-    {
-        let lats = search_latencies.iter().take(take);
-
-        let mean: u64 = lats.clone().sum::<u64>() / i as u64;
-        let max: u64 = *lats.clone().max().unwrap();
-
-        let ps: Vec<String> = percentiles(&[0.95, 0.99, 0.999], search_latencies, take)
-            .iter()
-            .map(|(p, x)| format!("p{:2.1}={:1.3}ms", 100.0 * p, *x as f64 * 1e-6))
-            .collect();
-
-        println!(
-            "search latency : {} Mean={:1.3}ms Max={:1.3}m {}",
-            i,
-            mean as f64 * 1e-6,
-            max as f64 * 1e-6,
-            ps.join(" ")
-        );
-    }
-
-    {
-        let lats = total_latencies.iter().take(take);
-
-        let mean: u64 = lats.clone().sum::<u64>() / i as u64;
-        let max: u64 = *lats.clone().max().unwrap();
-
-        let ps: Vec<String> = percentiles(&[0.95, 0.99, 0.999], search_latencies, take)
-            .iter()
-            .map(|(p, x)| format!("p{:2.1}={:1.3}ms", 100.0 * p, *x as f64 * 1e-6))
-            .collect();
-
-        println!(
-            "total latency : {} Mean={:1.3}ms Max={:1.3}m {}",
-            i,
-            mean as f64 * 1e-6,
-            max as f64 * 1e-6,
-            ps.join(" ")
-        );
-    }
+    println!(
+        "{} latency  : {} Mean={:1.3}ms Max={:1.3}m {}",
+        description,
+        i,
+        mean as f64 * 1e-6,
+        max as f64 * 1e-6,
+        ps.join(" ")
+    );
 }
 
 fn percentiles(ps: &[f64], latencies: &Vec<u64>, take: usize) -> Vec<(f64, u64)> {
@@ -197,11 +146,7 @@ fn percentiles(ps: &[f64], latencies: &Vec<u64>, take: usize) -> Vec<(f64, u64)>
 
 fn report(config: &Config, metrics: &Metrics) {
     println!("REPORT =====================================================================");
-    log_stats(
-        config.n,
-        &metrics.model_lat,
-        &metrics.search_lat,
-        &metrics.total_lat,
-        config.n,
-    );
+    log_stats("total", config.n, &metrics.total_lat, config.n);
+    log_stats("model", config.n, &metrics.model_lat, config.n);
+    log_stats("search", config.n, &metrics.search_lat, config.n);
 }
