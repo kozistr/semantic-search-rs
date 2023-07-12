@@ -120,32 +120,32 @@ impl Distance<f32> for DistL1 {
 
 impl Distance<i8> for DistL1 {
     #[allow(unreachable_code)]
-    fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
+    fn eval(&self, va: &[i8], vb: &[i8]) -> i32 {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
             let size: usize = va.len() - (va.len() % 64);
 
-            let c: f32 = va
+            let c: i32 = va
                 .chunks_exact(64)
                 .map(i8x64::from_slice_unaligned)
                 .zip(vb.chunks_exact(64).map(i8x64::from_slice_unaligned))
                 .map(|(a, b)| (a - b).abs())
                 .sum::<i8x64>()
-                .sum() as f32;
+                .sum() as i32;
 
-            let d: f32 = va[size..]
+            let d: i32 = va[size..]
                 .iter()
                 .zip(&vb[size..])
                 .map(|(p, q)| (p - q).abs())
-                .sum() as f32;
+                .sum() as i32;
 
             return c + d;
         }
 
         va.iter()
             .zip(vb.iter())
-            .map(|t: (&i8, &i8)| (*t.0 as i8 - *t.1 as i8).abs())
-            .sum() as f32
+            .map(|t: (&i8, &i8)| (*t.0 as i32 - *t.1 as i32).abs())
+            .sum() as i32
     } // end of eval
 }
 //========================================================================
@@ -158,8 +158,8 @@ macro_rules! implementL2Distance (
     ($ty:ty) => (
 
     impl Distance<$ty> for DistL2  {
-        fn eval(&self, va:&[$ty], vb: &[$ty]) -> f32 {
-            let norm : f32 = va.iter().zip(vb.iter()).map(|t| (*t.0 as f32- *t.1 as f32) * (*t.0 as f32- *t.1 as f32)).sum();
+        fn eval(&self, va: &[$ty], vb: &[$ty]) -> f32 {
+            let norm: f32 = va.iter().zip(vb.iter()).map(|t| (*t.0 as f32- *t.1 as f32) * (*t.0 as f32- *t.1 as f32)).sum();
             norm.sqrt()
         } // end of compute
     } // end of impl block
@@ -211,6 +211,42 @@ impl Distance<f32> for DistL2 {
     }
 }
 
+impl Distance<i8> for DistL2 {
+    #[allow(unreachable_code)]
+    fn eval(&self, va: &[i8], vb: &[i8]) -> i32 {
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        {
+            let size: usize = va.len() - (va.len() % 64);
+
+            let c: i32 = va
+                .chunks_exact(64)
+                .map(i8x64::from_slice_unaligned)
+                .zip(vb.chunks_exact(64).map(i8x64::from_slice_unaligned))
+                .map(|(a, b)| {
+                    let c: i32 = a as i32 - b as i32;
+                    c * c
+                })
+                .sum::<i8x64>()
+                .sum() as f32;
+
+            let d: i32 = va[size..]
+                .iter()
+                .zip(&vb[size..])
+                .map(|(p, q)| (p as i32 - q as i32).powi(2))
+                .sum() as i32;
+
+            return d + c;
+        }
+
+        let norm: i32 = va
+            .iter()
+            .zip(vb.iter())
+            .map(|t: (&i8, &i8)| (*t.0 as i32 - *t.1 as i32) * (*t.0 as i32 - *t.1 as i32))
+            .sum();
+        assert!(norm >= 0.);
+        norm.sqrt()
+    }
+}
 //=========================================================================
 
 /// Cosine distance : implemented for f32, f64, i64, i32 , u16
