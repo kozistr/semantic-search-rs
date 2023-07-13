@@ -1,21 +1,34 @@
-use hora::{
-    core::ann_index::{ANNIndex, SerializableIndex},
-    index::hnsw_idx::HNSWIndex,
-};
+// use hora::{
+//     core::ann_index::{ANNIndex, SerializableIndex},
+//     index::hnsw_idx::HNSWIndex,
+// };
 use mimalloc::MiMalloc;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType::AllMiniLmL12V2,
 };
-use std::time::Instant;
+use std::{
+    fs::{File, OpenOptions},
+    io::BufReader,
+    path::PathBuf,
+    time::Instant,
+};
 
 use crate::ss::{Features, Index, PredictRequest, PredictResponse};
+
+mod hnsw_index;
+use crate::hnsw_index::{
+    api::AnnT,
+    dist::DistL2,
+    hnsw::Hnsw,
+    hnswio::{load_description, load_hnsw, Description},
+};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
 thread_local! {
     pub static MODEL: SentenceEmbeddingsModel = load_model();
-    pub static INDEX: HNSWIndex<f32, usize> = load_index();
+    pub static INDEX: Hnsw<f32, DistL2> = load_index();
 }
 
 fn load_model() -> SentenceEmbeddingsModel {
@@ -25,9 +38,21 @@ fn load_model() -> SentenceEmbeddingsModel {
         .unwrap()
 }
 
-fn load_index() -> HNSWIndex<f32, usize> {
+fn load_file(filename: &str) -> BufReader<File> {
+    let path: PathBuf = PathBuf::from(filename.to_string());
+    let res: File = OpenOptions::new().read(true).open(&path).unwrap();
+    let reader: BufReader<File> = BufReader::new(res);
+    reader
+}
+
+fn load_index() -> Hnsw<f32, DistL2> {
     println!("load index");
-    HNSWIndex::<f32, usize>::load("index.hora").unwrap()
+    let mut graph: BufReader<File> = load_file("index.hnsw.graph");
+    let mut data: BufReader<File> = load_file("index.hnsw.data");
+
+    let description: Description = load_description(&mut graph).unwrap();
+    let index: Hnsw<f32, DistL2> = load_hnsw(&mut graph, &description, &mut data).unwrap();
+    index
 }
 
 #[allow(dead_code)]
@@ -57,15 +82,23 @@ pub fn search(request: PredictRequest) -> PredictResponse {
     let model_latency: u64 = start.elapsed().as_nanos() as u64;
 
     let start: Instant = Instant::now();
-    let neighbor_index: Vec<usize> =
-        INDEX.with(|index: &HNSWIndex<f32, usize>| index.search(&query_embeddings[0], k));
+    // let neighbor_index: Vec<usize> =
+    //     INDEX.with(|index: &HNSWIndex<f32, usize>| index.search(&query_embeddings[0], k));
+    let neighbor_index =
+        INDEX.with(|index: &Hnsw<f32, DistL2>| index.parallel_search(&query_embeddings[0], k, 30));
     let search_latency: u64 = start.elapsed().as_nanos() as u64;
 
     PredictResponse {
+        // indices: neighbor_index
+        //     .iter()
+        //     .map(|index: &usize| Index {
+        //         index: *index as i32,
+        //     })
+        //     .collect(),
         indices: neighbor_index
             .iter()
-            .map(|index: &usize| Index {
-                index: *index as i32,
+            .map(|index| Index {
+                index: *index.d_id as i32,
             })
             .collect(),
         model_latency,
