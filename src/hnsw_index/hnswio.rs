@@ -6,6 +6,9 @@
 //! The graph file is suffixed by "hnsw.graph" the other is suffixed by "hnsw.data"
 //!
 //! An example of dump and reload of structure Hnsw is given in the tests (see test_dump_reload)
+#[allow(unused_imports)]
+use crate::hnsw_index::{dist::Distance, hnsw::*};
+use parking_lot::RwLock;
 ///
 ///
 // datafile
@@ -18,16 +21,8 @@
 // In the data file the point dump consist in the triplet: (MAGICDATAP, origin_id , array of values.)
 //
 use serde::{de::DeserializeOwned, Serialize};
-
-use std::io;
-
-use parking_lot::RwLock;
-use std::collections::HashMap;
-#[allow(unused_imports)]
-use std::{any::type_name, path::PathBuf, sync::Arc};
-
-use crate::hnsw_index::{dist::Distance, hnsw::*};
 use std::io::prelude::*;
+use std::{any::type_name, collections::HashMap, io, sync::Arc};
 
 // magic before each graph point data for each point
 const MAGICPOINT: u32 = 0x000a678f;
@@ -912,7 +907,7 @@ mod tests {
         // some loggin info
         hnsw.dump_layer_info();
         // dump in a file.  Must take care of name as tests runs in // !!!
-        let fname = String::from("dumpreloadtest1");
+        let fname: String = String::from("dumpreloadtest1");
         let _res = hnsw.file_dump(&fname);
         // This will dump in 2 files named dumpreloadtest.hnsw.graph and dumpreloadtest.hnsw.data
         //
@@ -920,9 +915,10 @@ mod tests {
         log::debug!("\n\n  hnsw reload");
         // we will need a procedural macro to get from distance name to its instanciation.
         // from now on we test with DistL1
-        let graphfname = String::from("dumpreloadtest1.hnsw.graph");
-        let graphpath = PathBuf::from(graphfname);
-        let graphfileres = OpenOptions::new().read(true).open(&graphpath);
+        let graphfname: String = String::from("dumpreloadtest1.hnsw.graph");
+        let graphpath: PathBuf = PathBuf::from(graphfname);
+        let graphfileres: Result<std::fs::File, io::Error> =
+            OpenOptions::new().read(true).open(&graphpath);
         if graphfileres.is_err() {
             println!(
                 "test_dump_reload: could not open file {:?}",
@@ -930,11 +926,12 @@ mod tests {
             );
             std::panic::panic_any("test_dump_reload: could not open file".to_string());
         }
-        let graphfile = graphfileres.unwrap();
+        let graphfile: std::fs::File = graphfileres.unwrap();
         //
-        let datafname = String::from("dumpreloadtest1.hnsw.data");
-        let datapath = PathBuf::from(datafname);
-        let datafileres = OpenOptions::new().read(true).open(&datapath);
+        let datafname: String = String::from("dumpreloadtest1.hnsw.data");
+        let datapath: PathBuf = PathBuf::from(datafname);
+        let datafileres: Result<std::fs::File, io::Error> =
+            OpenOptions::new().read(true).open(&datapath);
         if datafileres.is_err() {
             println!(
                 "test_dump_reload : could not open file {:?}",
@@ -942,12 +939,12 @@ mod tests {
             );
             std::panic::panic_any("test_dump_reload : could not open file".to_string());
         }
-        let datafile = datafileres.unwrap();
+        let datafile: std::fs::File = datafileres.unwrap();
         //
-        let mut graph_in = BufReader::new(graphfile);
-        let mut data_in = BufReader::new(datafile);
+        let mut graph_in: BufReader<std::fs::File> = BufReader::new(graphfile);
+        let mut data_in: BufReader<std::fs::File> = BufReader::new(datafile);
         // we need to call load_description first to get distance name
-        let hnsw_description = load_description(&mut graph_in).unwrap();
+        let hnsw_description: Description = load_description(&mut graph_in).unwrap();
         let hnsw_loaded: Hnsw<f32, DistL1> =
             load_hnsw(&mut graph_in, &hnsw_description, &mut data_in).unwrap();
         // test equality

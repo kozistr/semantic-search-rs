@@ -2,15 +2,14 @@
 //! and a structure to enable the user to implement its own distances.
 //! For the heavily used case (f32) we provide simd avx2 implementation.
 
-#[cfg(feature = "stdsimd")]
-use std::simd::{i32x16, i64x8, u32x16, u64x8};
-
 #[cfg(feature = "simdeez_f")]
 use simdeez::avx2::*;
 #[cfg(feature = "simdeez_f")]
 use simdeez::sse2::*;
 #[cfg(feature = "simdeez_f")]
 use simdeez::*;
+#[cfg(feature = "stdsimd")]
+use std::simd::{i32x16, i64x8, u32x16, u64x8};
 
 /// The trait describing distance.
 /// For example for the L1 distance

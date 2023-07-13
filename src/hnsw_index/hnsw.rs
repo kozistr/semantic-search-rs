@@ -1355,14 +1355,15 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             }
         }
         // ef must be greater than knbn. Possibly it should be between knbn and self.max_nb_connection
-        let ef = ef_arg.max(knbn);
+        let ef: usize = ef_arg.max(knbn);
         // now search with asked ef in layer 0
-        let neighbours_heap = self.search_layer(data, entry_point, ef, 0, None);
+        let neighbours_heap: BinaryHeap<Arc<PointWithOrder<T>>> =
+            self.search_layer(data, entry_point, ef, 0, None);
         // go from heap of points with negative dist to a sorted vec of increasing points with > 0 distances.
-        let neighbours = neighbours_heap.into_sorted_vec();
+        let neighbours: Vec<Arc<PointWithOrder<T>>> = neighbours_heap.into_sorted_vec();
         // get the min of K and ef points into a vector.
         //
-        let last = knbn.min(ef).min(neighbours.len());
+        let last: usize = knbn.min(ef).min(neighbours.len());
         let knn_neighbours: Vec<Neighbour> = neighbours[0..last]
             .iter()
             .map(|p| {
@@ -1387,7 +1388,6 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         ef_arg: usize,
         filter: Option<&dyn FilterT>,
     ) -> Vec<Neighbour> {
-        //
         let entry_point: Arc<Point<T>>;
         {
             // a lock on an option an a Arc<Point>
@@ -1408,10 +1408,11 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             let mut has_changed: bool = false;
             // search in stored neighbours
             {
-                let neighbours = &pivot.neighbours.read()[layer as usize];
+                let neighbours: &Vec<Arc<PointWithOrder<T>>> =
+                    &pivot.neighbours.read()[layer as usize];
                 for n in neighbours {
                     // get the lowest  distance point.
-                    let tmp_dist = self.dist_f.eval(data, &n.point_ref.v);
+                    let tmp_dist: f32 = self.dist_f.eval(data, &n.point_ref.v);
                     if tmp_dist < dist_to_entry {
                         new_pivot = Some(Arc::clone(&n.point_ref));
                         has_changed = true;
@@ -1424,14 +1425,15 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             }
         } // end on for on layers
           // ef must be greater than knbn. Possibly it should be between knbn and self.max_nb_connection
-        let ef = ef_arg.max(knbn);
+        let ef: usize = ef_arg.max(knbn);
         // now search with asked ef in layer 0
-        let neighbours_heap = self.search_layer(data, pivot, ef, 0, filter);
+        let neighbours_heap: BinaryHeap<Arc<PointWithOrder<T>>> =
+            self.search_layer(data, pivot, ef, 0, filter);
         // go from heap of points with negative dist to a sorted vec of increasing points with > 0 distances.
-        let neighbours = neighbours_heap.into_sorted_vec();
+        let neighbours: Vec<Arc<PointWithOrder<T>>> = neighbours_heap.into_sorted_vec();
         // get the min of K and ef points into a vector.
         //
-        let last = knbn.min(ef).min(neighbours.len());
+        let last: usize = knbn.min(ef).min(neighbours.len());
         let knn_neighbours: Vec<Neighbour> = neighbours[0..last]
             .iter()
             .map(|p| {
@@ -1483,25 +1485,30 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         ef: usize,
     ) -> Vec<Vec<Neighbour>> {
         let (sender, receiver) = channel();
+
         // make up requests
-        let nb_request = datas.len();
+        let nb_request: usize = datas.len();
         let requests: Vec<(usize, &Vec<T>)> =
             (0..nb_request).into_iter().zip(datas.iter()).collect();
         //
         requests.par_iter().for_each_with(sender, |s, item| {
             s.send(self.search_with_id(*item, knbn, ef)).unwrap()
         });
+
         let req_res: Vec<(usize, Vec<Neighbour>)> = receiver.iter().collect();
+
         // now sort to respect the key order of input
-        let mut answers = Vec::<Vec<Neighbour>>::with_capacity(datas.len());
+        let mut answers: Vec<Vec<Neighbour>> = Vec::<Vec<Neighbour>>::with_capacity(datas.len());
+
         // get a map from request id to rank
-        let mut req_hash = HashMap::<usize, usize>::new();
+        let mut req_hash: HashMap<usize, usize> = HashMap::<usize, usize>::new();
         for i in 0..req_res.len() {
             // the response of request req_res[i].0 is at rank i
             req_hash.insert(req_res[i].0, i);
         }
+
         for i in 0..datas.len() {
-            let answer_i = req_hash.get_key_value(&i).unwrap().1;
+            let answer_i: &usize = req_hash.get_key_value(&i).unwrap().1;
             answers.push((req_res[*answer_i].1).clone());
         }
         answers
