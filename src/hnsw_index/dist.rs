@@ -10,6 +10,8 @@ use simdeez::sse2::*;
 use simdeez::*;
 #[cfg(feature = "stdsimd")]
 use std::simd::{i32x16, i64x8, u32x16, u64x8};
+#[cfg(feature = "all")]
+use packed_simd_2::f32x16;
 
 /// The trait describing distance.
 /// For example for the L1 distance
@@ -161,7 +163,7 @@ macro_rules! implementL2Distance (
     )  // end of pattern matching
 );
 
-//implementL2Distance!(f32);
+// implementL2Distance!(f32);
 implementL2Distance!(i32);
 implementL2Distance!(f64);
 implementL2Distance!(i64);
@@ -201,20 +203,43 @@ unsafe fn distance_l2_f32_avx2(va: &[f32], vb: &[f32]) -> f32 {
 
 impl Distance<f32> for DistL2 {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        //
-        #[cfg(feature = "simdeez_f")]
+        #[cfg(feature = "all")]
         {
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-            {
-                if is_x86_feature_detected!("avx2") {
-                    return unsafe { distance_l2_f32_avx2(va, vb) };
-                }
-            }
+            let size = va.len() - (va.len() % 16);
+
+            let c: f32 = va
+                .chunks_exact(16)
+                .map(f32x16::from_slice_unaligned)
+                .zip(vb.chunks_exact(16).map(f32x16::from_slice_unaligned))
+                .map(|(a, b)| {
+                    let c = a - b;
+                    c * c
+                })
+                .sum::<f32x16>()
+                .sum();
+
+            let d: f32 = va[size..]
+                .iter()
+                .zip(&vb[size..])
+                .map(|(p, q)| (p - q).powi(2))
+                .sum();
+
+            return d + c;
         }
+
+        // #[cfg(feature = "simdeez_f")]
+        // {
+        //     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        //     {
+        //         if is_x86_feature_detected!("avx2") {
+        //             return unsafe { distance_l2_f32_avx2(va, vb) };
+        //         }
+        //     }
+        // }
         let norm: f32 = va
             .iter()
             .zip(vb.iter())
-            .map(|t| (*t.0 as f32 - *t.1 as f32) * (*t.0 as f32 - *t.1 as f32))
+            .map(|t: (&f32, &f32)| (*t.0 as f32 - *t.1 as f32) * (*t.0 as f32 - *t.1 as f32))
             .sum();
         assert!(norm >= 0.);
         norm.sqrt()
@@ -868,11 +893,11 @@ impl Distance<u16> for DistLevenshtein {
             return len_a as f32;
         }
 
-        let len_b = len_b + 1;
+        let len_b: usize = len_b + 1;
 
-        let mut pre;
-        let mut tmp;
-        let mut cur = vec![0; len_b];
+        let mut pre: usize;
+        let mut tmp: usize;
+        let mut cur: Vec<usize> = vec![0; len_b];
 
         // initialize string b
         for i in 1..len_b {
