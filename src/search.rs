@@ -16,7 +16,7 @@ use std::{
 use semantic_search::hnsw_index::{
     dist::DistL2,
     hnsw::{Hnsw, Neighbour},
-    hnswio::{load_description, load_hnsw, Description},
+    hnswio::{load_description, load_hnsw_with_dist, Description},
 };
 
 use crate::ss::{Features, Index, PredictRequest, PredictResponse};
@@ -49,7 +49,8 @@ fn load_index() -> Hnsw<f32, DistL2> {
     let mut data: BufReader<File> = load_file("index.hnsw.data");
 
     let description: Description = load_description(&mut graph).unwrap();
-    let index: Hnsw<f32, DistL2> = load_hnsw(&mut graph, &description, &mut data).unwrap();
+    let index: Hnsw<f32, DistL2> =
+        load_hnsw_with_dist(&mut graph, &description, DistL2 {}, &mut data).unwrap();
     index
 }
 
