@@ -10,12 +10,11 @@ navie semantic search demo with gRPC server in Rust
 
 ## Non-Goal
 
-* filter-aware search
 * distributed & sharded index build / search
-* rewrite & optimize indexing algorithm
 
 ## To-Do
 
+* [*] hnswlib-rs
 * [ ] separate embedding and search part as a different micro service
 * [ ] faiss-rs with GPU
 * [ ] hybrid HNSW-IF indexing
@@ -39,8 +38,8 @@ TBD
 
 * libtorch 2.0 (cuda)
 * rust-bert
-* hora (ANN)
-* minmalloc
+* ~~hora (ANN)~~
+* hnswlib-rs
 * protobuf
 
 ## Run
@@ -80,11 +79,11 @@ make run-server
 
 * warm up with 10 times
 
-| batch size | requests |   k    |  type  |   mean   |   p95    |   p99    |   p99.9  |    max    |
-|   :---:    |  :---:   | :---:  | :---:  |  :---:   |  :---:   |   :---:  |   :---:  |   :---:   |
-|     1      |   10k    |   10   | total  | 7.335 ms | 7.623 ms | 8.159 ms | 8.754 ms | 10.203 ms |
-|            |          |        | model  | 7.067 ms | 7.279 ms | 7.734 ms | 8.312 ms | 9.710 ms  |
-|            |          |        | search | 0.151 ms | 0.220 ms | 0.267 ms | 0.312 ms | 0.346 ms  |
+|  lib  | batch size | requests |   k    |  type  |   mean   |   p95    |   p99    |   p99.9  |    max    |
+| :---: |   :---:    |  :---:   | :---:  | :---:  |  :---:   |  :---:   |   :---:  |   :---:  |   :---:   |
+| hora  |      1     |   10k    |   10   | total  | 7.335 ms | 7.623 ms | 8.159 ms | 8.754 ms | 10.203 ms |
+|       |            |          |        | model  | 7.067 ms | 7.279 ms | 7.734 ms | 8.312 ms | 9.710 ms  |
+|       |            |          |        | search | 0.151 ms | 0.220 ms | 0.267 ms | 0.312 ms | 0.346 ms  |
 
 ### Example
 
