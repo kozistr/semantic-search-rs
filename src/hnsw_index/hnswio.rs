@@ -708,38 +708,42 @@ pub fn load_hnsw<
     data_in: &mut dyn Read,
 ) -> io::Result<Hnsw<T, D>> {
     //  In datafile , we must read MAGICDATAP and dimension and check
-    let mut it_slice = [0u8; std::mem::size_of::<u32>()];
+    let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
     data_in.read_exact(&mut it_slice)?;
-    let magic = u32::from_ne_bytes(it_slice);
+
+    let magic: u32 = u32::from_ne_bytes(it_slice);
     assert_eq!(
         magic, MAGICDATAP,
         "magic not equal to MAGICDATAP in load_point"
     );
     //
-    let mut it_slice = [0u8; std::mem::size_of::<usize>()];
+    let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
     data_in.read_exact(&mut it_slice)?;
+
     let dimension = usize::from_ne_bytes(it_slice);
     assert_eq!(
         dimension, description.dimension,
         "data dimension incoherent {:?} {:?} ",
         dimension, description.dimension
     );
-    //
-    let _mode = description.dumpmode;
-    let distname = description.distname.clone();
+
+    let _mode: u8 = description.dumpmode;
+    let distname: String = description.distname.clone();
+
     // We must ensure that the distance stored matches the one asked for in loading hnsw
     // for that we check for short names equality stripping
     log::debug!("distance in description = {:?}", distname);
-    let d_type_name = type_name::<D>().to_string();
+    let d_type_name: String = type_name::<D>().to_string();
     let v: Vec<&str> = d_type_name.rsplit_terminator("::").collect();
     for s in v {
         log::info!(" distname in generic type argument {:?}", s);
     }
+
     if (std::any::TypeId::of::<T>() != std::any::TypeId::of::<NoData>())
         && (d_type_name != distname)
     {
         // for all types except NoData , distance asked in reload declaration and distance in dump must be equal!
-        let mut errmsg = String::from("error in distances : dumped distance is : ");
+        let mut errmsg: String = String::from("error in distances : dumped distance is : ");
         errmsg.push_str(&distname);
         errmsg.push_str(" asked distance in loading is : ");
         errmsg.push_str(&d_type_name);
@@ -747,11 +751,12 @@ pub fn load_hnsw<
         log::error!("error , dump is for distance = {:?}", distname);
         return Err(io::Error::new(io::ErrorKind::Other, errmsg));
     }
-    let t_type = description.t_name.clone();
+    let t_type: String = description.t_name.clone();
     log::debug!("T type name in dump = {:?}", t_type);
-    let layer_point_indexation = load_point_indexation(graph_in, &description, data_in)?;
-    let data_dim = layer_point_indexation.get_data_dimension();
-    //
+
+    let layer_point_indexation: PointIndexation<T> = load_point_indexation(graph_in, &description, data_in)?;
+    let data_dim: usize = layer_point_indexation.get_data_dimension();
+
     let hnsw: Hnsw<T, D> = Hnsw {
         max_nb_connection: description.max_nb_connection as usize,
         ef_construction: description.ef,
@@ -783,29 +788,29 @@ pub fn load_hnsw_with_dist<
     data_in: &mut dyn Read,
 ) -> io::Result<Hnsw<T, D>> {
     //  In datafile , we must read MAGICDATAP and dimension and check
-    let mut it_slice = [0u8; std::mem::size_of::<u32>()];
+    let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
     data_in.read_exact(&mut it_slice)?;
-    let magic = u32::from_ne_bytes(it_slice);
+    let magic: u32 = u32::from_ne_bytes(it_slice);
     assert_eq!(
         magic, MAGICDATAP,
         "magic not equal to MAGICDATAP in load_point"
     );
     //
-    let mut it_slice = [0u8; std::mem::size_of::<usize>()];
+    let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
     data_in.read_exact(&mut it_slice)?;
-    let dimension = usize::from_ne_bytes(it_slice);
+    let dimension: usize = usize::from_ne_bytes(it_slice);
     assert_eq!(
         dimension, description.dimension,
         "data dimension incoherent {:?} {:?} ",
         dimension, description.dimension
     );
     //
-    let _mode = description.dumpmode;
-    let distname = description.distname.clone();
+    let _mode: u8 = description.dumpmode;
+    let distname: String = description.distname.clone();
     // We must ensure that the distance stored matches the one asked for in loading hnsw
     // for that we check for short names equality stripping
     log::debug!("distance in description = {:?}", distname);
-    let d_type_name = type_name::<D>().to_string();
+    let d_type_name: String = type_name::<D>().to_string();
     let v: Vec<&str> = d_type_name.rsplit_terminator("::").collect();
     for s in v {
         log::info!(" distname in generic type argument {:?}", s);
@@ -814,7 +819,7 @@ pub fn load_hnsw_with_dist<
         && (d_type_name != distname)
     {
         // for all types except NoData , distance asked in reload declaration and distance in dump must be equal!
-        let mut errmsg = String::from("error in distances : dumped distance is : ");
+        let mut errmsg: String = String::from("error in distances : dumped distance is : ");
         errmsg.push_str(&distname);
         errmsg.push_str(" asked distance in loading is : ");
         errmsg.push_str(&d_type_name);
@@ -822,10 +827,11 @@ pub fn load_hnsw_with_dist<
         log::error!("error , dump is for distance = {:?}", distname);
         return Err(io::Error::new(io::ErrorKind::Other, errmsg));
     }
-    let t_type = description.t_name.clone();
+    let t_type: String = description.t_name.clone();
     log::debug!("T type name in dump = {:?}", t_type);
-    let layer_point_indexation = load_point_indexation(graph_in, &description, data_in)?;
-    let data_dim = layer_point_indexation.get_data_dimension();
+    let layer_point_indexation: PointIndexation<T> =
+        load_point_indexation(graph_in, &description, data_in)?;
+    let data_dim: usize = layer_point_indexation.get_data_dimension();
     //
     let hnsw: Hnsw<T, D> = Hnsw {
         max_nb_connection: description.max_nb_connection as usize,
