@@ -28,5 +28,5 @@ fn load_index() -> Hnsw<f32, DistL2> {
 }
 
 fn main() {
-    let index: Hnsw<f32, DistL2> = load_index();
+    let _: Hnsw<f32, DistL2> = load_index();
 }
