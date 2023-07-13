@@ -11,8 +11,7 @@ use rust_bert::pipelines::sentence_embeddings::{
 use serde::Deserialize;
 use std::fs;
 
-mod hnsw_index;
-use crate::hnsw_index::{api::AnnT, dist::DistL2, hnsw::Hnsw};
+use semantic_search::hnsw_index::{api::AnnT, dist::DistL2, hnsw::Hnsw};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
