@@ -14,7 +14,7 @@ navie semantic search demo with gRPC server in Rust
 
 ## To-Do
 
-* [*] hnswlib-rs
+* [x] hnswlib-rs
 * [ ] separate embedding and search part as a different micro service
 * [ ] faiss-rs with GPU
 * [ ] hybrid HNSW-IF indexing
