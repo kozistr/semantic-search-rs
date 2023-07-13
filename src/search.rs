@@ -13,15 +13,13 @@ use std::{
     time::Instant,
 };
 
-use crate::ss::{Features, Index, PredictRequest, PredictResponse};
-
-mod hnsw_index;
-use crate::hnsw_index::{
-    api::AnnT,
+use semantic_search::hnsw_index::{
     dist::DistL2,
-    hnsw::Hnsw,
+    hnsw::{Hnsw, Neighbour},
     hnswio::{load_description, load_hnsw, Description},
 };
+
+use crate::ss::{Features, Index, PredictRequest, PredictResponse};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -77,15 +75,15 @@ pub fn search(request: PredictRequest) -> PredictResponse {
     let k: usize = feature.k.clone() as usize;
 
     let start: Instant = Instant::now();
-    let query_embeddings: Vec<Vec<f32>> =
+    let query_embedding: Vec<Vec<f32>> =
         MODEL.with(|model: &SentenceEmbeddingsModel| model.encode(&[query]).unwrap());
     let model_latency: u64 = start.elapsed().as_nanos() as u64;
 
     let start: Instant = Instant::now();
     // let neighbor_index: Vec<usize> =
     //     INDEX.with(|index: &HNSWIndex<f32, usize>| index.search(&query_embeddings[0], k));
-    let neighbor_index =
-        INDEX.with(|index: &Hnsw<f32, DistL2>| index.parallel_search(&query_embeddings[0], k, 30));
+    let neighbor_index: Vec<Neighbour> =
+        INDEX.with(|index: &Hnsw<f32, DistL2>| index.search(&query_embedding[0], k, 30));
     let search_latency: u64 = start.elapsed().as_nanos() as u64;
 
     PredictResponse {
@@ -97,8 +95,8 @@ pub fn search(request: PredictRequest) -> PredictResponse {
         //     .collect(),
         indices: neighbor_index
             .iter()
-            .map(|index| Index {
-                index: *index.d_id as i32,
+            .map(|index: &Neighbour| Index {
+                index: index.d_id as i32,
             })
             .collect(),
         model_latency,
