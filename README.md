@@ -21,17 +21,19 @@ navie semantic search demo with gRPC server in Rust
 
 ## Architecture
 
-TBD
+### Features
 
-### Spec
-
-* embedding model (Mini-LM L12 v2) runs on a single GPU
-  * model info : [hf](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)
-* support dynamic batch (not yet)
+* gRPC server
+* inference a LM in real time on the GPU.
+  * model info : [hf - Mini-LM L12 v2](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)
+* ANN (modified hnswlib-rs)
+  * multi-threaded insertion and search.
+  * SIMD accelrated distance calculation.
+  * HNSW (FLAT) index
 
 ### Data
 
-* Input  : query (utf-8). String type.
+* Input  : query. String.
 * Output : top k indices. list of int32.
 
 ## Requirements
