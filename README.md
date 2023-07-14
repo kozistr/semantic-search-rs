@@ -6,13 +6,12 @@ navie semantic search demo with gRPC server in Rust
 
 * cost-effective billion-scale vector serach in a single digit latency (< 10 ms)
 * stateless searcher
-  * single machine, but lots of RAM, disk space (expected about ~ 300GB)
+  * single machine, but lots of RAM, disk space
 * software & hardware-level optimizations to effectively utilize the resources
 
 ## Non-Goals
 
 * distributed & sharded index building & searching
-* quantize & reduce the embedding dimension
 
 ## To-Do
 
@@ -20,6 +19,7 @@ navie semantic search demo with gRPC server in Rust
 * [ ] memmap the `.data` (offload to the local disk) to reduce the memory usage
 * [ ] separate embedding and search part as a different micro service
 * [ ] (optional) hybrid HNSW-IF indexing
+* [ ] (optional) quantize & reduce the embedding dimension
 
 ## Architecture
 
