@@ -74,7 +74,7 @@ Run gRPC server (for model & search inference).
 make run-server
 ```
 
-## Performance
+## Benchmarks
 
 * GPU : GTX 1060 6G (CUDA 11.8, CuDNN 8.8.x)
 * CPU : i7-7700K
@@ -84,12 +84,43 @@ make run-server
   * indexing : HNSW (FLAT)
   * embedding dimenstion : 384
   * distance measure : L2
-  * num of documents : 16,559 documents
   * k : 10
+  * warm up with 10 times
 
-### Benchmark
+### CMU Book Summary dataset
 
-* warm up with 10 times
+* num of documents : 16,559 documents
+
+|  batch size | requests |   k    |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
+|    :---:    |  :---:   | :---:  | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
+|       1     |   10k    |   10   | total  |   7.335 ms |   7.623 ms |   8.159 ms |   8.754 ms |  10.203 ms |
+|             |          |        | model  |   7.067 ms |   7.279 ms |   7.734 ms |   8.312 ms |   9.710 ms |
+|             |          |        | search |   0.156 ms |   0.220 ms |   0.267 ms |   0.312 ms |   0.346 ms |
+|      32     |    1k    |   10   | total  |  27.998 ms |  28.428 ms |  28.907 ms |  29.272 ms |  29.272 ms |
+|             |          |        | model  |  27.033 ms |  27.424 ms |  27.897 ms |  28.184 ms |  28.184 ms |
+|             |          |        | search |   0.749 ms |   0.848 ms |   0.909 ms |   1.052 ms |   1.052 ms |
+|      64     |    1k    |   10   | total  |  51.748 ms |  55.995 ms |  61.806 ms |  79.740 ms |  79.740 ms |
+|             |          |        | model  |  50.162 ms |  54.232 ms |  59.505 ms |  77.888 ms |  77.888 ms |
+|             |          |        | search |   1.346 ms |   1.565 ms |   1.972 ms |   2.431 ms |   2.431 ms |
+|     128     |    1k    |   10   | total  | 101.421 ms | 108.787 ms | 109.118 ms | 109.672 ms | 109.672 ms |
+|             |          |        | model  |  98.811 ms | 106.137 ms | 106.458 ms | 106.813 ms | 106.813 ms |
+|             |          |        | search |   2.338 ms |   2.495 ms |   2.615 ms |   3.166 ms |   3.166 ms |
+
+* QPS
+  * total (mean)
+    * bs 1   :  136 QPS
+    * bs 32  : 1143 QPS
+    * bs 64  : 1237 QPS
+    * bs 128 : 1262 QPS
+  * search (mean)
+    * bs 1   :  6410 QPS
+    * bs 32  : 42724 QPS
+    * bs 64  : 47548 QPS
+    * bs 128 : 54748 QPS
+
+### AG News dataset
+
+* num of documents : 16,559 documents
 
 |  batch size | requests |   k    |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
 |    :---:    |  :---:   | :---:  | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
@@ -135,9 +166,15 @@ top 9, title : Some("The Freedom Writers Diary")
 top 10, title : Some("Truancy")
 ```
 
-## Dataset
+## Datasets
 
+* https://huggingface.co/datasets/ag_news
 * https://www.kaggle.com/datasets/ymaricar/cmu-book-summary-dataset
+
+## References
+
+* https://github.com/hora-search/hora
+* https://github.com/jean-pierreBoth/hnswlib-rs
 
 ## Maintainer
 
