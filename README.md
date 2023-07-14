@@ -2,15 +2,16 @@
 
 navie semantic search demo with gRPC server in Rust
 
-## Goal
+## Goals
 
 * cost-effective billion-scale vector serach in a single digit latency (< 10 ms)
 * stateless searcher
   * single machine, but lots of RAM, disk space (expected about ~ 300GB)
+* software & hardware-level optimizations to effectively utilize the resources
 
-## Non-Goal
+## Non-Goals
 
-* distributed & sharded index build / search
+* distributed & sharded index building & searching
 
 ## To-Do
 
