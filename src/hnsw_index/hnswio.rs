@@ -754,7 +754,8 @@ pub fn load_hnsw<
     let t_type: String = description.t_name.clone();
     log::debug!("T type name in dump = {:?}", t_type);
 
-    let layer_point_indexation: PointIndexation<T> = load_point_indexation(graph_in, &description, data_in)?;
+    let layer_point_indexation: PointIndexation<T> =
+        load_point_indexation(graph_in, &description, data_in)?;
     let data_dim: usize = layer_point_indexation.get_data_dimension();
 
     let hnsw: Hnsw<T, D> = Hnsw {
