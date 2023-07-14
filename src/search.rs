@@ -31,7 +31,10 @@ thread_local! {
 
 fn load_model() -> SentenceEmbeddingsModel {
     println!("load model");
-    SentenceEmbeddingsBuilder::remote(AllMiniLmL12V2)
+    // SentenceEmbeddingsBuilder::remote(AllMiniLmL12V2)
+    //     .create_model()
+    //     .unwrap()
+    SentenceEmbeddingsBuilder::local("models")
         .create_model()
         .unwrap()
 }
@@ -45,9 +48,9 @@ fn load_file(filename: &str) -> BufReader<File> {
 
 fn load_index() -> Hnsw<f32, DistL2> {
     println!("load index");
-    let mut graph: BufReader<File> = load_file("index.hnsw.graph");
+    let mut graph: BufReader<File> = load_file("news.hnsw.graph");
     // todo: offload to the disk (memmmap) to save the memmory
-    let mut data: BufReader<File> = load_file("index.hnsw.data");
+    let mut data: BufReader<File> = load_file("news.hnsw.data");
 
     let description: Description = load_description(&mut graph).unwrap();
     let index: Hnsw<f32, DistL2> =
