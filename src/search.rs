@@ -78,8 +78,6 @@ pub fn search(request: PredictRequest) -> PredictResponse {
     let start: Instant = Instant::now();
     // let neighbor_index: Vec<usize> =
     //     INDEX.with(|index: &HNSWIndex<f32, usize>| index.search(&query_embeddings[0], k));
-    // let neighbor_index: Vec<Neighbour> =
-    //     INDEX.with(|index: &Hnsw<f32, DistL2>| index.search(&query_embeddings[0], k, 30));
     let neighbor_index: Vec<Vec<Neighbour>> =
         INDEX.with(|index: &Hnsw<f32, DistL2>| index.parallel_search(&query_embeddings, k, 30));
     let search_latency: u64 = start.elapsed().as_nanos() as u64;
