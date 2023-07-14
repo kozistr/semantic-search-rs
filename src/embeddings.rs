@@ -77,7 +77,7 @@ fn main() -> Result<()> {
     // index.dump("index.hora")?;
 
     // hnswlib
-    let mut summaries: Vec<String> = library.books.iter().map(|book: &Book| book.summary.clone()).collect();
+    let summaries: Vec<String> = library.books.iter().map(|book: &Book| book.summary.clone()).collect();
 
     let nb_elem: usize = summaries.len();
     let max_nb_connection: usize = 16;
