@@ -10,4 +10,4 @@ run-server:
 	cargo +nightly run --release --bin server
 
 run-builder:
-	cargo +nightly run --release --bin embedding
+	cargo +nightly run --release --bin embedding --features embedding
