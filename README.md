@@ -96,26 +96,21 @@ make run-server
 |       1     |   10k    |   10   | total  |   7.335 ms |   7.623 ms |   8.159 ms |   8.754 ms |  10.203 ms |
 |             |          |        | model  |   7.067 ms |   7.279 ms |   7.734 ms |   8.312 ms |   9.710 ms |
 |             |          |        | search |   0.156 ms |   0.220 ms |   0.267 ms |   0.312 ms |   0.346 ms |
-|      32     |    1k    |   10   | total  |  27.998 ms |  28.428 ms |  28.907 ms |  29.272 ms |  29.272 ms |
-|             |          |        | model  |  27.033 ms |  27.424 ms |  27.897 ms |  28.184 ms |  28.184 ms |
+|      32     |    1k    |   10   | total  |  10.119 ms |  10.795 ms |  11.263 ms |  13.839 ms |  13.839 ms |
+|             |          |        | model  |   9.142 ms |   9.753 ms |  10.133 ms |  11.507 ms |  11.507 ms |
 |             |          |        | search |   0.749 ms |   0.848 ms |   0.909 ms |   1.052 ms |   1.052 ms |
-|      64     |    1k    |   10   | total  |  51.748 ms |  55.995 ms |  61.806 ms |  79.740 ms |  79.740 ms |
-|             |          |        | model  |  50.162 ms |  54.232 ms |  59.505 ms |  77.888 ms |  77.888 ms |
-|             |          |        | search |   1.346 ms |   1.565 ms |   1.972 ms |   2.431 ms |   2.431 ms |
-|     128     |    1k    |   10   | total  | 101.421 ms | 108.787 ms | 109.118 ms | 109.672 ms | 109.672 ms |
-|             |          |        | model  |  98.811 ms | 106.137 ms | 106.458 ms | 106.813 ms | 106.813 ms |
+|     128     |    1k    |   10   | total  |  31.811 ms |  32.348 ms |  33.224 ms |  41.531 ms |  41.531 ms |
+|             |          |        | model  |  29.265 ms |  29.772 ms |  30.604 ms |  31.926 ms |  31.926 ms |
 |             |          |        | search |   2.338 ms |   2.495 ms |   2.615 ms |   3.166 ms |   3.166 ms |
 
 * QPS
   * total (mean)
     * bs 1   :  136 QPS
-    * bs 32  : 1143 QPS
-    * bs 64  : 1237 QPS
-    * bs 128 : 1262 QPS
+    * bs 32  : 3162 QPS
+    * bs 128 : 4024 QPS
   * search (mean)
     * bs 1   :  6410 QPS
     * bs 32  : 42724 QPS
-    * bs 64  : 47548 QPS
     * bs 128 : 54748 QPS
 
 ### AG News dataset
