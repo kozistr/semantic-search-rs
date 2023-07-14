@@ -82,11 +82,27 @@ make run-server
 
 * warm up with 10 times
 
-|  batch size | requests |   k    |  type  |   mean   |   p95    |   p99    |   p99.9  |    max    |
-|    :---:    |  :---:   | :---:  | :---:  |  :---:   |  :---:   |   :---:  |   :---:  |   :---:   |
-|       1     |   10k    |   10   | total  | 7.335 ms | 7.623 ms | 8.159 ms | 8.754 ms | 10.203 ms |
-|             |          |        | model  | 7.067 ms | 7.279 ms | 7.734 ms | 8.312 ms | 9.710 ms  |
-|             |          |        | search | 0.156 ms | 0.220 ms | 0.267 ms | 0.312 ms | 0.346 ms  |
+|  batch size | requests |   k    |  type  |   mean    |   p95     |    p99    |   p99.9   |    max    |
+|    :---:    |  :---:   | :---:  | :---:  |   :---:   |   :---:   |    :---:  |    :---:  |   :---:   |
+|       1     |   10k    |   10   | total  |  7.335 ms |  7.623 ms |  8.159 ms |  8.754 ms | 10.203 ms |
+|             |          |        | model  |  7.067 ms |  7.279 ms |  7.734 ms |  8.312 ms |  9.710 ms |
+|             |          |        | search |  0.156 ms |  0.220 ms |  0.267 ms |  0.312 ms |  0.346 ms |
+|      32     |    1k    |   10   | total  | 27.998 ms | 28.428 ms | 28.907 ms | 29.272 ms | 29.272 ms |
+|             |          |        | model  | 27.033 ms | 27.424 ms | 27.897 ms | 28.184 ms | 28.184 ms |
+|             |          |        | search |  0.749 ms |  0.848 ms |  0.909 ms |  1.052 ms |  1.052 ms |
+|      64     |    1k    |   10   | total  | 51.748 ms | 55.995 ms | 61.806 ms | 79.740 ms | 79.740 ms |
+|             |          |        | model  | 50.162 ms | 54.232 ms | 59.505 ms | 77.888 ms | 77.888 ms |
+|             |          |        | search |  1.346 ms |  1.565 ms |  1.972 ms |  2.431 ms |  2.431 ms |
+
+* QPS
+  * total (mean)
+    * bs 1  :  136 QPS
+    * bs 32 : 1143 QPS
+    * bs 64 : 1237 QPS
+  * search (mean)
+    * bs 1  :  6410 QPS
+    * bs 32 : 42724 QPS
+    * bs 64 : 47548 QPS
 
 ### Example
 
