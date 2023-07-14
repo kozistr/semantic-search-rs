@@ -12,20 +12,24 @@ navie semantic search demo with gRPC server in Rust
 ## Non-Goals
 
 * distributed & sharded index building & searching
+* quantize & reduce the embedding dimension
 
 ## To-Do
 
 * [x] modify hnswlib-rs
+* [ ] memmap the `.data` (offload to the local disk) to reduce the memory usage
 * [ ] separate embedding and search part as a different micro service
-* [ ] faiss-rs with GPU
-* [ ] hybrid HNSW-IF indexing
+* [ ] (optional) hybrid HNSW-IF indexing
 
 ## Architecture
 
 ### Features
 
 * gRPC server
-* inference a LM in real time on the GPU.
+* dynamic batch
+  * batch inference
+  * multi-threaded search
+* inference a LM in a real time on the GPU.
   * model info : [hf - Mini-LM L12 v2](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)
 * ANN (modified hnswlib-rs)
   * multi-threaded insertion and search.
@@ -41,7 +45,6 @@ navie semantic search demo with gRPC server in Rust
 
 * libtorch 2.0 (cuda)
 * rust-bert
-* ~~hora (ANN)~~
 * (modified) hnswlib-rs
 * protobuf
 
@@ -49,17 +52,23 @@ navie semantic search demo with gRPC server in Rust
 
 ### Build index
 
+Extract embeddings from the given documents and build & save an index to the local disk.
+
 ```shell
 make run-builder
 ```
 
 ### gRPC Client
 
+Run gRPC client.
+
 ```shell
 make run-client
 ```
 
 ### gRPC Server
+
+Run gRPC server (for model & search inference).
 
 ```shell
 make run-server
