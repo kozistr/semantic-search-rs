@@ -9,7 +9,7 @@ use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType::AllMiniLmL12V2,
 };
 use serde::Deserialize;
-use std::fs;
+use std::{fs, time::Instant};
 
 use semantic_search::hnsw_index::{api::AnnT, dist::DistL2, hnsw::Hnsw};
 
@@ -52,11 +52,15 @@ pub struct EmbeddedBook {
 }
 
 fn main() -> Result<()> {
+    let start: Instant = Instant::now();
     let model: SentenceEmbeddingsModel =
         SentenceEmbeddingsBuilder::remote(AllMiniLmL12V2).create_model()?;
+    println!("load model : {:?}", start.elapsed().as_secs());
 
+    let start: Instant = Instant::now();
     let json: String = fs::read_to_string("data/books.json")?;
     let library: Library = serde_json::from_str(&json)?;
+    println!("load data : {:?}", start.elapsed().as_secs());
 
     // hora
     // let mut index: HNSWIndex<f32, usize> =
@@ -80,16 +84,21 @@ fn main() -> Result<()> {
     let index: Hnsw<f32, DistL2> =
         Hnsw::<f32, DistL2>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistL2 {});
 
+    let start: Instant = Instant::now();
     let mut embeddings: Vec<Vec<f32>> = Vec::with_capacity(nb_elem);
     library.books.iter().for_each(|book: &Book| {
         if let Ok(embedding) = model.encode(&[book.summary.clone()]) {
             embeddings.push(embedding[0].to_vec());
         }
     });
+    println!("inference : {:?}", start.elapsed().as_secs());
+
     let embeddings_indices: Vec<(&Vec<f32>, usize)> =
         embeddings.iter().zip(0..embeddings.len()).collect();
 
+    let start: Instant = Instant::now();
     index.parallel_insert(&embeddings_indices);
+    println!("parallel insert : {:?}", start.elapsed().as_secs());
 
     _ = index.file_dump(&"index".to_string());
 
