@@ -7,11 +7,11 @@ service Inference {
 
 message PredictRequest {
     repeated Features features = 1;
+    int32 k = 2;
 }
 
 message Features {
     string query = 1;
-    int32 k = 2;
 }
 
 message PredictResponse {
@@ -21,5 +21,5 @@ message PredictResponse {
 }
 
 message Index {
-    int32 index = 1;
+    repeated int32 index = 1;
 }
