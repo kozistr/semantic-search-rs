@@ -55,12 +55,12 @@ fn main() -> Result<()> {
     let start: Instant = Instant::now();
     let model: SentenceEmbeddingsModel =
         SentenceEmbeddingsBuilder::remote(AllMiniLmL12V2).create_model()?;
-    println!("load model : {:?}", start.elapsed().as_secs());
+    println!("load model : {:.3?}", start.elapsed());
 
     let start: Instant = Instant::now();
     let json: String = fs::read_to_string("data/books.json")?;
     let library: Library = serde_json::from_str(&json)?;
-    println!("load data : {:?}", start.elapsed().as_secs());
+    println!("load data : {:.3?}", start.elapsed());
 
     // hora
     // let mut index: HNSWIndex<f32, usize> =
@@ -77,7 +77,9 @@ fn main() -> Result<()> {
     // index.dump("index.hora")?;
 
     // hnswlib
-    let nb_elem: usize = library.books.len();
+    let mut summaries: Vec<String> = library.books.iter().map(|book: &Book| book.summary.clone()).collect();
+
+    let nb_elem: usize = summaries.len();
     let max_nb_connection: usize = 16;
     let ef_c: usize = 200;
     let nb_layer: usize = 16;
@@ -86,19 +88,20 @@ fn main() -> Result<()> {
 
     let start: Instant = Instant::now();
     let mut embeddings: Vec<Vec<f32>> = Vec::with_capacity(nb_elem);
-    library.books.iter().for_each(|book: &Book| {
-        if let Ok(embedding) = model.encode(&[book.summary.clone()]) {
-            embeddings.push(embedding[0].to_vec());
-        }
-    });
-    println!("inference : {:?}", start.elapsed().as_secs());
+
+    for chunk in summaries.chunks(32) {
+        let embeds: Vec<Vec<f32>> = model.encode(chunk).unwrap();
+        embeddings.extend(embeds.into_iter());
+    }
+
+    println!("inference : {:.3?}", start.elapsed());
 
     let embeddings_indices: Vec<(&Vec<f32>, usize)> =
         embeddings.iter().zip(0..embeddings.len()).collect();
 
     let start: Instant = Instant::now();
     index.parallel_insert(&embeddings_indices);
-    println!("parallel insert : {:?}", start.elapsed().as_secs());
+    println!("parallel insert : {:.3?}", start.elapsed());
 
     _ = index.file_dump(&"index".to_string());
 
