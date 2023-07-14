@@ -42,7 +42,7 @@ rayon = "^1.7.0"
 num_cpus = "^1.16.0"
 cpu-time = "^1.0.0"
 num-traits = "^0.2.15"
-hashbrown = "^0.14.0"
+hashbrown = { version = "^0.14.0", features = ["rayon", "inline-more"] }
 skiplist = "^0.5.1"
 rand = "^0.8.5"
 lazy_static = "^1.4.0"
