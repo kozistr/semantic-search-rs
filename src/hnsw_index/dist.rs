@@ -88,12 +88,13 @@ implementL1Distance!(u16);
 implementL1Distance!(u8);
 
 impl Distance<f32> for DistL1 {
+    #[allow(unreachable_code)]
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
             let size: usize = va.len() - (va.len() % 16);
 
-            let c: f32 = a
+            let c: f32 = va
                 .chunks_exact(16)
                 .map(f32x16::from_slice_unaligned)
                 .zip(vb.chunks_exact(16).map(f32x16::from_slice_unaligned))
@@ -101,9 +102,9 @@ impl Distance<f32> for DistL1 {
                 .sum::<f32x16>()
                 .sum();
 
-            let d: f32 = a[size..]
+            let d: f32 = va[size..]
                 .iter()
-                .zip(&b[size..])
+                .zip(&vb[size..])
                 .map(|(p, q)| (p - q).abs())
                 .sum();
 
@@ -143,6 +144,7 @@ implementL2Distance!(u16);
 implementL2Distance!(u8);
 
 impl Distance<f32> for DistL2 {
+    #[allow(unreachable_code)]
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
@@ -215,32 +217,33 @@ implementCosDistance!(i64);
 implementCosDistance!(i32);
 implementCosDistance!(u16);
 
-impl Distance<f32> for DistCosine {
-    fn dot(&self, va: &[f32], vb: &[f32]) -> f32 {
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        {
-            let size: usize = va.len() - (va.len() % 16);
+#[allow(unreachable_code)]
+fn dot_f32(va: &[f32], vb: &[f32]) -> f32 {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        let size: usize = va.len() - (va.len() % 16);
 
-            let c: f32 = va
-                .chunks_exact(16)
-                .map(f32x16::from_slice_unaligned)
-                .zip(vb.chunks_exact(16).map(f32x16::from_slice_unaligned))
-                .map(|(a, b)| a * b)
-                .sum::<f32x16>()
-                .sum();
+        let c: f32 = va
+            .chunks_exact(16)
+            .map(f32x16::from_slice_unaligned)
+            .zip(vb.chunks_exact(16).map(f32x16::from_slice_unaligned))
+            .map(|(a, b)| a * b)
+            .sum::<f32x16>()
+            .sum();
 
-            let d: f32 = a[size..].iter().zip(&b[size..]).map(|(p, q)| p * q).sum();
+        let d: f32 = va[size..].iter().zip(&vb[size..]).map(|(p, q)| p * q).sum();
 
-            return c + d;
-        }
-
-        (va.iter().zip(vb).map(|(p, q)| p * q).sum::<f32>())
+        return c + d;
     }
 
+    va.iter().zip(vb).map(|(p, q)| p * q).sum::<f32>()
+}
+
+impl Distance<f32> for DistCosine {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        let dot_product: f32 = self.dot(vec1, vec2);
-        let root_sum_square1: f32 = self.dot(vec1, vec1).sqrt();
-        let root_sum_square2: f32 = self.dot(vec2, vec2).sqrt();
+        let dot_product: f32 = dot_f32(va, vb);
+        let root_sum_square1: f32 = dot_f32(va, va).sqrt();
+        let root_sum_square2: f32 = dot_f32(vb, vb).sqrt();
 
         -dot_product / (root_sum_square1 * root_sum_square2)
     }
@@ -311,22 +314,25 @@ unsafe fn distance_dot_f32_sse2(va: &[f32], vb: &[f32]) -> f32 {
 
 impl Distance<f32> for DistDot {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        {
-            if is_x86_feature_detected!("avx2") {
-                return unsafe { distance_dot_f32_avx2(va, vb) };
-            } else if is_x86_feature_detected!("sse2") {
-                return unsafe { distance_dot_f32_sse2(va, vb) };
-            }
-        } // end x86
-
-        let dot: f32 = 1.
-            - va.iter()
-                .zip(vb.iter())
-                .map(|t| (*t.0 * *t.1) as f32)
-                .fold(0., |acc, t| (acc + t));
+        let dot: f32 = dot_f32(va, vb);
         assert!(dot >= 0.);
         dot
+        // #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        // {
+        //     if is_x86_feature_detected!("avx2") {
+        //         return unsafe { distance_dot_f32_avx2(va, vb) };
+        //     } else if is_x86_feature_detected!("sse2") {
+        //         return unsafe { distance_dot_f32_sse2(va, vb) };
+        //     }
+        // } // end x86
+
+        // let dot: f32 = 1.
+        //     - va.iter()
+        //         .zip(vb.iter())
+        //         .map(|t| (*t.0 * *t.1) as f32)
+        //         .fold(0., |acc, t| (acc + t));
+        // assert!(dot >= 0.);
+        // dot
     } // end of eval
 }
 
@@ -651,56 +657,6 @@ unsafe fn distance_hamming_f64<S: Simd>(va: &[f64], vb: &[f64]) -> f32 {
     return (dist as f64 / va.len() as f64) as f32;
 } // end of distance_hamming_f64
 
-fn distance_jaccard_u32_16_simd(va: &[u32], vb: &[u32]) -> f32 {
-    let mut dist_simd = i32x16::splat(0);
-
-    assert_eq!(va.len(), vb.len());
-
-    let nb_lanes: usize = 16;
-    let nb_simd: usize = va.len() / nb_lanes;
-    let simd_length: usize = nb_simd * nb_lanes;
-
-    for i in (0..simd_length).step_by(nb_lanes) {
-        let a = u32x16::from_slice(&va[i..]);
-        let b = u32x16::from_slice(&vb[i..]);
-        // recall a test return 0 if false -1 if true!
-        let delta = a.lanes_ne(b);
-        dist_simd = dist_simd - delta.to_int();
-    }
-    let mut dist = dist_simd.horizontal_sum();
-
-    // residual
-    for i in simd_length..va.len() {
-        dist = dist + if va[i] != vb[i] { 1 } else { 0 };
-    }
-    return dist as f32 / va.len() as f32;
-} // end of distance_jaccard_u32_simd
-
-fn distance_jaccard_u64_8_simd(va: &[u64], vb: &[u64]) -> f32 {
-    assert_eq!(va.len(), vb.len());
-
-    let mut dist_simd = i64x8::splat(0);
-
-    let nb_lanes: usize = 8;
-    let nb_simd: usize = va.len() / nb_lanes;
-    let simd_length: usize = nb_simd * nb_lanes;
-
-    for i in (0..simd_length).step_by(nb_lanes) {
-        let a = u64x8::from_slice(&va[i..]);
-        let b = u64x8::from_slice(&vb[i..]);
-        // recall a test return 0 if false -1 if true!
-        let delta = a.lanes_ne(b);
-        dist_simd = dist_simd - delta.to_int();
-    }
-    let mut dist = dist_simd.horizontal_sum();
-
-    // residual
-    for i in simd_length..va.len() {
-        dist = dist + if va[i] != vb[i] { 1 } else { 0 };
-    }
-    return dist as f32 / va.len() as f32;
-} // end of distance_jaccard_u64_8_simd
-
 impl Distance<i32> for DistHamming {
     fn eval(&self, va: &[i32], vb: &[i32]) -> f32 {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -711,7 +667,11 @@ impl Distance<i32> for DistHamming {
         }
 
         assert_eq!(va.len(), vb.len());
-        let dist: f32 = va.iter().zip(vb.iter()).filter(|t| t.0 != t.1).count() as f32;
+        let dist: f32 = va
+            .iter()
+            .zip(vb.iter())
+            .filter(|t: &(&i32, &i32)| t.0 != t.1)
+            .count() as f32;
         dist / va.len() as f32
     } // end of eval
 } // end implementation Distance<i32>
@@ -741,27 +701,27 @@ impl Distance<f32> for DistHamming {
     } // end of eval
 } // end implementation Distance<f32>
 
-impl Distance<u32> for DistHamming {
-    fn eval(&self, va: &[u32], vb: &[u32]) -> f32 {
-        return distance_jaccard_u32_16_simd(va, vb);
-    } // end of eval
-} // end implementation Distance<u32>
+// impl Distance<u32> for DistHamming {
+//     fn eval(&self, va: &[u32], vb: &[u32]) -> f32 {
+//         return distance_jaccard_u32_16_simd(va, vb);
+//     } // end of eval
+// } // end implementation Distance<u32>
 
-impl Distance<u64> for DistHamming {
-    fn eval(&self, va: &[u64], vb: &[u64]) -> f32 {
-        return distance_jaccard_u64_8_simd(va, vb);
-    } // end of eval
-} // end implementation Distance<u64>
+// impl Distance<u64> for DistHamming {
+//     fn eval(&self, va: &[u64], vb: &[u64]) -> f32 {
+//         return distance_jaccard_u64_8_simd(va, vb);
+//     } // end of eval
+// } // end implementation Distance<u64>
 
 // i32 is implmeented by simd
 implementHammingDistance!(u8);
 implementHammingDistance!(u16);
 
 // #[cfg(not(feature = "stdsimd"))]
-// implementHammingDistance!(u32);
+implementHammingDistance!(u32);
 
 // #[cfg(not(feature = "stdsimd"))]
-// implementHammingDistance!(u64);
+implementHammingDistance!(u64);
 
 implementHammingDistance!(i16);
 
