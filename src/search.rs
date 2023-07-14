@@ -97,7 +97,7 @@ pub fn search(request: PredictRequest) -> PredictResponse {
                 index: indices
                     .iter()
                     .map(|idx: &Neighbour| idx.d_id as i32)
-                    .collect()
+                    .collect(),
             })
             .collect(),
         model_latency,
