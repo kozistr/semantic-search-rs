@@ -673,7 +673,7 @@ impl<
 
         let description: Description = Description {
             ///  value is 1 for Full 0 for Light
-            dumpmode: dumpmode,
+            dumpmode,
             max_nb_connection: self.get_max_nb_connection(),
             nb_layer: self.get_max_level() as u8,
             ef: self.get_ef_construction(),
