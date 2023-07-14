@@ -49,8 +49,8 @@ lazy_static = "^1.4.0"
 mmap-rs = "^0.6.0"
 log = "*"
 env_logger = "*"
-simdeez = { version = "^1.0.8", optional = true }
-packed_simd_2 = { version = "^0.3.8", optional = true}
+simdeez = "^1.0.8"
+packed_simd_2 = "^0.3.8"
 
 [dev-dependencies]
 hdf5 = { version = "^0.8.1" }
@@ -80,9 +80,3 @@ debug = false
 debug-assertions = false
 overflow-checks = false
 rpath = false
-
-[features]
-default = []
-simdeez_f = ["simdeez"]  # simd on x86/x86_64
-stdsimd = ["packed_simd_2"]  # a beta feature experimental
-all = ["simdeez", "packed_simd_2"]

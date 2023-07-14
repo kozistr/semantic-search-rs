@@ -2,16 +2,8 @@
 //! and a structure to enable the user to implement its own distances.
 //! For the heavily used case (f32) we provide simd avx2 implementation.
 
-#[cfg(feature = "simdeez_f")]
-use simdeez::avx2::*;
-#[cfg(feature = "simdeez_f")]
-use simdeez::sse2::*;
-#[cfg(feature = "simdeez_f")]
-use simdeez::*;
-#[cfg(feature = "stdsimd")]
-use std::simd::{i32x16, i64x8, u32x16, u64x8};
-#[cfg(feature = "all")]
 use packed_simd_2::f32x16;
+use simdeez::{avx2::*, sse2::*, *};
 
 /// The trait describing distance.
 /// For example for the L1 distance
@@ -95,53 +87,32 @@ implementL1Distance!(u32);
 implementL1Distance!(u16);
 implementL1Distance!(u8);
 
-#[cfg(feature = "simdeez_f")]
-unsafe fn distance_l1_f32<S: Simd>(va: &[f32], vb: &[f32]) -> f32 {
-    let mut dist_simd = S::setzero_ps();
-    //
-    let nb_simd = va.len() / S::VF32_WIDTH;
-    let simd_length = nb_simd * S::VF32_WIDTH;
-    let mut i = 0;
-    while i < simd_length {
-        let a = S::loadu_ps(&va[i]);
-        let b = S::loadu_ps(&vb[i]);
-        let delta = S::abs_ps(a - b);
-        dist_simd += delta;
-        //
-        i += S::VF32_WIDTH;
-    }
-    let mut dist: f32 = S::horizontal_add_ps(dist_simd);
-    for i in simd_length..va.len() {
-        //        log::debug!("distance_l1_f32, i {:?} len {:?} nb_simd {:?} VF32_WIDTH {:?}", i, va.len(), nb_simd, S::VF32_WIDTH);
-        dist += (va[i] - vb[i]).abs();
-    }
-    assert!(dist >= 0.);
-    dist
-} // end of distance_l1_f32
-
-#[cfg(feature = "simdeez_f")]
-#[target_feature(enable = "avx2")]
-unsafe fn distance_l1_f32_avx2(va: &[f32], vb: &[f32]) -> f32 {
-    distance_l1_f32::<Avx2>(va, vb)
-}
-
 impl Distance<f32> for DistL1 {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        //
-        // assert_eq!(va.len(), vb.len());
-        //
-        #[cfg(feature = "simdeez_f")]
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-            {
-                if is_x86_feature_detected!("avx2") {
-                    return unsafe { distance_l1_f32_avx2(va, vb) };
-                }
-            }
+            let size: usize = va.len() - (va.len() % 16);
+
+            let c: f32 = a
+                .chunks_exact(16)
+                .map(f32x16::from_slice_unaligned)
+                .zip(vb.chunks_exact(16).map(f32x16::from_slice_unaligned))
+                .map(|(a, b)| (a - b).abs())
+                .sum::<f32x16>()
+                .sum();
+
+            let d: f32 = a[size..]
+                .iter()
+                .zip(&b[size..])
+                .map(|(p, q)| (p - q).abs())
+                .sum();
+
+            return c + d;
         }
+
         va.iter()
             .zip(vb.iter())
-            .map(|t| (*t.0 as f32 - *t.1 as f32).abs())
+            .map(|t: (&f32, &f32)| (*t.0 as f32 - *t.1 as f32).abs())
             .sum()
     } // end of eval
 }
@@ -171,48 +142,18 @@ implementL2Distance!(u32);
 implementL2Distance!(u16);
 implementL2Distance!(u8);
 
-#[cfg(feature = "simdeez_f")]
-unsafe fn distance_l2_f32<S: Simd>(va: &[f32], vb: &[f32]) -> f32 {
-    //
-    let nb_simd = va.len() / S::VF32_WIDTH;
-    let simd_length = nb_simd * S::VF32_WIDTH;
-    let mut dist_simd = S::setzero_ps();
-    let mut i = 0;
-    while i < simd_length {
-        let a = S::loadu_ps(&va[i]);
-        let b = S::loadu_ps(&vb[i]);
-        let mut delta = a - b;
-        delta *= delta;
-        dist_simd = dist_simd + delta;
-        //
-        i += S::VF32_WIDTH;
-    }
-    let mut dist = S::horizontal_add_ps(dist_simd);
-    for i in simd_length..va.len() {
-        dist += (va[i] - vb[i]) * (va[i] - vb[i]);
-    }
-    assert!(dist >= 0.);
-    dist.sqrt()
-} // end of distance_l2_f32
-
-#[cfg(feature = "simdeez_f")]
-#[target_feature(enable = "avx2")]
-unsafe fn distance_l2_f32_avx2(va: &[f32], vb: &[f32]) -> f32 {
-    distance_l2_f32::<Avx2>(va, vb)
-}
-
 impl Distance<f32> for DistL2 {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        #[cfg(feature = "all")]
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
-            let size = va.len() - (va.len() % 16);
+            let size: usize = va.len() - (va.len() % 16);
 
             let c: f32 = va
                 .chunks_exact(16)
                 .map(f32x16::from_slice_unaligned)
                 .zip(vb.chunks_exact(16).map(f32x16::from_slice_unaligned))
                 .map(|(a, b)| {
-                    let c = a - b;
+                    let c: packed_simd_2::Simd<[f32; 16]> = a - b;
                     c * c
                 })
                 .sum::<f32x16>()
@@ -227,15 +168,6 @@ impl Distance<f32> for DistL2 {
             return d + c;
         }
 
-        // #[cfg(feature = "simdeez_f")]
-        // {
-        //     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        //     {
-        //         if is_x86_feature_detected!("avx2") {
-        //             return unsafe { distance_l2_f32_avx2(va, vb) };
-        //         }
-        //     }
-        // }
         let norm: f32 = va
             .iter()
             .zip(vb.iter())
@@ -258,10 +190,10 @@ macro_rules! implementCosDistance(
         fn eval(&self, va:&[$ty], vb: &[$ty]) -> f32 {
             let dist:f32;
             let zero:f64 = 0.;
-            // to // by rayon
+
             let res = va.iter().zip(vb.iter()).map(|t| ((*t.0 * *t.1) as f64, (*t.0 * *t.0) as f64, (*t.1 * *t.1) as f64)).
                 fold((0., 0., 0.), |acc , t| (acc.0 + t.0, acc.1 + t.1, acc.2 + t.2));
-            //
+
             if res.1 > zero && res.2 > zero {
                 let dist_unchecked = 1. - res.0 / (res.1 * res.2).sqrt();
                 assert!(dist_unchecked >= - 0.00002);
@@ -270,18 +202,49 @@ macro_rules! implementCosDistance(
             else {
                 dist = 0.;
             }
-            //
+
             return dist;
         } // end of function
      } // end of impl block
     ) // end of matching
 );
 
-implementCosDistance!(f32);
+// implementCosDistance!(f32);
 implementCosDistance!(f64);
 implementCosDistance!(i64);
 implementCosDistance!(i32);
 implementCosDistance!(u16);
+
+impl Distance<f32> for DistCosine {
+    fn dot(&self, va: &[f32], vb: &[f32]) -> f32 {
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        {
+            let size: usize = va.len() - (va.len() % 16);
+
+            let c: f32 = va
+                .chunks_exact(16)
+                .map(f32x16::from_slice_unaligned)
+                .zip(vb.chunks_exact(16).map(f32x16::from_slice_unaligned))
+                .map(|(a, b)| a * b)
+                .sum::<f32x16>()
+                .sum();
+
+            let d: f32 = a[size..].iter().zip(&b[size..]).map(|(p, q)| p * q).sum();
+
+            return c + d;
+        }
+
+        (va.iter().zip(vb).map(|(p, q)| p * q).sum::<f32>())
+    }
+
+    fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
+        let dot_product: f32 = self.dot(vec1, vec2);
+        let root_sum_square1: f32 = self.dot(vec1, vec1).sqrt();
+        let root_sum_square2: f32 = self.dot(vec2, vec2).sqrt();
+
+        -dot_product / (root_sum_square1 * root_sum_square2)
+    }
+}
 
 //=========================================================================
 
@@ -316,20 +279,19 @@ macro_rules! implementDotDistance(
     ) // end of matching
 );
 
-#[cfg(feature = "simdeez_f")]
 unsafe fn distance_dot_f32<S: Simd>(va: &[f32], vb: &[f32]) -> f32 {
-    let mut i = 0;
-    let mut dot_simd = S::setzero_ps();
-    let nb_simd = va.len() / S::VF32_WIDTH;
-    let simd_length = nb_simd * S::VF32_WIDTH;
+    let mut i: usize = 0;
+    let mut dot_simd: <S as Simd>::Vf32 = S::setzero_ps();
+    let nb_simd: usize = va.len() / S::VF32_WIDTH;
+    let simd_length: usize = nb_simd * S::VF32_WIDTH;
     while i < simd_length {
-        let a = S::loadu_ps(&va[i]);
-        let b = S::loadu_ps(&vb[i]);
-        let delta = a * b;
+        let a: <S as Simd>::Vf32 = S::loadu_ps(&va[i]);
+        let b: <S as Simd>::Vf32 = S::loadu_ps(&vb[i]);
+        let delta: <S as Simd>::Vf32 = a * b;
         dot_simd += delta;
         i += S::VF32_WIDTH;
     }
-    let mut dot = S::horizontal_add_ps(dot_simd);
+    let mut dot: f32 = S::horizontal_add_ps(dot_simd);
     for i in simd_length..va.len() {
         dot += va[i] * vb[i];
     }
@@ -337,13 +299,11 @@ unsafe fn distance_dot_f32<S: Simd>(va: &[f32], vb: &[f32]) -> f32 {
     (1. - dot).max(0.)
 } // end of distance_dot_f32
 
-#[cfg(feature = "simdeez_f")]
 #[target_feature(enable = "avx2")]
 unsafe fn distance_dot_f32_avx2(va: &[f32], vb: &[f32]) -> f32 {
     distance_dot_f32::<Avx2>(va, vb)
 }
 
-#[cfg(feature = "simdeez_f")]
 #[target_feature(enable = "sse2")]
 unsafe fn distance_dot_f32_sse2(va: &[f32], vb: &[f32]) -> f32 {
     distance_dot_f32::<Sse2>(va, vb)
@@ -351,19 +311,15 @@ unsafe fn distance_dot_f32_sse2(va: &[f32], vb: &[f32]) -> f32 {
 
 impl Distance<f32> for DistDot {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        //
-        #[cfg(feature = "simdeez_f")]
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-            {
-                if is_x86_feature_detected!("avx2") {
-                    return unsafe { distance_dot_f32_avx2(va, vb) };
-                } else if is_x86_feature_detected!("sse2") {
-                    return unsafe { distance_dot_f32_sse2(va, vb) };
-                }
-            } // end x86
-        }
-        //
+            if is_x86_feature_detected!("avx2") {
+                return unsafe { distance_dot_f32_avx2(va, vb) };
+            } else if is_x86_feature_detected!("sse2") {
+                return unsafe { distance_dot_f32_sse2(va, vb) };
+            }
+        } // end x86
+
         let dot: f32 = 1.
             - va.iter()
                 .zip(vb.iter())
@@ -416,23 +372,21 @@ macro_rules! implementHellingerDistance (
 
 implementHellingerDistance!(f64);
 
-#[cfg(feature = "simdeez_f")]
 unsafe fn distance_hellinger_f32<S: Simd>(va: &[f32], vb: &[f32]) -> f32 {
-    let mut dist_simd = S::setzero_ps();
+    let mut dist_simd: <S as Simd>::Vf32 = S::setzero_ps();
     //
-    let mut i = 0;
-    let nb_simd = va.len() / S::VF32_WIDTH;
-    let simd_length = nb_simd * S::VF32_WIDTH;
+    let mut i: usize = 0;
+    let nb_simd: usize = va.len() / S::VF32_WIDTH;
+    let simd_length: usize = nb_simd * S::VF32_WIDTH;
     while i < simd_length {
-        let a = S::loadu_ps(&va[i]);
-        let b = S::loadu_ps(&vb[i]);
-        let prod = a * b;
-        let prod_s = S::sqrt_ps(prod);
+        let a: <S as Simd>::Vf32 = S::loadu_ps(&va[i]);
+        let b: <S as Simd>::Vf32 = S::loadu_ps(&vb[i]);
+        let prod: <S as Simd>::Vf32 = a * b;
+        let prod_s: <S as Simd>::Vf32 = S::sqrt_ps(prod);
         dist_simd += prod_s;
-        //
         i += S::VF32_WIDTH;
     }
-    let mut dist = S::horizontal_add_ps(dist_simd);
+    let mut dist: f32 = S::horizontal_add_ps(dist_simd);
     for i in simd_length..va.len() {
         dist += va[i].sqrt() * vb[i].sqrt();
     }
@@ -441,7 +395,6 @@ unsafe fn distance_hellinger_f32<S: Simd>(va: &[f32], vb: &[f32]) -> f32 {
     dist
 } // end of distance_hellinger_f32
 
-#[cfg(feature = "simdeez_f")]
 #[target_feature(enable = "avx2")]
 unsafe fn distance_hellinger_f32_avx2(va: &[f32], vb: &[f32]) -> f32 {
     distance_hellinger_f32::<Avx2>(va, vb)
@@ -449,21 +402,18 @@ unsafe fn distance_hellinger_f32_avx2(va: &[f32], vb: &[f32]) -> f32 {
 
 impl Distance<f32> for DistHellinger {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        //
-        #[cfg(feature = "simdeez_f")]
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-            {
-                if is_x86_feature_detected!("avx2") {
-                    return unsafe { distance_hellinger_f32_avx2(va, vb) };
-                }
+            if is_x86_feature_detected!("avx2") {
+                return unsafe { distance_hellinger_f32_avx2(va, vb) };
             }
         }
-        let mut dist = va
+
+        let mut dist: f32 = va
             .iter()
             .zip(vb.iter())
-            .map(|t| ((*t.0).sqrt() * (*t.1).sqrt()) as f32)
-            .fold(0., |acc, t| (acc + t));
+            .map(|t: (&f32, &f32)| ((*t.0).sqrt() * (*t.1).sqrt()) as f32)
+            .fold(0., |acc: f32, t| (acc + t));
         // if too far away from >= panic else reset!
         assert!(1. - dist >= -0.000001);
         dist = (1. - dist).max(0.).sqrt();
@@ -509,29 +459,28 @@ macro_rules! implementJeffreysDistance (
 
 implementJeffreysDistance!(f64);
 
-#[cfg(feature = "simdeez_f")]
 unsafe fn distance_jeffreys_f32<S: Simd>(va: &[f32], vb: &[f32]) -> f32 {
-    let mut dist_simd = S::setzero_ps();
-    //
-    let mut i = 0;
-    let mut logslice = Vec::<f32>::with_capacity(S::VF32_WIDTH as usize);
-    let nb_simd = va.len() / S::VF32_WIDTH;
-    let simd_length = nb_simd * S::VF32_WIDTH;
+    let mut dist_simd: <S as Simd>::Vf32 = S::setzero_ps();
+
+    let mut i: usize = 0;
+    let mut logslice: Vec<f32> = Vec::<f32>::with_capacity(S::VF32_WIDTH as usize);
+    let nb_simd: usize = va.len() / S::VF32_WIDTH;
+    let simd_length: usize = nb_simd * S::VF32_WIDTH;
     while i < simd_length {
-        let a = S::loadu_ps(&va[i]);
-        let b = S::loadu_ps(&vb[i]);
-        let delta = a - b;
+        let a: <S as Simd>::Vf32 = S::loadu_ps(&va[i]);
+        let b: <S as Simd>::Vf32 = S::loadu_ps(&vb[i]);
+        let delta: <S as Simd>::Vf32 = a - b;
         for j in 0..S::VF32_WIDTH {
             // take care of zeros!
             logslice.push((va[i + j].max(M_MIN) / vb[i + j].max(M_MIN)).ln());
         }
-        let prod_s = delta * S::loadu_ps(&logslice.as_slice()[0]);
+        let prod_s: <S as Simd>::Vf32 = delta * S::loadu_ps(&logslice.as_slice()[0]);
         dist_simd += prod_s;
         logslice.clear();
         //
         i += S::VF32_WIDTH;
     }
-    let mut dist = S::horizontal_add_ps(dist_simd);
+    let mut dist: f32 = S::horizontal_add_ps(dist_simd);
     for i in simd_length..va.len() {
         if vb[i] > 0. {
             dist += (va[i] - vb[i]) * (va[i].max(M_MIN) / vb[i].max(M_MIN)).ln();
@@ -540,7 +489,6 @@ unsafe fn distance_jeffreys_f32<S: Simd>(va: &[f32], vb: &[f32]) -> f32 {
     dist
 } // end of distance_hellinger_f32
 
-#[cfg(feature = "simdeez_f")]
 #[target_feature(enable = "avx2")]
 unsafe fn distance_jeffreys_f32_avx2(va: &[f32], vb: &[f32]) -> f32 {
     distance_jeffreys_f32::<Avx2>(va, vb)
@@ -548,20 +496,19 @@ unsafe fn distance_jeffreys_f32_avx2(va: &[f32], vb: &[f32]) -> f32 {
 
 impl Distance<f32> for DistJeffreys {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        //
-        #[cfg(feature = "simdeez_f")]
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-            {
-                if is_x86_feature_detected!("avx2") {
-                    return unsafe { distance_jeffreys_f32_avx2(va, vb) };
-                }
+            if is_x86_feature_detected!("avx2") {
+                return unsafe { distance_jeffreys_f32_avx2(va, vb) };
             }
         }
-        let dist = va
+
+        let dist: f32 = va
             .iter()
             .zip(vb.iter())
-            .map(|t| (*t.0 - *t.1) * ((*t.0).max(M_MIN) / (*t.1).max(M_MIN)).ln() as f32)
+            .map(|t: (&f32, &f32)| {
+                (*t.0 - *t.1) * ((*t.0).max(M_MIN) / (*t.1).max(M_MIN)).ln() as f32
+            })
             .fold(0., |acc, t| (acc + t));
         dist
     } // end of eval
@@ -577,7 +524,6 @@ impl Distance<f32> for DistJeffreys {
 pub struct DistJensenShannon;
 
 macro_rules! implementDistJensenShannon (
-
     ($ty:ty) => (
         impl Distance<$ty> for DistJensenShannon {
             fn eval(&self, va:&[$ty], vb: &[$ty]) -> f32 {
@@ -627,25 +573,23 @@ macro_rules! implementHammingDistance (
     )  // end of pattern matching
 );
 
-#[cfg(feature = "simdeez_f")]
 #[target_feature(enable = "avx2")]
 unsafe fn distance_hamming_i32_avx2(va: &[i32], vb: &[i32]) -> f32 {
     distance_hamming_i32::<Avx2>(va, vb)
 }
 
-#[cfg(feature = "simdeez_f")]
 unsafe fn distance_hamming_i32<S: Simd>(va: &[i32], vb: &[i32]) -> f32 {
     assert_eq!(va.len(), vb.len());
-    //
-    let mut dist_simd = S::setzero_epi32();
-    //
-    let nb_simd = va.len() / S::VI32_WIDTH;
-    let simd_length = nb_simd * S::VI32_WIDTH;
+
+    let mut dist_simd: <S as Simd>::Vi32 = S::setzero_epi32();
+
+    let nb_simd: usize = va.len() / S::VI32_WIDTH;
+    let simd_length: usize = nb_simd * S::VI32_WIDTH;
     let mut i = 0;
     while i < simd_length {
-        let a = S::loadu_epi32(&va[i]);
-        let b = S::loadu_epi32(&vb[i]);
-        let delta = S::cmpneq_epi32(a, b);
+        let a: <S as Simd>::Vi32 = S::loadu_epi32(&va[i]);
+        let b: <S as Simd>::Vi32 = S::loadu_epi32(&vb[i]);
+        let delta: <S as Simd>::Vi32 = S::cmpneq_epi32(a, b);
         dist_simd = S::add_epi32(dist_simd, delta);
         //
         i += S::VI32_WIDTH;
@@ -664,7 +608,6 @@ unsafe fn distance_hamming_i32<S: Simd>(va: &[i32], vb: &[i32]) -> f32 {
 } // end of distance_hamming_i32
 
 #[allow(unused)]
-#[cfg(feature = "simdeez_f")]
 #[target_feature(enable = "avx2")]
 unsafe fn distance_hamming_f64_avx2(va: &[f64], vb: &[f64]) -> f32 {
     distance_hamming_f64::<Avx2>(va, vb)
@@ -672,13 +615,12 @@ unsafe fn distance_hamming_f64_avx2(va: &[f64], vb: &[f64]) -> f32 {
 
 #[allow(unused)]
 /// special implementation for f64 exclusively in the context of SuperMinHash algorithm
-#[cfg(feature = "simdeez_f")]
 unsafe fn distance_hamming_f64<S: Simd>(va: &[f64], vb: &[f64]) -> f32 {
     assert_eq!(va.len(), vb.len());
-    //
-    let mut dist_simd = S::setzero_epi64();
+
+    let mut dist_simd: <S as Simd>::Vi64 = S::setzero_epi64();
     //    log::debug!("initial simd_res : {:?}", dist_simd);
-    //
+
     let nb_simd = va.len() / S::VF64_WIDTH;
     let simd_length = nb_simd * S::VF64_WIDTH;
     let mut i = 0;
@@ -709,16 +651,15 @@ unsafe fn distance_hamming_f64<S: Simd>(va: &[f64], vb: &[f64]) -> f32 {
     return (dist as f64 / va.len() as f64) as f32;
 } // end of distance_hamming_f64
 
-#[cfg(feature = "stdsimd")]
 fn distance_jaccard_u32_16_simd(va: &[u32], vb: &[u32]) -> f32 {
     let mut dist_simd = i32x16::splat(0);
-    //
+
     assert_eq!(va.len(), vb.len());
-    //
-    let nb_lanes = 16;
-    let nb_simd = va.len() / nb_lanes;
-    let simd_length = nb_simd * nb_lanes;
-    //
+
+    let nb_lanes: usize = 16;
+    let nb_simd: usize = va.len() / nb_lanes;
+    let simd_length: usize = nb_simd * nb_lanes;
+
     for i in (0..simd_length).step_by(nb_lanes) {
         let a = u32x16::from_slice(&va[i..]);
         let b = u32x16::from_slice(&vb[i..]);
@@ -727,6 +668,7 @@ fn distance_jaccard_u32_16_simd(va: &[u32], vb: &[u32]) -> f32 {
         dist_simd = dist_simd - delta.to_int();
     }
     let mut dist = dist_simd.horizontal_sum();
+
     // residual
     for i in simd_length..va.len() {
         dist = dist + if va[i] != vb[i] { 1 } else { 0 };
@@ -734,16 +676,15 @@ fn distance_jaccard_u32_16_simd(va: &[u32], vb: &[u32]) -> f32 {
     return dist as f32 / va.len() as f32;
 } // end of distance_jaccard_u32_simd
 
-#[cfg(feature = "stdsimd")]
 fn distance_jaccard_u64_8_simd(va: &[u64], vb: &[u64]) -> f32 {
-    let mut dist_simd = i64x8::splat(0);
-    //
     assert_eq!(va.len(), vb.len());
-    //
-    let nb_lanes = 8;
-    let nb_simd = va.len() / nb_lanes;
-    let simd_length = nb_simd * nb_lanes;
-    //
+
+    let mut dist_simd = i64x8::splat(0);
+
+    let nb_lanes: usize = 8;
+    let nb_simd: usize = va.len() / nb_lanes;
+    let simd_length: usize = nb_simd * nb_lanes;
+
     for i in (0..simd_length).step_by(nb_lanes) {
         let a = u64x8::from_slice(&va[i..]);
         let b = u64x8::from_slice(&vb[i..]);
@@ -752,6 +693,7 @@ fn distance_jaccard_u64_8_simd(va: &[u64], vb: &[u64]) -> f32 {
         dist_simd = dist_simd - delta.to_int();
     }
     let mut dist = dist_simd.horizontal_sum();
+
     // residual
     for i in simd_length..va.len() {
         dist = dist + if va[i] != vb[i] { 1 } else { 0 };
@@ -761,16 +703,13 @@ fn distance_jaccard_u64_8_simd(va: &[u64], vb: &[u64]) -> f32 {
 
 impl Distance<i32> for DistHamming {
     fn eval(&self, va: &[i32], vb: &[i32]) -> f32 {
-        //
-        #[cfg(feature = "simdeez_f")]
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-            {
-                if is_x86_feature_detected!("avx2") {
-                    return unsafe { distance_hamming_i32_avx2(va, vb) };
-                }
+            if is_x86_feature_detected!("avx2") {
+                return unsafe { distance_hamming_i32_avx2(va, vb) };
             }
         }
+
         assert_eq!(va.len(), vb.len());
         let dist: f32 = va.iter().zip(vb.iter()).filter(|t| t.0 != t.1).count() as f32;
         dist / va.len() as f32
@@ -781,19 +720,12 @@ impl Distance<i32> for DistHamming {
 /// Could be made generic with unstable source as there is implementation of PartialEq for f64
 impl Distance<f64> for DistHamming {
     fn eval(&self, va: &[f64], vb: &[f64]) -> f32 {
-        /*   Tests show that it is slower than basic method!!!
-        #[cfg(feature = "simdeez_f")] {
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-                if is_x86_feature_detected!("avx2") {
-                    log::trace!("calling distance_hamming_f64_avx2");
-                    return unsafe { distance_hamming_f64_avx2(va,vb) };
-                }
-            }
-        }
-        */
-        //
         assert_eq!(va.len(), vb.len());
-        let dist: usize = va.iter().zip(vb.iter()).filter(|t| t.0 != t.1).count();
+        let dist: usize = va
+            .iter()
+            .zip(vb.iter())
+            .filter(|t: &(&f64, &f64)| t.0 != t.1)
+            .count();
         (dist as f64 / va.len() as f64) as f32
     } // end of eval
 } // end implementation Distance<f64>
@@ -809,15 +741,12 @@ impl Distance<f32> for DistHamming {
     } // end of eval
 } // end implementation Distance<f32>
 
-#[cfg(feature = "stdsimd")]
 impl Distance<u32> for DistHamming {
     fn eval(&self, va: &[u32], vb: &[u32]) -> f32 {
-        //
         return distance_jaccard_u32_16_simd(va, vb);
     } // end of eval
 } // end implementation Distance<u32>
 
-#[cfg(feature = "stdsimd")]
 impl Distance<u64> for DistHamming {
     fn eval(&self, va: &[u64], vb: &[u64]) -> f32 {
         return distance_jaccard_u64_8_simd(va, vb);
@@ -828,11 +757,11 @@ impl Distance<u64> for DistHamming {
 implementHammingDistance!(u8);
 implementHammingDistance!(u16);
 
-#[cfg(not(feature = "stdsimd"))]
-implementHammingDistance!(u32);
+// #[cfg(not(feature = "stdsimd"))]
+// implementHammingDistance!(u32);
 
-#[cfg(not(feature = "stdsimd"))]
-implementHammingDistance!(u64);
+// #[cfg(not(feature = "stdsimd"))]
+// implementHammingDistance!(u64);
 
 implementHammingDistance!(i16);
 
@@ -850,13 +779,18 @@ macro_rules! implementJaccardDistance (
     ($ty:ty) => (
 
     impl Distance<$ty> for DistJaccard  {
-        fn eval(&self, va:&[$ty], vb: &[$ty]) -> f32 {
-            let (max,min) : (u64, u64) = va.iter().zip(vb.iter()).fold((0u64,0u64), |acc, t| if t.0 > t.1 {
-                                (acc.0 + *t.0 as u64, acc.1 + *t.1 as u64) }
-                        else {
-                                (acc.0 + *t.1 as u64 , acc.1 + *t.0 as u64)
-                             }
-            );
+        fn eval(&self, va: &[$ty], vb: &[$ty]) -> f32 {
+            let (max, min): (u64, u64) = va.iter()
+                .zip(vb.iter())
+                .fold((0u64, 0u64), |acc, t|
+                    if t.0 > t.1 {
+                        (acc.0 + *t.0 as u64, acc.1 + *t.1 as u64)
+                    }
+                    else {
+                        (acc.0 + *t.1 as u64, acc.1 + *t.0 as u64)
+                    }
+                );
+
             if max > 0 {
                 let dist = 1. - (min  as f64)/ (max as f64);
                 assert!(dist >= 0.);
@@ -881,8 +815,8 @@ implementJaccardDistance!(u32);
 pub struct DistLevenshtein;
 impl Distance<u16> for DistLevenshtein {
     fn eval(&self, a: &[u16], b: &[u16]) -> f32 {
-        let len_a = a.len();
-        let len_b = b.len();
+        let len_a: usize = a.len();
+        let len_b: usize = b.len();
         if len_a < len_b {
             return self.eval(b, a);
         }
@@ -960,11 +894,10 @@ impl<T: Copy + Clone + Sized + Send + Sync> DistCFFI<T> {
 
 impl<T: Copy + Clone + Sized + Send + Sync> Distance<T> for DistCFFI<T> {
     fn eval(&self, va: &[T], vb: &[T]) -> f32 {
-        // get pointers
-        let len = va.len();
-        let ptr_a = va.as_ptr();
-        let ptr_b = vb.as_ptr();
-        let dist = (self.dist_function)(ptr_a, ptr_b, len as c_ulonglong);
+        let len: usize = va.len();
+        let ptr_a: *const T = va.as_ptr();
+        let ptr_b: *const T = vb.as_ptr();
+        let dist: f32 = (self.dist_function)(ptr_a, ptr_b, len as c_ulonglong);
         log::trace!(
             "DistCFFI dist_function_ptr {:?} returning {:?} ",
             self.dist_function,
