@@ -120,34 +120,29 @@ make run-server
 
 ### AG News dataset
 
-* num of documents : 16,559 documents
+* num of documents : 127.6K documents
 
 |  batch size | requests |   k    |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
 |    :---:    |  :---:   | :---:  | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
-|       1     |   10k    |   10   | total  |   7.335 ms |   7.623 ms |   8.159 ms |   8.754 ms |  10.203 ms |
-|             |          |        | model  |   7.067 ms |   7.279 ms |   7.734 ms |   8.312 ms |   9.710 ms |
-|             |          |        | search |   0.156 ms |   0.220 ms |   0.267 ms |   0.312 ms |   0.346 ms |
-|      32     |    1k    |   10   | total  |  27.998 ms |  28.428 ms |  28.907 ms |  29.272 ms |  29.272 ms |
-|             |          |        | model  |  27.033 ms |  27.424 ms |  27.897 ms |  28.184 ms |  28.184 ms |
-|             |          |        | search |   0.749 ms |   0.848 ms |   0.909 ms |   1.052 ms |   1.052 ms |
-|      64     |    1k    |   10   | total  |  51.748 ms |  55.995 ms |  61.806 ms |  79.740 ms |  79.740 ms |
-|             |          |        | model  |  50.162 ms |  54.232 ms |  59.505 ms |  77.888 ms |  77.888 ms |
-|             |          |        | search |   1.346 ms |   1.565 ms |   1.972 ms |   2.431 ms |   2.431 ms |
-|     128     |    1k    |   10   | total  | 101.421 ms | 108.787 ms | 109.118 ms | 109.672 ms | 109.672 ms |
-|             |          |        | model  |  98.811 ms | 106.137 ms | 106.458 ms | 106.813 ms | 106.813 ms |
-|             |          |        | search |   2.338 ms |   2.495 ms |   2.615 ms |   3.166 ms |   3.166 ms |
+|       1     |   10k    |   10   | total  |   4.833 ms |   5.426 ms |   6.037 ms |   9.578 ms |  12.411 ms |
+|             |          |        | model  |   4.507 ms |   4.994 ms |   5.505 ms |   8.979 ms |  12.094 ms |
+|             |          |        | search |   0.203 ms |   0.308 ms |   0.354 ms |   0.449 ms |   0.567 ms |
+|      32     |    1k    |   10   | total  |  10.403 ms |  10.951 ms |  11.625 ms |  16.794 ms |  16.794 ms |
+|             |          |        | model  |   9.211 ms |   9.684 ms |  10.226 ms |  14.796 ms |  14.796 ms |
+|             |          |        | search |   0.981 ms |   1.183 ms |   1.386 ms |   2.386 ms |   2.386 ms |
+|     128     |    1k    |   10   | total  |  33.440 ms |  32.602 ms |  32.862 ms |  33.440 ms |  33.440 ms |
+|             |          |        | model  |  29.120 ms |  29.411 ms |  29.653 ms |  30.333 ms |  30.333 ms |
+|             |          |        | search |   2.855 ms |   3.007 ms |   3.154 ms |   3.452 ms |   3.452 ms |
 
 * QPS
   * total (mean)
-    * bs 1   :  136 QPS
-    * bs 32  : 1143 QPS
-    * bs 64  : 1237 QPS
-    * bs 128 : 1262 QPS
+    * bs 1   :  207 QPS
+    * bs 32  : 3076 QPS
+    * bs 128 : 3828 QPS
   * search (mean)
-    * bs 1   :  6410 QPS
-    * bs 32  : 42724 QPS
-    * bs 64  : 47548 QPS
-    * bs 128 : 54748 QPS
+    * bs 1   :  4926 QPS
+    * bs 32  : 32620 QPS
+    * bs 128 : 44834 QPS
 
 ### Example
 
