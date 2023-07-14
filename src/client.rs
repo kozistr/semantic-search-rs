@@ -93,8 +93,8 @@ async fn main() -> Result<()> {
     });
 
     println!(
-        "num_users : {}, num_iters : {}, k : {}",
-        config.u, config.n, config.k
+        "num_users : {}, num_iters : {}, bs : {}, k : {}",
+        config.u, config.n, config.bs, config.k
     );
 
     let (tx, rx) = mpsc::channel::<Metrics>();
