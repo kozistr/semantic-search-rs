@@ -282,6 +282,7 @@ macro_rules! implementDotDistance(
     ) // end of matching
 );
 
+#[allow(unused)]
 unsafe fn distance_dot_f32<S: Simd>(va: &[f32], vb: &[f32]) -> f32 {
     let mut i: usize = 0;
     let mut dot_simd: <S as Simd>::Vf32 = S::setzero_ps();
@@ -302,11 +303,13 @@ unsafe fn distance_dot_f32<S: Simd>(va: &[f32], vb: &[f32]) -> f32 {
     (1. - dot).max(0.)
 } // end of distance_dot_f32
 
+#[allow(unused)]
 #[target_feature(enable = "avx2")]
 unsafe fn distance_dot_f32_avx2(va: &[f32], vb: &[f32]) -> f32 {
     distance_dot_f32::<Avx2>(va, vb)
 }
 
+#[allow(unused)]
 #[target_feature(enable = "sse2")]
 unsafe fn distance_dot_f32_sse2(va: &[f32], vb: &[f32]) -> f32 {
     distance_dot_f32::<Sse2>(va, vb)
