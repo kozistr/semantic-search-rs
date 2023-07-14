@@ -132,11 +132,11 @@ fn log_stats(description: &str, i: usize, latencies: &Vec<u64>, take: usize) {
 
     let ps: Vec<String> = percentiles(&[0.95, 0.99, 0.999], latencies, take)
         .iter()
-        .map(|(p, x)| format!("p{:2.1}={:1.3}ms", 100.0 * p, *x as f64 * 1e-6))
+        .map(|(p, x)| format!("p{:2.1}={:1.3} ms", 100.0 * p, *x as f64 * 1e-6))
         .collect();
 
     println!(
-        "{} latency : {} mean={:1.3}ms max={:1.3}m {}",
+        "{} latency : {} mean={:1.3} ms max={:1.3} ms {}",
         description,
         i,
         mean as f64 * 1e-6,
