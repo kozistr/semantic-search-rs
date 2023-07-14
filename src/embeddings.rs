@@ -30,17 +30,6 @@ pub struct Book {
     pub summary: String,
 }
 
-#[derive(Debug, Clone)]
-pub struct EmbeddedBook {
-    pub title: Option<String>,
-
-    pub author: Option<String>,
-
-    pub summary: Option<String>,
-
-    pub embeddings: [f32; 384],
-}
-
 fn main() -> Result<()> {
     let start: Instant = Instant::now();
     let model: SentenceEmbeddingsModel =
