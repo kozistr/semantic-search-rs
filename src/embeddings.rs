@@ -3,13 +3,14 @@ use anyhow::Result;
 //     core::{ann_index::ANNIndex, ann_index::SerializableIndex, metrics::Metric::Euclidean},
 //     index::{hnsw_idx::HNSWIndex, hnsw_params::HNSWParams},
 // };
-// use hnsw_rs::prelude::{AnnT, DistL2, Hnsw};
 use mimalloc::MiMalloc;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType::AllMiniLmL12V2,
 };
 use serde::Deserialize;
 use std::{fs, time::Instant};
+
+use indicatif::ProgressBar;
 
 use semantic_search::hnsw_index::{api::AnnT, dist::DistL2, hnsw::Hnsw};
 
@@ -52,7 +53,6 @@ fn main() -> Result<()> {
     // });
 
     // index.build(Euclidean)?;
-
     // index.dump("index.hora")?;
 
     // hnswlib
@@ -69,15 +69,19 @@ fn main() -> Result<()> {
     let index: Hnsw<f32, DistL2> =
         Hnsw::<f32, DistL2>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistL2 {});
 
-    let start: Instant = Instant::now();
+    // let start: Instant = Instant::now();
     let mut embeddings: Vec<Vec<f32>> = Vec::with_capacity(nb_elem);
 
-    for chunk in summaries.chunks(128) {
+    let bs: i32 = 128;
+    let pb = ProgressBar::new((nb_elem / bs + 1) as u64);
+    for chunk in summaries.chunks(bs) {
         let embeds: Vec<Vec<f32>> = model.encode(chunk).unwrap();
         embeddings.extend(embeds.into_iter());
+        pb.inc(1);
     }
+    pb.finish();
 
-    println!("inference : {:.3?}", start.elapsed());
+    println!("inference : {:.3?}", pb.elapsed());
 
     let embeddings_indices: Vec<(&Vec<f32>, usize)> =
         embeddings.iter().zip(0..embeddings.len()).collect();
