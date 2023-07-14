@@ -55,37 +55,33 @@ fn load_index() -> Hnsw<f32, DistL2> {
     index
 }
 
-#[allow(dead_code)]
-pub fn preprocess(features: &Vec<Features>) -> (Vec<Vec<String>>, Vec<Vec<usize>>) {
-    let query: Vec<Vec<String>> = features
+pub fn preprocess(request: &PredictRequest) -> (Vec<String>, usize) {
+    let query: Vec<String> = request
+        .features
         .iter()
-        .map(|f: &Features| vec![f.query.clone()])
+        .map(|f: &Features| f.query.clone() as String)
         .collect();
 
-    let k: Vec<Vec<usize>> = features
-        .iter()
-        .map(|f: &Features| vec![f.k as usize])
-        .collect();
+    let k: usize = request.k.clone() as usize;
 
     (query, k)
 }
 
 pub fn search(request: PredictRequest) -> PredictResponse {
-    // let (query, k) = preprocess(&request.features);
-    let feature: &Features = &request.features.first().clone().unwrap();
-    let query: String = feature.query.clone();
-    let k: usize = feature.k.clone() as usize;
+    let (query, k) = preprocess(&request);
 
     let start: Instant = Instant::now();
-    let query_embedding: Vec<Vec<f32>> =
-        MODEL.with(|model: &SentenceEmbeddingsModel| model.encode(&[query]).unwrap());
+    let query_embeddings: Vec<Vec<f32>> =
+        MODEL.with(|model: &SentenceEmbeddingsModel| model.encode(&query).unwrap());
     let model_latency: u64 = start.elapsed().as_nanos() as u64;
 
     let start: Instant = Instant::now();
     // let neighbor_index: Vec<usize> =
     //     INDEX.with(|index: &HNSWIndex<f32, usize>| index.search(&query_embeddings[0], k));
-    let neighbor_index: Vec<Neighbour> =
-        INDEX.with(|index: &Hnsw<f32, DistL2>| index.search(&query_embedding[0], k, 30));
+    // let neighbor_index: Vec<Neighbour> =
+    //     INDEX.with(|index: &Hnsw<f32, DistL2>| index.search(&query_embeddings[0], k, 30));
+    let neighbor_index: Vec<Vec<Neighbour>> =
+        INDEX.with(|index: &Hnsw<f32, DistL2>| index.parallel_search(&query_embeddings, k, 30));
     let search_latency: u64 = start.elapsed().as_nanos() as u64;
 
     PredictResponse {
@@ -97,8 +93,11 @@ pub fn search(request: PredictRequest) -> PredictResponse {
         //     .collect(),
         indices: neighbor_index
             .iter()
-            .map(|index: &Neighbour| Index {
-                index: index.d_id as i32,
+            .map(|indices: &Vec<Neighbour>| Index {
+                index: indices
+                    .iter()
+                    .map(|idx: &Neighbour| idx.d_id as i32)
+                    .collect()
             })
             .collect(),
         model_latency,

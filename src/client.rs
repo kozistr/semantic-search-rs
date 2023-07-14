@@ -18,19 +18,21 @@ static GLOBAL: MiMalloc = MiMalloc;
 struct Config {
     u: usize,
     n: usize,
+    bs: usize,
     k: i32,
 }
 impl Config {
     fn new(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 2 {
+        if args.len() < 4 {
             return Err("not enough arguments");
         }
 
         let u: usize = args[1].parse().unwrap();
         let n: usize = args[2].parse().unwrap();
-        let k: i32 = args[3].parse().unwrap();
+        let bs: usize = args[3].parse().unwrap();
+        let k: i32 = args[4].parse().unwrap();
 
-        Ok(Config { u, n, k })
+        Ok(Config { u, n, bs, k })
     }
 }
 
@@ -45,19 +47,19 @@ async fn execute(config: &Config) -> Result<Metrics> {
     let mut client: ss::inference_client::InferenceClient<tonic::transport::Channel> =
         ss::inference_client::InferenceClient::connect("http://127.0.0.1:50051").await?;
 
-    let request: ss::PredictRequest = ss::PredictRequest {
+    let requests: ss::PredictRequest = ss::PredictRequest {
         features: vec![
             ss::Features {
                 query: "The story about the school life".to_string(),
-                k: config.k,
             };
-            1
+            config.bs
         ],
+        k: config.k,
     };
 
     // warm-up 10 times to load model & index files on the server-side
     for _ in 0..10 {
-        _ = client.predict(request.clone()).await?;
+        _ = client.predict(requests.clone()).await?;
     }
 
     let mut model_lat: Vec<u64> = vec![0u64; config.n];
@@ -66,7 +68,7 @@ async fn execute(config: &Config) -> Result<Metrics> {
 
     for i in 1..config.n {
         let start: Instant = Instant::now();
-        let response: ss::PredictResponse = client.predict(request.clone()).await?.into_inner();
+        let response: ss::PredictResponse = client.predict(requests.clone()).await?.into_inner();
 
         total_lat[i] = start.elapsed().as_nanos() as u64;
         model_lat[i] = response.model_latency;
@@ -134,7 +136,7 @@ fn log_stats(description: &str, i: usize, latencies: &Vec<u64>, take: usize) {
         .collect();
 
     println!(
-        "{} latency  : {} Mean={:1.3}ms Max={:1.3}m {}",
+        "{} latency : {} mean={:1.3}ms max={:1.3}m {}",
         description,
         i,
         mean as f64 * 1e-6,
