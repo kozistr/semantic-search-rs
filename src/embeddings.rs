@@ -30,16 +30,6 @@ pub struct Book {
     pub summary: String,
 }
 
-impl Book {
-    fn to_embedded(self, embeddings: [f32; 384]) -> EmbeddedBook {
-        EmbeddedBook {
-            title: Some(self.title),
-            author: Some(self.author),
-            summary: Some(self.summary),
-            embeddings,
-        }
-    }
-}
 #[derive(Debug, Clone)]
 pub struct EmbeddedBook {
     pub title: Option<String>,
@@ -93,7 +83,7 @@ fn main() -> Result<()> {
     let start: Instant = Instant::now();
     let mut embeddings: Vec<Vec<f32>> = Vec::with_capacity(nb_elem);
 
-    for chunk in summaries.chunks(32) {
+    for chunk in summaries.chunks(128) {
         let embeds: Vec<Vec<f32>> = model.encode(chunk).unwrap();
         embeddings.extend(embeds.into_iter());
     }
