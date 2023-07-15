@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use semantic_search::hnsw_index::{
+use crate::hnsw_index::{
     dist::DistL2,
     hnsw::Hnsw,
     hnswio::{load_description, load_hnsw_with_dist, Description},
@@ -28,7 +28,6 @@ pub fn load_model() -> SentenceEmbeddingsModel {
     model
 }
 
-#[allow(dead_code)]
 fn load_file(filename: &String) -> BufReader<File> {
     let path: PathBuf = PathBuf::from(filename);
     let res: File = OpenOptions::new().read(true).open(&path).unwrap();
@@ -36,7 +35,6 @@ fn load_file(filename: &String) -> BufReader<File> {
     reader
 }
 
-#[allow(dead_code)]
 pub fn load_index(dataset: &str) -> Hnsw<f32, DistL2> {
     println!("load index");
     let mut graph: BufReader<File> = load_file(&format!("{}.hnsw.graph", dataset));
