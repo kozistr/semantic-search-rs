@@ -30,12 +30,13 @@ thread_local! {
 }
 
 fn load_model() -> SentenceEmbeddingsModel {
-    println!("load model");
     let model: SentenceEmbeddingsModel = if Path::new("models").is_dir() {
+        println!("load model from local");
         SentenceEmbeddingsBuilder::local("models")
             .create_model()
             .unwrap()
     } else {
+        println!("load model from remote");
         SentenceEmbeddingsBuilder::remote(AllMiniLmL12V2)
             .create_model()
             .unwrap()
