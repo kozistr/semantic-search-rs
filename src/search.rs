@@ -9,7 +9,7 @@ use rust_bert::pipelines::sentence_embeddings::{
 use std::{
     fs::{File, OpenOptions},
     io::BufReader,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::Instant,
 };
 
@@ -31,12 +31,15 @@ thread_local! {
 
 fn load_model() -> SentenceEmbeddingsModel {
     println!("load model");
-    // SentenceEmbeddingsBuilder::remote(AllMiniLmL12V2)
-    //     .create_model()
-    //     .unwrap()
-    SentenceEmbeddingsBuilder::local("models")
-        .create_model()
-        .unwrap()
+    let model: SentenceEmbeddingsModel = if Path::new("models").is_dir() {
+        SentenceEmbeddingsBuilder::local("models")
+            .create_model()
+            .unwrap()
+    } else {
+        SentenceEmbeddingsBuilder::remote(AllMiniLmL12V2)
+            .create_model()
+            .unwrap()
+    };
 }
 
 fn load_file(filename: &str) -> BufReader<File> {
