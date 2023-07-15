@@ -2,13 +2,12 @@ use mimalloc::MiMalloc;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use std::time::Instant;
 
-use crate::ss::{Features, Index, PredictRequest, PredictResponse};
-
-use semantic_search::{
+use crate::{
     hnsw_index::{
         dist::DistL2,
         hnsw::{Hnsw, Neighbour},
     },
+    ss::{Features, Index, PredictRequest, PredictResponse},
     utils::{load_index, load_model},
 };
 

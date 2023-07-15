@@ -3,23 +3,24 @@ use std::net::SocketAddr;
 use tokio;
 use tonic::{transport::Server, Request, Response, Status};
 
-mod search;
-use search::search;
-
-pub mod ss {
-    tonic::include_proto!("ss");
-}
+use semantic_search::{
+    search::search,
+    ss::{
+        inference_server::{Inference, InferenceServer},
+        PredictRequest, PredictResponse,
+    },
+};
 
 #[derive(Debug, Default)]
 pub struct VectorSearchService {}
 
 #[tonic::async_trait]
-impl ss::inference_server::Inference for VectorSearchService {
+impl Inference for VectorSearchService {
     async fn predict(
         &self,
-        request: Request<ss::PredictRequest>,
-    ) -> Result<Response<ss::PredictResponse>, Status> {
-        let reply: ss::PredictResponse = search(request.into_inner());
+        request: Request<PredictRequest>,
+    ) -> Result<Response<PredictResponse>, Status> {
+        let reply: PredictResponse = search(request.into_inner());
 
         Ok(Response::new(reply))
     }
@@ -31,7 +32,7 @@ async fn main() -> Result<()> {
     let service: VectorSearchService = VectorSearchService::default();
 
     let server = Server::builder()
-        .add_service(ss::inference_server::InferenceServer::new(service))
+        .add_service(InferenceServer::new(service))
         .serve(addr)
         .await?;
 
