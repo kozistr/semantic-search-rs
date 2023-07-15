@@ -1,13 +1,13 @@
-.PHONY: format
+.PHONY: format client server builder
 
 format:
 	cargo fmt
 
-run-client:
+client:
 	cargo +nightly run --release --bin client 1 10000 1 10
 
-run-server:
+server:
 	cargo +nightly run --release --bin server
 
-run-builder:
+builder:
 	cargo +nightly run --release --features embedding --bin embedding news
