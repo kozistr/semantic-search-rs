@@ -4,12 +4,12 @@ use std::time::Instant;
 
 use crate::ss::{Features, Index, PredictRequest, PredictResponse};
 
-use crate::utils::{load_index, load_model};
-
-use semantic_search::hnsw_index::{
-    dist::DistL2,
-    hnsw::{Hnsw, Neighbour},
-    hnswio::{load_description, load_hnsw_with_dist, Description},
+use semantic_search::{
+    hnsw_index::{
+        dist::DistL2,
+        hnsw::{Hnsw, Neighbour},
+    },
+    utils::{load_index, load_model},
 };
 
 #[global_allocator]
