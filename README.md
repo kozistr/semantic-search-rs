@@ -125,7 +125,7 @@ make run-server
 |      32     |    1k    |   10   | total  |  10.403 ms |  10.951 ms |  11.625 ms |  16.794 ms |  16.794 ms |
 |             |          |        | model  |   9.211 ms |   9.684 ms |  10.226 ms |  14.796 ms |  14.796 ms |
 |             |          |        | search |   0.981 ms |   1.183 ms |   1.386 ms |   2.386 ms |   2.386 ms |
-|     128     |    1k    |   10   | total  |  33.440 ms |  32.602 ms |  32.862 ms |  33.440 ms |  33.440 ms |
+|     128     |    1k    |   10   | total  |  32.220 ms |  32.602 ms |  32.862 ms |  33.440 ms |  33.440 ms |
 |             |          |        | model  |  29.120 ms |  29.411 ms |  29.653 ms |  30.333 ms |  30.333 ms |
 |             |          |        | search |   2.855 ms |   3.007 ms |   3.154 ms |   3.452 ms |   3.452 ms |
 
@@ -133,7 +133,7 @@ make run-server
   * total (mean)
     * bs 1   :  207 QPS
     * bs 32  : 3076 QPS
-    * bs 128 : 3828 QPS
+    * bs 128 : 3973 QPS
   * search (mean)
     * bs 1   :  4926 QPS
     * bs 32  : 32620 QPS
