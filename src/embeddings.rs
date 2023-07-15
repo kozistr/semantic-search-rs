@@ -11,10 +11,10 @@ use std::{
     time::Instant,
 };
 
-mod utils;
-use utils::load_model;
-
-use semantic_search::hnsw_index::{api::AnnT, dist::DistL2, hnsw::Hnsw};
+use semantic_search::{
+    hnsw_index::{api::AnnT, dist::DistL2, hnsw::Hnsw},
+    utils::load_model,
+};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
