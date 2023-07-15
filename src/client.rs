@@ -1,5 +1,4 @@
 use anyhow::Result;
-use mimalloc::MiMalloc;
 use std::{
     env, process,
     sync::mpsc,
@@ -7,12 +6,9 @@ use std::{
 };
 use tokio;
 
-pub mod ss {
-    tonic::include_proto!("ss");
-}
-
-#[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
+use semantic_search::ss::{
+    inference_client::InferenceClient, Features, PredictRequest, PredictResponse,
+};
 
 #[derive(Debug, Clone)]
 struct Config {
@@ -44,12 +40,12 @@ struct Metrics {
 }
 
 async fn execute(config: &Config) -> Result<Metrics> {
-    let mut client: ss::inference_client::InferenceClient<tonic::transport::Channel> =
-        ss::inference_client::InferenceClient::connect("http://127.0.0.1:50051").await?;
+    let mut client: InferenceClient<tonic::transport::Channel> =
+        InferenceClient::connect("http://127.0.0.1:50051").await?;
 
-    let requests: ss::PredictRequest = ss::PredictRequest {
+    let requests: PredictRequest = PredictRequest {
         features: vec![
-            ss::Features {
+            Features {
                 query: "The story about the school life".to_string(),
             };
             config.bs
@@ -68,7 +64,7 @@ async fn execute(config: &Config) -> Result<Metrics> {
 
     for i in 1..config.n {
         let start: Instant = Instant::now();
-        let response: ss::PredictResponse = client.predict(requests.clone()).await?.into_inner();
+        let response: PredictResponse = client.predict(requests.clone()).await?.into_inner();
 
         total_lat[i] = start.elapsed().as_nanos() as u64;
         model_lat[i] = response.model_latency;
@@ -88,7 +84,7 @@ async fn main() -> Result<()> {
 
     let config: Config = Config::new(&args).unwrap_or_else(|err: &str| {
         println!("Problem parsing arguments: {}", err);
-        println!("Usage: client num_users num_iters k");
+        println!("Usage: client num_users num_iters bs k");
         process::exit(1);
     });
 
