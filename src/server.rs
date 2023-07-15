@@ -3,7 +3,8 @@ use std::net::SocketAddr;
 use tokio;
 use tonic::{transport::Server, Request, Response, Status};
 
-use semantic_search::search::search;
+mod search;
+use search::search;
 
 pub mod ss {
     tonic::include_proto!("ss");
