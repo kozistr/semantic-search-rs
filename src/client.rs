@@ -132,12 +132,12 @@ fn log_stats(description: &str, i: usize, latencies: &Vec<u64>, take: usize) {
         .collect();
 
     println!(
-        "{} latency : {} mean={:1.3} ms max={:1.3} ms {}",
+        "{} latency : {} mean={:1.3} ms {} max={:1.3} ms",
         description,
         i,
         mean as f64 * 1e-6,
+        ps.join(" "),
         max as f64 * 1e-6,
-        ps.join(" ")
     );
 }
 
