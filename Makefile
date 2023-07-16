@@ -11,3 +11,6 @@ server:
 
 builder:
 	cargo +nightly run --release --features embedding --bin embedding news
+
+example:
+	cargo +nightly run --release --features example --bin main
