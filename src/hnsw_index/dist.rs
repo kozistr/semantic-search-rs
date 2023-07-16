@@ -321,8 +321,8 @@ unsafe fn distance_dot_f32_sse2(va: &[f32], vb: &[f32]) -> f32 {
 impl Distance<f32> for DistDot {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
         let dot: f32 = 1.0 - dot_f32(va, vb);
-        assert!(dot >= 0.);
-        dot
+        assert!(dot >= -0.000002);
+        dot.max(0.) as f32
         // #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         // {
         //     if is_x86_feature_detected!("avx2") {
