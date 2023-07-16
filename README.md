@@ -27,6 +27,8 @@ To serve billion-scale vector search in real-time, effectively, there're two thi
 ## To-Do
 
 * [x] modify hnswlib-rs
+  * [x] re-implement distance calculation (L2, Cosine) with SIMD (more effective, x2 faster)
+  * [x] resolve build issue
 * [ ] memmap the `.data` (offload to the local disk) to reduce the memory usage
 * [ ] separate embedding and search part as a different micro service
 * [ ] (optional) hybrid HNSW-IF indexing
