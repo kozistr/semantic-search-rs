@@ -14,6 +14,10 @@ categories = ["search", "retrival", "server"]
 keywords = ["semantic-search", "nlp", "bert", "gRPC", "vector-search", "embedding"]
 
 [[bin]]
+name = "main"
+path = "src/main.rs"
+
+[[bin]]
 name = "embedding"
 path = "src/embeddings.rs"
 
@@ -79,3 +83,4 @@ rpath = false
 
 [features]
 embedding = ["indicatif", "csv"]
+example = ["csv"]
