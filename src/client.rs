@@ -123,29 +123,29 @@ async fn main() -> Result<()> {
 
 fn log_stats(description: &str, i: usize, latencies: &Vec<u64>) {
     let mut lats: Vec<u64> = latencies.clone();
-    lats.sort();
+    lats.sort_unstable();
 
-    let mean: u64 = lats.clone().iter().sum::<u64>() / i as u64;
-    let max: u64 = *lats.clone().last().unwrap();
+    let mean: f64 = lats.clone().iter().sum::<u64>() / i as f64 * 1e-6;
+    let max: f64 = *lats.clone().last().unwrap() as f64 * 1e-6;
 
     let ps: Vec<String> = percentiles(&[0.5, 0.95, 0.99, 0.999], &mut lats)
         .iter()
-        .map(|(p, x)| format!("p{:2.1}={:1.3} ms", 100.0 * p, *x as f64 * 1e-6))
+        .map(|(p, x)| format!("p{:2.1}={:1.3} ms", 100.0 * p, *x))
         .collect();
 
     println!(
         "{} latency : {} mean={:1.3} ms {} max={:1.3} ms",
         description,
         i,
-        mean as f64 * 1e-6,
+        mean,
         ps.join(" "),
-        max as f64 * 1e-6,
+        max,
     );
 }
 
-fn percentiles(ps: &[f64], lats: &mut Vec<u64>) -> Vec<(f64, u64)> {
+fn percentiles(ps: &[f32], lats: &mut Vec<u64>) -> Vec<(f32, f64)> {
     ps.par_iter()
-        .map(|p: &f64| (*p, lats[((lats.len() as f64) * p) as usize]))
+        .map(|p: &f32| (*p, lats[((lats.len() as f32) * p) as f64 * 1e-6]))
         .collect()
 }
 
