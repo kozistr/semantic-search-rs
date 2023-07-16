@@ -245,7 +245,7 @@ impl Distance<f32> for DistCosine {
         let root_sum_square1: f32 = dot_f32(va, va).sqrt();
         let root_sum_square2: f32 = dot_f32(vb, vb).sqrt();
 
-        -dot_product / (root_sum_square1 * root_sum_square2)
+        1.0 - dot_product / (root_sum_square1 * root_sum_square2)
     }
 }
 
