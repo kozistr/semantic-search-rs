@@ -1,4 +1,5 @@
 use anyhow::Result;
+use rayon::prelude::*;
 use std::{
     env, process,
     sync::mpsc,
@@ -120,13 +121,14 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn log_stats(description: &str, i: usize, latencies: &Vec<u64>, take: usize) {
-    let lats = latencies.iter().take(take);
+fn log_stats(description: &str, i: usize, latencies: &Vec<u64>) {
+    let mut lats: Vec<u64> = latencies.clone();
+    lats.sort();
 
-    let mean: u64 = lats.clone().sum::<u64>() / i as u64;
-    let max: u64 = *lats.clone().max().unwrap();
+    let mean: u64 = lats.clone().iter().sum::<u64>() / i as u64;
+    let max: u64 = *lats.clone().last().unwrap();
 
-    let ps: Vec<String> = percentiles(&[0.5, 0.95, 0.99, 0.999], latencies, take)
+    let ps: Vec<String> = percentiles(&[0.5, 0.95, 0.99, 0.999], &mut lats)
         .iter()
         .map(|(p, x)| format!("p{:2.1}={:1.3} ms", 100.0 * p, *x as f64 * 1e-6))
         .collect();
@@ -141,18 +143,15 @@ fn log_stats(description: &str, i: usize, latencies: &Vec<u64>, take: usize) {
     );
 }
 
-fn percentiles(ps: &[f64], latencies: &Vec<u64>, take: usize) -> Vec<(f64, u64)> {
-    let mut sorted: Vec<u64> = latencies.iter().take(take).copied().collect();
-    sorted.sort();
-
-    ps.iter()
-        .map(|p: &f64| (*p, sorted[((sorted.len() as f64) * p) as usize]))
+fn percentiles(ps: &[f64], lats: &mut Vec<u64>) -> Vec<(f64, u64)> {
+    ps.par_iter()
+        .map(|p: &f64| (*p, lats[((lats.len() as f64) * p) as usize]))
         .collect()
 }
 
 fn report(config: &Config, metrics: &Metrics) {
     println!("REPORT =====================================================================");
-    log_stats("total", config.n, &metrics.total_lat, config.n);
-    log_stats("model", config.n, &metrics.model_lat, config.n);
-    log_stats("search", config.n, &metrics.search_lat, config.n);
+    log_stats("total", config.n, &metrics.total_lat);
+    log_stats("model", config.n, &metrics.model_lat);
+    log_stats("search", config.n, &metrics.search_lat);
 }
