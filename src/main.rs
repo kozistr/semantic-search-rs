@@ -13,7 +13,7 @@ use semantic_search::{
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let query: String = if args.len() < 1 {
+    let query: String = if args.len() < 2 {
         "Asia shares drift lower as investors factor in Fed rate hike.".to_string()
     } else {
         args[1].to_string()
