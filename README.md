@@ -87,11 +87,11 @@ cargo +nightly run --release --features example --bin main "query"
 * GPU : GTX 1060 6G (CUDA 11.8, CuDNN 8.8.x)
 * CPU : i7-7700K
 * Info
-  * packages are compiled with `AVX2`, `FMA` flags (RUSTCFLAGS)
-  * do some optimizations at compile-time
+  * compiled with `AVX2`, `FMA` flags (RUSTCFLAGS)
+  * do some hareware & software optimizations
   * indexing : HNSW (FLAT)
   * embedding dimenstion : 384
-  * distance measure : L2
+  * distance measure : L2, Cosine
   * k : 10
   * warm up with 10 times
 
