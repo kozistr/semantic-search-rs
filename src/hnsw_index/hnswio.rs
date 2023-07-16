@@ -270,17 +270,17 @@ fn dump_point<'a, T: Serialize + Clone + Sized + Send + Sync, W: Write>(
     graphout
         .write(&point.get_origin_id().to_ne_bytes())
         .unwrap();
-    let p_id = point.get_point_id();
+    let p_id: PointId = point.get_point_id();
     if mode == DumpMode::Full {
         graphout.write(&p_id.0.to_ne_bytes()).unwrap();
         graphout.write(&p_id.1.to_ne_bytes()).unwrap();
     }
     log::trace!(" point dump {:?} {:?}  ", p_id, point.get_origin_id());
     // then dump neighborhood info : nb neighbours : u32 , then list of origin_id, layer, rank_in_layer
-    let neighborhood = point.get_neighborhood_id();
+    let neighborhood: Vec<Vec<Neighbour>> = point.get_neighborhood_id();
     // in any case nb_layers are dumped with possibly 0 neighbours at a layer, but this does not occur by construction
     for l in 0..neighborhood.len() {
-        let neighbours_at_l = &neighborhood[l];
+        let neighbours_at_l: &Vec<Neighbour> = &neighborhood[l];
         // Caution : we dump number of neighbours as a usize, even if it cannot be so large!
         let nbg_l: usize = neighbours_at_l.len();
         log::trace!("\t dumping nbng : {} at l {}", nbg_l, l);
@@ -298,12 +298,12 @@ fn dump_point<'a, T: Serialize + Clone + Sized + Send + Sync, W: Write>(
     }
     // now we dump data vector!
     dataout.write(&MAGICDATAP.to_ne_bytes()).unwrap();
-    let origin_u64 = point.get_origin_id() as u64;
+    let origin_u64: u64 = point.get_origin_id() as u64;
     dataout.write(&origin_u64.to_ne_bytes()).unwrap();
     //
     let serialized: Vec<u8> = bincode::serialize(point.get_v()).unwrap();
     //    log::debug!("serializing len {:?}", serialized.len());
-    let len_64 = serialized.len() as u64;
+    let len_64: u64 = serialized.len() as u64;
     dataout.write(&len_64.to_ne_bytes()).unwrap();
     dataout.write_all(&serialized).unwrap();
     //
@@ -325,7 +325,8 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     // read and check magic
     let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
     graph_in.read_exact(&mut it_slice).unwrap();
-    let magic = u32::from_ne_bytes(it_slice);
+
+    let magic: u32 = u32::from_ne_bytes(it_slice);
     if magic != MAGICPOINT {
         log::debug!("got instead of MAGICPOINT {:x}", magic);
         return Err(io::Error::new(
@@ -336,22 +337,25 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<DataId>()];
     graph_in.read_exact(&mut it_slice).unwrap();
     let origin_id: usize = DataId::from_ne_bytes(it_slice);
+
     // read point_id
     let mut it_slice: [u8; 1] = [0u8; std::mem::size_of::<u8>()];
     graph_in.read_exact(&mut it_slice)?;
     let layer: u8 = u8::from_ne_bytes(it_slice);
+
     //
     let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<i32>()];
     graph_in.read_exact(&mut it_slice)?;
     let rank_in_l: i32 = i32::from_ne_bytes(it_slice);
-    let p_id = PointId {
+    let p_id: PointId = PointId {
         0: layer,
         1: rank_in_l,
     };
     //    log::debug!(" point load {:?} {:?}  ", p_id, origin_id);
     // Now  for each layer , read neighbours
     let nb_layer: u8 = descr.nb_layer;
-    let mut neighborhood = Vec::<Vec<Neighbour>>::with_capacity(NB_LAYER_MAX as usize);
+    let mut neighborhood: Vec<Vec<Neighbour>> =
+        Vec::<Vec<Neighbour>>::with_capacity(NB_LAYER_MAX as usize);
     for _l in 0..nb_layer {
         let mut neighbour: Neighbour = Default::default();
         // read nb_neighbour as usize!!! CAUTION, then nb_neighbours times identity(depends on Full or Light) distance : f32
@@ -360,19 +364,19 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
         let nb_neighbours: usize = usize::from_ne_bytes(it_slice);
         let mut neighborhood_l: Vec<Neighbour> = Vec::with_capacity(nb_neighbours as usize);
         for _j in 0..nb_neighbours {
-            let mut it_slice = [0u8; std::mem::size_of::<DataId>()];
+            let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<DataId>()];
             graph_in.read_exact(&mut it_slice)?;
             neighbour.d_id = DataId::from_ne_bytes(it_slice);
             if descr.dumpmode == 1 {
-                let mut it_slice = [0u8; std::mem::size_of::<u8>()];
+                let mut it_slice: [u8; 1] = [0u8; std::mem::size_of::<u8>()];
                 graph_in.read_exact(&mut it_slice)?;
                 neighbour.p_id.0 = u8::from_ne_bytes(it_slice);
                 //
-                let mut it_slice = [0u8; std::mem::size_of::<i32>()];
+                let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<i32>()];
                 graph_in.read_exact(&mut it_slice)?;
                 neighbour.p_id.1 = i32::from_ne_bytes(it_slice);
             }
-            let mut it_slice = [0u8; std::mem::size_of::<f32>()];
+            let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<f32>()];
             graph_in.read_exact(&mut it_slice)?;
             neighbour.distance = f32::from_ne_bytes(it_slice);
             //  log::debug!("        voisins  load {:?} {:?} {:?} ", neighbour.p_id, neighbour.d_id , neighbour.distance);
@@ -387,28 +391,28 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     //
     // construct a point from data_in
     //
-    let mut it_slice = [0u8; std::mem::size_of::<u32>()];
+    let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
     data_in.read_exact(&mut it_slice)?;
-    let magic = u32::from_ne_bytes(it_slice);
+    let magic: u32 = u32::from_ne_bytes(it_slice);
     assert_eq!(
         magic, MAGICDATAP,
         "magic not equal to MAGICDATAP in load_point, point_id : {:?} ",
         origin_id
     );
     // read origin id
-    let mut it_slice = [0u8; std::mem::size_of::<u64>()];
+    let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<u64>()];
     data_in.read_exact(&mut it_slice)?;
-    let origin_id_data = u64::from_ne_bytes(it_slice) as usize;
+    let origin_id_data: usize = u64::from_ne_bytes(it_slice) as usize;
     assert_eq!(
         origin_id, origin_id_data,
         "origin_id incoherent between graph and data"
     );
     // now read data. we use size_t that is in description, to take care of the casewhere we reload
-    let mut it_slice = [0u8; std::mem::size_of::<u64>()];
+    let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<u64>()];
     data_in.read_exact(&mut it_slice)?;
-    let serialized_len = u64::from_ne_bytes(it_slice);
+    let serialized_len: u64 = u64::from_ne_bytes(it_slice);
     //    log::debug!("serialized len to reload {:?}", serialized_len);
-    let mut v_serialized = Vec::<u8>::new();
+    let mut v_serialized: Vec<u8> = Vec::<u8>::new();
     // TODO avoid initialization
     v_serialized.resize(serialized_len as usize, 0);
     data_in.read_exact(&mut v_serialized)?;
@@ -418,7 +422,7 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     } else {
         v = Vec::<T>::new();
     }
-    let point = Point::<T>::new(&v, origin_id as usize, p_id);
+    let point: Point<T> = Point::<T>::new(&v, origin_id as usize, p_id);
     log::trace!(
         "load_point  origin {:?} allocated size {:?}, dim {:?}",
         origin_id,
@@ -516,9 +520,9 @@ fn load_point_indexation<
     let mut points_by_layer: Vec<Vec<Arc<Point<T>>>> = Vec::with_capacity(NB_LAYER_MAX as usize);
     let mut neighbourhood_map: HashMap<PointId, Vec<Vec<Neighbour>>> = HashMap::new();
     // load max layer
-    let mut it_slice = [0u8; ::std::mem::size_of::<u8>()];
+    let mut it_slice: [u8; 1] = [0u8; ::std::mem::size_of::<u8>()];
     graph_in.read_exact(&mut it_slice)?;
-    let nb_layer = u8::from_ne_bytes(it_slice);
+    let nb_layer: u8 = u8::from_ne_bytes(it_slice);
     log::debug!("nb layer {:?}", nb_layer);
     if nb_layer > NB_LAYER_MAX {
         return Err(io::Error::new(
@@ -532,18 +536,18 @@ fn load_point_indexation<
     for l in 0..nb_layer as usize {
         // read and check magic
         log::debug!("loading layer {:?}", l);
-        let mut it_slice = [0u8; ::std::mem::size_of::<u32>()];
+        let mut it_slice: [u8; 4] = [0u8; ::std::mem::size_of::<u32>()];
         graph_in.read_exact(&mut it_slice)?;
-        let magic = u32::from_ne_bytes(it_slice);
+        let magic: u32 = u32::from_ne_bytes(it_slice);
         if magic != MAGICLAYER {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
                 "bad magic at layer beginning",
             ));
         }
-        let mut it_slice = [0u8; ::std::mem::size_of::<usize>()];
+        let mut it_slice: [u8; 8] = [0u8; ::std::mem::size_of::<usize>()];
         graph_in.read_exact(&mut it_slice)?;
-        let nbpoints = usize::from_ne_bytes(it_slice);
+        let nbpoints: usize = usize::from_ne_bytes(it_slice);
         log::debug!(" layer {:?} , nb points {:?}", l, nbpoints);
         let mut vlayer: Vec<Arc<Point<T>>> = Vec::with_capacity(nbpoints);
         for r in 0..nbpoints {
@@ -556,9 +560,10 @@ fn load_point_indexation<
                 }
                 _ => {}
             }
-            let load_point_res = load_point_res.unwrap();
-            let point = load_point_res.0;
-            let p_id = point.get_point_id();
+            let load_point_res: (Arc<Point<T>>, Vec<Vec<Neighbour>>) = load_point_res.unwrap();
+            let point: Arc<Point<T>> = load_point_res.0;
+            let p_id: PointId = point.get_point_id();
+
             // some checks
             assert_eq!(l, p_id.0 as usize);
             if r != p_id.1 as usize {
@@ -580,18 +585,20 @@ fn load_point_indexation<
     // at this step all points are loaded , but without their neighbours fileds are not yet initialized
     let mut nbp: usize = 0;
     for (p_id, neighbours) in &neighbourhood_map {
-        let point = &points_by_layer[p_id.0 as usize][p_id.1 as usize];
+        let point: &Arc<Point<T>> = &points_by_layer[p_id.0 as usize][p_id.1 as usize];
         for l in 0..neighbours.len() {
             for n in &neighbours[l] {
-                let n_point = &points_by_layer[n.p_id.0 as usize][n.p_id.1 as usize];
+                let n_point: &Arc<Point<T>> =
+                    &points_by_layer[n.p_id.0 as usize][n.p_id.1 as usize];
                 // now n_point is the Arc<Point> corresponding to neighbour n of point,
                 // construct a corresponding PointWithOrder
-                let n_pwo = PointWithOrder::<T>::new(n_point, n.distance);
+                let n_pwo: PointWithOrder<T> = PointWithOrder::<T>::new(n_point, n.distance);
                 point.neighbours.write()[l].push(Arc::new(n_pwo));
             } // end of for n
               //  must sort
             point.neighbours.write()[l].sort_unstable();
         } // end of for l
+
         nbp += 1;
         if nbp % 500_000 == 0 {
             log::debug!("reloading nb_points neighbourhood completed : {}", nbp);
@@ -605,17 +612,17 @@ fn load_point_indexation<
         nb_points_loaded
     );
     //
-    let mut it_slice = [0u8; std::mem::size_of::<DataId>()];
+    let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<DataId>()];
     graph_in.read_exact(&mut it_slice)?;
-    let origin_id = DataId::from_ne_bytes(it_slice);
+    let origin_id: usize = DataId::from_ne_bytes(it_slice);
     //
-    let mut it_slice = [0u8; ::std::mem::size_of::<u8>()];
+    let mut it_slice: [u8; 1] = [0u8; ::std::mem::size_of::<u8>()];
     graph_in.read_exact(&mut it_slice)?;
-    let layer = u8::from_ne_bytes(it_slice);
+    let layer: u8 = u8::from_ne_bytes(it_slice);
     //
-    let mut it_slice = [0u8; std::mem::size_of::<i32>()];
+    let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<i32>()];
     graph_in.read_exact(&mut it_slice)?;
-    let rank_in_l = i32::from_ne_bytes(it_slice);
+    let rank_in_l: i32 = i32::from_ne_bytes(it_slice);
     //
     log::info!(
         "found entry point, origin_id {:?} , layer {:?}, rank in layer {:?} ",
@@ -623,7 +630,8 @@ fn load_point_indexation<
         layer,
         rank_in_l
     );
-    let entry_point = Arc::clone(&points_by_layer[layer as usize][rank_in_l as usize]);
+    let entry_point: Arc<Point<T>> =
+        Arc::clone(&points_by_layer[layer as usize][rank_in_l as usize]);
     log::info!(
         " loaded entry point, origin_id {:} p_id {:?}",
         entry_point.get_origin_id(),
@@ -631,7 +639,7 @@ fn load_point_indexation<
     );
 
     //
-    let point_indexation = PointIndexation {
+    let point_indexation: PointIndexation<T> = PointIndexation {
         max_nb_connection: descr.max_nb_connection as usize,
         max_layer: NB_LAYER_MAX as usize,
         points_by_layer: Arc::new(RwLock::new(points_by_layer)),
@@ -720,7 +728,7 @@ pub fn load_hnsw<
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
     data_in.read_exact(&mut it_slice)?;
 
-    let dimension = usize::from_ne_bytes(it_slice);
+    let dimension: usize = usize::from_ne_bytes(it_slice);
     assert_eq!(
         dimension, description.dimension,
         "data dimension incoherent {:?} {:?} ",
