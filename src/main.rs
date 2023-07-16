@@ -4,7 +4,7 @@ use std::{env, fs::File};
 
 use semantic_search::{
     hnsw_index::{
-        dist::DistL2,
+        dist::DistCosine,
         hnsw::{Hnsw, Neighbour},
     },
     utils::{load_index, load_model},
@@ -21,7 +21,7 @@ fn main() {
     println!("query : {:?}", query);
 
     let model: SentenceEmbeddingsModel = load_model();
-    let index: Hnsw<f32, DistL2> = load_index("news");
+    let index: Hnsw<f32, DistCosine> = load_index("news");
 
     let file: File = File::open("data/ag_news.csv").unwrap();
     let mut reader = csv::Reader::from_reader(file);

@@ -1,7 +1,6 @@
 use anyhow::Result;
 use csv::Reader;
 use indicatif::ProgressBar;
-use mimalloc::MiMalloc;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use serde::Deserialize;
 use std::{
@@ -12,12 +11,9 @@ use std::{
 };
 
 use semantic_search::{
-    hnsw_index::{api::AnnT, dist::DistL2, hnsw::Hnsw},
+    hnsw_index::{api::AnnT, dist::DistCosine, hnsw::Hnsw},
     utils::load_model,
 };
-
-#[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
 
 #[derive(Debug, Clone)]
 struct Config {
@@ -25,11 +21,11 @@ struct Config {
 }
 impl Config {
     fn new(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 1 {
+        if args.len() < 2 {
             return Err("not enough arguments");
         }
 
-        let dataset: String = args[0].to_string();
+        let dataset: String = args[1].to_string();
 
         Ok(Config { dataset })
     }
@@ -64,33 +60,32 @@ fn main() -> Result<()> {
 
     let start: Instant = Instant::now();
 
-    let data: Vec<String>;
-    if config.dataset == "book" {
+    let data: Vec<String> = if config.dataset == "book" {
         let json: String = read_to_string("data/books.json")?;
         let library: Library = serde_json::from_str(&json)?;
 
-        data = library
+        library
             .books
             .iter()
             .map(|book: &Book| book.summary.clone())
-            .collect();
+            .collect()
     } else {
         let file: File = File::open("data/ag_news.csv")?;
         let mut reader = Reader::from_reader(file);
 
-        data = reader
+        reader
             .records()
             .map(|res| res.unwrap()[0].to_string())
-            .collect();
-    }
+            .collect()
+    };
     println!("load data : {:.3?}", start.elapsed());
 
     let nb_elem: usize = data.len();
     let max_nb_connection: usize = 16;
     let ef_c: usize = 200;
     let nb_layer: usize = 16;
-    let index: Hnsw<f32, DistL2> =
-        Hnsw::<f32, DistL2>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistL2 {});
+    let index: Hnsw<f32, DistCosine> =
+        Hnsw::<f32, DistCosine>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistCosine {});
 
     let mut embeddings: Vec<Vec<f32>> = Vec::with_capacity(nb_elem);
 

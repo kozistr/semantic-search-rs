@@ -8,9 +8,9 @@ use std::{
 };
 
 use crate::hnsw_index::{
-    dist::DistL2,
+    dist::DistCosine,
     hnsw::Hnsw,
-    hnswio::{load_description, load_hnsw_with_dist, Description},
+    hnswio::{load_description, load_hnsw, Description},
 };
 
 pub fn load_model() -> SentenceEmbeddingsModel {
@@ -35,14 +35,13 @@ fn load_file(filename: &String) -> BufReader<File> {
     reader
 }
 
-pub fn load_index(dataset: &str) -> Hnsw<f32, DistL2> {
+pub fn load_index(dataset: &str) -> Hnsw<f32, DistCosine> {
     println!("load index");
     let mut graph: BufReader<File> = load_file(&format!("{}.hnsw.graph", dataset));
     // todo: offload to the disk (memmmap) to save the memmory
     let mut data: BufReader<File> = load_file(&format!("{}.hnsw.data", dataset));
 
     let description: Description = load_description(&mut graph).unwrap();
-    let index: Hnsw<f32, DistL2> =
-        load_hnsw_with_dist(&mut graph, &description, DistL2 {}, &mut data).unwrap();
+    let index: Hnsw<f32, DistCosine> = load_hnsw(&mut graph, &description, &mut data).unwrap();
     index
 }
