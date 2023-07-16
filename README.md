@@ -74,6 +74,14 @@ Run gRPC server (for model & search inference).
 make run-server
 ```
 
+### Example
+
+Run example with the given query. (there must be a built index with `ag_news` dataset)
+
+```shell
+cargo +nightly run --release --features example --bin main "query"
+```
+
 ## Benchmarks
 
 * GPU : GTX 1060 6G (CUDA 11.8, CuDNN 8.8.x)
