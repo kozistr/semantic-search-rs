@@ -175,6 +175,33 @@ top 10, title : Some("Truancy")
 
 * query : `Asia shares drift lower as investors factor in Fed rate hike.`
 
+Cosine distance
+
+```text
+top 1 | id : 92048, dist : 0.3335874
+Asian Shares Lower as Oil Fall Stalls  SINGAPORE (Reuters) - Asian share markets saw light selling  in line with a slowing retreat in oil prices on Tuesday, while  the dollar steadied as officials in Europe and Japan fretted  about the U.S. currency's recent decline.
+top 2 | id : 65687, dist : 0.38142937
+Asian Shares Lower on Earnings, Steel  SINGAPORE (Reuters) - Asian share markets staged a  broad-based retreat on Wednesday, led by steelmakers amid  warnings of price declines, but also enveloping technology and  financial stocks on worries that earnings may disappoint.
+top 3 | id : 15361, dist : 0.39869058
+Asian Stocks Mostly Lower on Tech Worries  SINGAPORE (Reuters) - Asian shares were mostly lower on  Tuesday, pulled down by technology stocks following worries  about a sales forecast from bellwether Intel Corp. and  unexpectedly flat industrial output in Japan.
+top 4 | id : 63234, dist : 0.40184337
+Asian Stocks Slip as Oil Moves Above \$55 Asian share markets fell on Monday after oil hit a record above \$55 a barrel, with investors cautious ahead of earnings reports from bellwether firms IBM and Texas Instruments later in the day.
+top 5 | id : 76590, dist : 0.4137212
+Asian Stocks Ease After China Rate Rise  SINGAPORE (Reuters) - China's surprise interest rate rise  weighed down Asian stocks on Friday as investors sold shares of  miners, shippers and other firms whose fortunes have been  closely linked to the country's rapid growth.
+top 6 | id : 65572, dist : 0.4192986
+Asian Shares Lower on Earnings  SINGAPORE (Reuters) - Asian share markets slumped on  Wednesday, led by South Korea's POSCO Co. Ltd. and other  steelmakers amid warnings of a drop in prices, and as investors  worried that third-quarter earnings may disappoint.
+top 7 | id : 14210, dist : 0.41932273
+Asian Stocks Mostly Flat to Lower  SINGAPORE (Reuters) - Asian shares were mostly flat to  lower on Monday as investors kept a wary eye on stabilizing oil  prices and looked past signs Japanese consumers were beginning  to spend more freely.
+top 8 | id : 14904, dist : 0.4203742
+European Shares Drift Down in Thin Trade European stocks were slightly lower by mid-day in holiday-hit trading on Monday, with crude oil rises weighing on shares, though Sanofi-Aventis gained on the result of trials of an anti-obesity drug.
+top 9 | id : 76632, dist : 0.4244548
+Asian Stocks Ease After China Rate Rise (Reuters) Reuters - China's surprise interest rate rise\weighed down Asian stocks on Friday as investors sold shares of\miners, shippers and other firms whose fortunes have been\closely linked to the country's rapid growth.
+top 10 | id : 15265, dist : 0.42584515
+Asian Stocks Mostly Lower on Tech Worries (Reuters) Reuters - Asian shares were mostly lower on\Tuesday, pulled down by technology stocks following worries\about a sales forecast from bellwether Intel Corp. and\unexpectedly flat industrial output in Japan.
+```
+
+L2 distance
+
 ```text
 top 1 | id : 92048, dist : 0.667175
 Asian Shares Lower as Oil Fall Stalls  SINGAPORE (Reuters) - Asian share markets saw light selling  in line with a slowing retreat in oil prices on Tuesday, while  the dollar steadied as officials in Europe and Japan fretted  about the U.S. currency's recent decline.
