@@ -99,17 +99,17 @@ cargo +nightly run --release --features example --bin main "query"
 
 * num of documents : 16,559 documents
 
-|  batch size | requests |   k    |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
-|    :---:    |  :---:   | :---:  | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
-|       1     |   10k    |   10   | total  |   7.335 ms |   7.623 ms |   8.159 ms |   8.754 ms |  10.203 ms |
-|             |          |        | model  |   7.067 ms |   7.279 ms |   7.734 ms |   8.312 ms |   9.710 ms |
-|             |          |        | search |   0.156 ms |   0.220 ms |   0.267 ms |   0.312 ms |   0.346 ms |
-|      32     |    1k    |   10   | total  |  10.119 ms |  10.795 ms |  11.263 ms |  13.839 ms |  13.839 ms |
-|             |          |        | model  |   9.142 ms |   9.753 ms |  10.133 ms |  11.507 ms |  11.507 ms |
-|             |          |        | search |   0.749 ms |   0.848 ms |   0.909 ms |   1.052 ms |   1.052 ms |
-|     128     |    1k    |   10   | total  |  31.811 ms |  32.348 ms |  33.224 ms |  41.531 ms |  41.531 ms |
-|             |          |        | model  |  29.265 ms |  29.772 ms |  30.604 ms |  31.926 ms |  31.926 ms |
-|             |          |        | search |   2.338 ms |   2.495 ms |   2.615 ms |   3.166 ms |   3.166 ms |
+| dist  |  bs   |  reqs  |   k   |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
+| :---: | :---: |  :---: | :---: | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
+|  L2   |    1  |   10k  |  10   | total  |   7.335 ms |   7.623 ms |   8.159 ms |   8.754 ms |  10.203 ms |
+|       |       |        |       | model  |   7.067 ms |   7.279 ms |   7.734 ms |   8.312 ms |   9.710 ms |
+|       |       |        |       | search |   0.156 ms |   0.220 ms |   0.267 ms |   0.312 ms |   0.346 ms |
+|       |   32  |   1k   |  10   | total  |  10.119 ms |  10.795 ms |  11.263 ms |  13.839 ms |  13.839 ms |
+|       |       |        |       | model  |   9.142 ms |   9.753 ms |  10.133 ms |  11.507 ms |  11.507 ms |
+|       |       |        |       | search |   0.749 ms |   0.848 ms |   0.909 ms |   1.052 ms |   1.052 ms |
+|       |  128  |   1k   |  10   | total  |  31.811 ms |  32.348 ms |  33.224 ms |  41.531 ms |  41.531 ms |
+|       |       |        |       | model  |  29.265 ms |  29.772 ms |  30.604 ms |  31.926 ms |  31.926 ms |
+|       |       |        |       | search |   2.338 ms |   2.495 ms |   2.615 ms |   3.166 ms |   3.166 ms |
 
 * QPS
   * total (mean)
@@ -125,27 +125,32 @@ cargo +nightly run --release --features example --bin main "query"
 
 * num of documents : 127.6K documents
 
-|  batch size | requests |   k    |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
-|    :---:    |  :---:   | :---:  | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
-|       1     |   10k    |   10   | total  |   4.833 ms |   5.426 ms |   6.037 ms |   9.578 ms |  12.411 ms |
-|             |          |        | model  |   4.507 ms |   4.994 ms |   5.505 ms |   8.979 ms |  12.094 ms |
-|             |          |        | search |   0.203 ms |   0.308 ms |   0.354 ms |   0.449 ms |   0.567 ms |
-|      32     |    1k    |   10   | total  |  10.403 ms |  10.951 ms |  11.625 ms |  16.794 ms |  16.794 ms |
-|             |          |        | model  |   9.211 ms |   9.684 ms |  10.226 ms |  14.796 ms |  14.796 ms |
-|             |          |        | search |   0.981 ms |   1.183 ms |   1.386 ms |   2.386 ms |   2.386 ms |
-|     128     |    1k    |   10   | total  |  32.220 ms |  32.602 ms |  32.862 ms |  33.440 ms |  33.440 ms |
-|             |          |        | model  |  29.120 ms |  29.411 ms |  29.653 ms |  30.333 ms |  30.333 ms |
-|             |          |        | search |   2.855 ms |   3.007 ms |   3.154 ms |   3.452 ms |   3.452 ms |
+| dist  |  bs   |  reqs  |   k   |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
+| :---: | :---: |  :---: | :---: | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
+|  L2   |    1  |   10k  |  10   | total  |   4.833 ms |   5.426 ms |   6.037 ms |   9.578 ms |  12.411 ms |
+|       |       |        |       | model  |   4.507 ms |   4.994 ms |   5.505 ms |   8.979 ms |  12.094 ms |
+|       |       |        |       | search |   0.203 ms |   0.308 ms |   0.354 ms |   0.449 ms |   0.567 ms |
+|       |   32  |   1k   |  10   | total  |  10.403 ms |  10.951 ms |  11.625 ms |  16.794 ms |  16.794 ms |
+|       |       |        |       | model  |   9.211 ms |   9.684 ms |  10.226 ms |  14.796 ms |  14.796 ms |
+|       |       |        |       | search |   0.981 ms |   1.183 ms |   1.386 ms |   2.386 ms |   2.386 ms |
+|       |  128  |   1k   |  10   | total  |  32.220 ms |  32.602 ms |  32.862 ms |  33.440 ms |  33.440 ms |
+|       |       |        |       | model  |  29.120 ms |  29.411 ms |  29.653 ms |  30.333 ms |  30.333 ms |
+|       |       |        |       | search |   2.855 ms |   3.007 ms |   3.154 ms |   3.452 ms |   3.452 ms |
+| Cos   |  128  |   1k   |  10   | total  |  33.252 ms |  33.522 ms |  33.997 ms |  35.082 ms |  35.082 ms |
+|       |       |        |       | model  |  29.107 ms |  29.294 ms |  29.453 ms |  30.897 ms |  30.897 ms |
+|       |       |        |       | search |   3.869 ms |   4.000 ms |   4.329 ms |   4.557 ms |   4.557 ms |
 
 * QPS
-  * total (mean)
+  * total (mean, L2)
     * bs 1   :  207 QPS
     * bs 32  : 3076 QPS
     * bs 128 : 3973 QPS
-  * search (mean)
+  * search (mean, L2)
     * bs 1   :  4926 QPS
     * bs 32  : 32620 QPS
     * bs 128 : 44834 QPS
+  * search (mean, Cosine)
+    * bs 128 : 33083 QPS
 
 ## Examples
 
