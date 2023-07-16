@@ -1,7 +1,7 @@
 .PHONY: format client server builder
 
 format:
-	cargo fmt
+	cargo +nightly fmt
 
 client:
 	cargo +nightly run --release --bin client 1 1000 128 10
