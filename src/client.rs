@@ -125,12 +125,12 @@ fn log_stats(description: &str, i: usize, latencies: &Vec<u64>) {
     let mut lats: Vec<u64> = latencies.clone();
     lats.sort_unstable();
 
-    let mean: f64 = lats.clone().iter().sum::<u64>() / i as f64 * 1e-6;
+    let mean: f64 = (lats.clone().iter().sum::<u64>() / i as u64) as f64 * 1e-6;
     let max: f64 = *lats.clone().last().unwrap() as f64 * 1e-6;
 
     let ps: Vec<String> = percentiles(&[0.5, 0.95, 0.99, 0.999], &mut lats)
-        .iter()
-        .map(|(p, x)| format!("p{:2.1}={:1.3} ms", 100.0 * p, *x))
+        .par_iter()
+        .map(|(p, x)| format!("p{:2.1}={:1.3} ms", 100.0 * p, *x as f64 * 1e-6))
         .collect();
 
     println!(
@@ -143,9 +143,9 @@ fn log_stats(description: &str, i: usize, latencies: &Vec<u64>) {
     );
 }
 
-fn percentiles(ps: &[f32], lats: &mut Vec<u64>) -> Vec<(f32, f64)> {
+fn percentiles(ps: &[f32], lats: &mut Vec<u64>) -> Vec<(f32, u64)> {
     ps.par_iter()
-        .map(|p: &f32| (*p, lats[((lats.len() as f32) * p) as f64 * 1e-6]))
+        .map(|p: &f32| (*p, lats[((lats.len() as f32) * p) as usize]))
         .collect()
 }
 
