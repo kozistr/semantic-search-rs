@@ -3,7 +3,7 @@ pub mod search;
 pub mod utils;
 
 pub mod ss {
-	use tonic;
+    use tonic;
 
-	tonic::include_proto!("ss");
+    tonic::include_proto!("ss");
 }
