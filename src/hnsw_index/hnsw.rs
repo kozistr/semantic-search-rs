@@ -5,7 +5,6 @@
 
 use serde::{Deserialize, Serialize};
 
-use cpu_time::ProcessTime;
 use std::time::SystemTime;
 
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
@@ -1641,8 +1640,6 @@ mod tests {
 
     use rand::distributions::Uniform;
 
-    use cpu_time::ProcessTime;
-
     #[test]
 
     fn test_iter_point() {
@@ -1666,7 +1663,6 @@ mod tests {
         // check insertion
         let ef_construct = 25;
         let nb_connection = 10;
-        let start = ProcessTime::now();
         let hns = Hnsw::<f32, dist::DistL1>::new(
             nb_connection,
             nbcolumn,
@@ -1677,8 +1673,6 @@ mod tests {
         for i in 0..data.len() {
             hns.insert((&data[i], i));
         }
-        let cpu_time = start.elapsed();
-        println!(" test_insert_iter_point time inserting {:?}", cpu_time);
 
         hns.dump_layer_info();
         // now check iteration
@@ -1718,7 +1712,6 @@ mod tests {
         // check insertion
         let ef_construct = 25;
         let nb_connection = 10;
-        let start = ProcessTime::now();
         let hns = Hnsw::<f32, dist::DistL1>::new(
             nb_connection,
             nbcolumn,
@@ -1729,8 +1722,6 @@ mod tests {
         for i in 0..data.len() {
             hns.insert((&data[i], i));
         }
-        let cpu_time = start.elapsed();
-        println!(" test_insert_iter_point time inserting {:?}", cpu_time);
 
         hns.dump_layer_info();
         // now check iteration
