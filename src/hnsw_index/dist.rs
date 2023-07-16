@@ -12,7 +12,6 @@
 ///
 ///
 /// The L1 and Cosine distance are implemented for u16, i32, i64, f32, f64
-///
 use std::os::raw::*;
 
 use num_traits::float::*;
@@ -188,9 +187,9 @@ pub struct DistCosine;
 macro_rules! implementCosDistance(
     ($ty:ty) => (
      impl Distance<$ty> for DistCosine  {
-        fn eval(&self, va:&[$ty], vb: &[$ty]) -> f32 {
-            let dist:f32;
-            let zero:f64 = 0.;
+        fn eval(&self, va: &[$ty], vb: &[$ty]) -> f32 {
+            let dist: f32;
+            let zero: f64 = 0.;
 
             let res = va.iter().zip(vb.iter()).map(|t| ((*t.0 * *t.1) as f64, (*t.0 * *t.0) as f64, (*t.1 * *t.1) as f64)).
                 fold((0., 0., 0.), |acc , t| (acc.0 + t.0, acc.1 + t.1, acc.2 + t.2));
