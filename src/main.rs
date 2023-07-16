@@ -22,7 +22,7 @@ fn main() {
         .map(|res| res.unwrap()[0].to_string())
         .collect();
 
-    let query: String = "news about Tesla stock holders".to_string();
+    let query: String = "Asia shares drift lower as investors factor in Fed rate hike.".to_string();
 
     let query_embedding: Vec<Vec<f32>> = model.encode(&[query]).unwrap();
 
