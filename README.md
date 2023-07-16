@@ -5,13 +5,24 @@ navie semantic search demo with gRPC server in Rust
 ## Goals
 
 * cost-effective billion-scale vector serach in a single digit latency (< 10 ms)
-* stateless searcher
-  * single machine, but lots of RAM, disk space
+* stateless vector searcher
 * software & hardware-level optimizations to effectively utilize the resources
 
 ## Non-Goals
 
 * distributed & sharded index building & searching
+* quantize & reduce the embedding dimension
+* support various indexing algorithms
+
+### real thing does matter
+
+To serve billion-scale vector search in real-time, effectively, there're two things to be achieved, followed by [this post](https://0x65.dev/blog/2019-12-07/indexing-billions-of-text-vectors.html).
+
+1. vector
+    * reduce vector size
+    * quantize vector
+2. offload the index (to the local disk)
+    * to save memory
 
 ## To-Do
 
@@ -19,21 +30,18 @@ navie semantic search demo with gRPC server in Rust
 * [ ] memmap the `.data` (offload to the local disk) to reduce the memory usage
 * [ ] separate embedding and search part as a different micro service
 * [ ] (optional) hybrid HNSW-IF indexing
-* [ ] (optional) quantize & reduce the embedding dimension
 
 ## Architecture
 
 ### Features
 
 * gRPC server
-* dynamic batch
-  * batch inference
-  * multi-threaded search
+* dynamic batch inference (both of model & search)
 * inference a LM in a real time on the GPU.
   * model info : [hf - Mini-LM L12 v2](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)
 * ANN (modified hnswlib-rs)
   * multi-threaded insertion and search.
-  * SIMD accelrated distance calculation.
+  * SIMD accelrated distance calculation. (re-implemented)
   * HNSW (FLAT) index
 
 ### Data
@@ -88,7 +96,6 @@ cargo +nightly run --release --features example --bin main "query"
 * CPU : i7-7700K
 * Info
   * compiled with `AVX2`, `FMA` flags (RUSTCFLAGS)
-  * do some hareware & software optimizations
   * indexing : HNSW (FLAT)
   * embedding dimenstion : 384
   * distance measure : L2, Cosine
