@@ -1,6 +1,6 @@
 use csv;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
-use std::fs::File;
+use std::{env, fs::File};
 
 use semantic_search::{
     hnsw_index::{
@@ -11,6 +11,15 @@ use semantic_search::{
 };
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    let query: String = if args.len() < 1 {
+        "Asia shares drift lower as investors factor in Fed rate hike.".to_string()
+    } else {
+        args[1].to_string()
+    };
+    println!("query : {:?}", query);
+
     let model: SentenceEmbeddingsModel = load_model();
     let index: Hnsw<f32, DistL2> = load_index("news");
 
@@ -21,8 +30,6 @@ fn main() {
         .records()
         .map(|res| res.unwrap()[0].to_string())
         .collect();
-
-    let query: String = "Asia shares drift lower as investors factor in Fed rate hike.".to_string();
 
     let query_embedding: Vec<Vec<f32>> = model.encode(&[query]).unwrap();
 
