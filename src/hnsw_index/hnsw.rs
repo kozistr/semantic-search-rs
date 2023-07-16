@@ -2,11 +2,7 @@
 //! Efficient and robust approximate nearest neighbour search using Hierarchical Navigable
 //! small World graphs.
 //! Yu. A. Malkov, D.A Yashunin 2016, 2018
-
 use serde::{Deserialize, Serialize};
-
-use std::time::SystemTime;
-
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rayon::prelude::*;
 use std::{
