@@ -275,16 +275,14 @@ pub struct DistDot;
 macro_rules! implementDotDistance(
     ($ty:ty) => (
      impl Distance<$ty> for DistDot  {
-        fn eval(&self, va:&[$ty], vb: &[$ty]) -> f32 {
-        let zero:f32 = 0f32;
-        // to // by rayon
+        fn eval(&self, va: &[$ty], vb: &[$ty]) -> f32 {
+        let zero: f32 = 0f32;
         let dot = va.iter().zip(vb.iter()).map(|t| (*t.0 * *t.1) as f32).fold(0., |acc , t| (acc + t));
-        //
         assert(dot <= 1.);
-        return  1. - dot;
-        } // end of function
-      } // end of impl block
-    ) // end of matching
+        return 1. - dot;
+        }  // end of function
+      }  // end of impl block
+    )  // end of matching
 );
 
 #[allow(unused)]

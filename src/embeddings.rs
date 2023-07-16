@@ -10,7 +10,7 @@ use csv::Reader;
 use indicatif::ProgressBar;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use semantic_search::{
-    hnsw_index::{api::AnnT, dist::DistCosine, hnsw::Hnsw},
+    hnsw_index::{api::AnnT, dist::DistDot, hnsw::Hnsw},
     utils::load_model,
 };
 use serde::Deserialize;
@@ -84,8 +84,8 @@ fn main() -> Result<()> {
     let max_nb_connection: usize = 16;
     let ef_c: usize = 200;
     let nb_layer: usize = 16;
-    let index: Hnsw<f32, DistCosine> =
-        Hnsw::<f32, DistCosine>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistCosine {});
+    let index: Hnsw<f32, DistDot> =
+        Hnsw::<f32, DistDot>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistDot {});
 
     let mut embeddings: Vec<Vec<f32>> = Vec::with_capacity(nb_elem);
 

@@ -9,7 +9,7 @@ use rust_bert::pipelines::sentence_embeddings::{
 };
 
 use crate::hnsw_index::{
-    dist::DistCosine,
+    dist::DistDot,
     hnsw::Hnsw,
     hnswio::{load_description, load_hnsw, Description},
 };
@@ -36,13 +36,13 @@ fn load_file(filename: &String) -> BufReader<File> {
     reader
 }
 
-pub fn load_index(dataset: &str) -> Hnsw<f32, DistCosine> {
+pub fn load_index(dataset: &str) -> Hnsw<f32, DistDot> {
     println!("load index");
     let mut graph: BufReader<File> = load_file(&format!("{}.hnsw.graph", dataset));
     // todo: offload to the disk (memmmap) to save the memmory
     let mut data: BufReader<File> = load_file(&format!("{}.hnsw.data", dataset));
 
     let description: Description = load_description(&mut graph).unwrap();
-    let index: Hnsw<f32, DistCosine> = load_hnsw(&mut graph, &description, &mut data).unwrap();
+    let index: Hnsw<f32, DistDot> = load_hnsw(&mut graph, &description, &mut data).unwrap();
     index
 }

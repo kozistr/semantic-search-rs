@@ -5,7 +5,7 @@ use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 
 use crate::{
     hnsw_index::{
-        dist::DistCosine,
+        dist::DistDot,
         hnsw::{Hnsw, Neighbour},
     },
     ss::{Features, Index, PredictRequest, PredictResponse},
@@ -17,7 +17,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 thread_local! {
     pub static MODEL: SentenceEmbeddingsModel = load_model();
-    pub static INDEX: Hnsw<f32, DistCosine> = load_index("news");
+    pub static INDEX: Hnsw<f32, DistDot> = load_index("news");
 }
 
 pub fn preprocess(request: &PredictRequest) -> (Vec<String>, usize) {
@@ -42,7 +42,7 @@ pub fn search(request: PredictRequest) -> PredictResponse {
 
     let start: Instant = Instant::now();
     let neighbor_index: Vec<Vec<Neighbour>> =
-        INDEX.with(|index: &Hnsw<f32, DistCosine>| index.parallel_search(&query_embeddings, k, 30));
+        INDEX.with(|index: &Hnsw<f32, DistDot>| index.parallel_search(&query_embeddings, k, 30));
     let search_latency: u64 = start.elapsed().as_nanos() as u64;
 
     PredictResponse {
