@@ -145,9 +145,9 @@ cargo +nightly run --release --features example --bin main "query"
 |       |  128  |   1k   |  10   | total  |  32.220 ms |  32.602 ms |  32.862 ms |  33.440 ms |  33.440 ms |
 |       |       |        |       | model  |  29.120 ms |  29.411 ms |  29.653 ms |  30.333 ms |  30.333 ms |
 |       |       |        |       | search |   2.855 ms |   3.007 ms |   3.154 ms |   3.452 ms |   3.452 ms |
-| Cos   |  128  |   1k   |  10   | total  |  33.252 ms |  33.522 ms |  33.997 ms |  35.082 ms |  35.082 ms |
-|       |       |        |       | model  |  29.107 ms |  29.294 ms |  29.453 ms |  30.897 ms |  30.897 ms |
-|       |       |        |       | search |   3.869 ms |   4.000 ms |   4.329 ms |   4.557 ms |   4.557 ms |
+| Cos   |  128  |   1k   |  10   | total  |  31.547 ms |  31.890 ms |  32.087 ms |  33.479 ms |  33.479 ms |
+|       |       |        |       | model  |  28.992 ms |  29.229 ms |  29.438 ms |  30.936 ms |  30.936 ms |
+|       |       |        |       | search |   2.275 ms |   2.444 ms |   2.595 ms |   2.722 ms |   2.722 ms |
 
 * QPS
   * total (mean, L2)
@@ -159,7 +159,7 @@ cargo +nightly run --release --features example --bin main "query"
     * bs 32  : 32620 QPS
     * bs 128 : 44834 QPS
   * search (mean, Cosine)
-    * bs 128 : 33083 QPS
+    * bs 128 : 56264 QPS
 
 ## Examples
 
