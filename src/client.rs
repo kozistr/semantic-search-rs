@@ -126,7 +126,7 @@ fn log_stats(description: &str, i: usize, latencies: &Vec<u64>, take: usize) {
     let mean: u64 = lats.clone().sum::<u64>() / i as u64;
     let max: u64 = *lats.clone().max().unwrap();
 
-    let ps: Vec<String> = percentiles(&[0.95, 0.99, 0.999], latencies, take)
+    let ps: Vec<String> = percentiles(&[0.5, 0.95, 0.99, 0.999], latencies, take)
         .iter()
         .map(|(p, x)| format!("p{:2.1}={:1.3} ms", 100.0 * p, *x as f64 * 1e-6))
         .collect();
