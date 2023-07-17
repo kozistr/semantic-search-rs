@@ -104,33 +104,7 @@ cargo +nightly run --release --features example --bin main "query"
   * k : 10
   * warm up with 10 times
 
-### CMU Book Summary dataset
-
-* num of documents : 16,559 documents
-
-| dist  |  bs   |  reqs  |   k   |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
-| :---: | :---: |  :---: | :---: | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
-|  L2   |    1  |   10k  |  10   | total  |   7.335 ms |   7.623 ms |   8.159 ms |   8.754 ms |  10.203 ms |
-|       |       |        |       | model  |   7.067 ms |   7.279 ms |   7.734 ms |   8.312 ms |   9.710 ms |
-|       |       |        |       | search |   0.156 ms |   0.220 ms |   0.267 ms |   0.312 ms |   0.346 ms |
-|       |   32  |   1k   |  10   | total  |  10.119 ms |  10.795 ms |  11.263 ms |  13.839 ms |  13.839 ms |
-|       |       |        |       | model  |   9.142 ms |   9.753 ms |  10.133 ms |  11.507 ms |  11.507 ms |
-|       |       |        |       | search |   0.749 ms |   0.848 ms |   0.909 ms |   1.052 ms |   1.052 ms |
-|       |  128  |   1k   |  10   | total  |  31.811 ms |  32.348 ms |  33.224 ms |  41.531 ms |  41.531 ms |
-|       |       |        |       | model  |  29.265 ms |  29.772 ms |  30.604 ms |  31.926 ms |  31.926 ms |
-|       |       |        |       | search |   2.338 ms |   2.495 ms |   2.615 ms |   3.166 ms |   3.166 ms |
-
-* QPS
-  * total (mean)
-    * bs 1   :  136 QPS
-    * bs 32  : 3162 QPS
-    * bs 128 : 4024 QPS
-  * search (mean)
-    * bs 1   :  6410 QPS
-    * bs 32  : 42724 QPS
-    * bs 128 : 54748 QPS
-
-### AG News dataset
+### AG News
 
 * num of documents : 127.6K documents
 
@@ -163,26 +137,8 @@ cargo +nightly run --release --features example --bin main "query"
 
 ## Examples
 
-### CMU Book
-
-```text
-query : The story about prep school
-search speed : 288.5µs
-top 1, title : Some("Prayer for the Living")
-top 2, title : Some("The Princess Diaries, Volume VI: Princess in Training")
-top 3, title : Some("School Days")
-top 4, title : Some("The Fall of Doctor Onslow")
-top 5, title : Some("Love Lessons")
-top 6, title : Some("The Turbulent Term of Tyke Tiler")
-top 7, title : Some("The Fabled Fourth Graders of Aesop Elementary School")
-top 8, title : Some("Flour Babies")
-top 9, title : Some("The Freedom Writers Diary")
-top 10, title : Some("Truancy")
-```
-
-### AG News
-
-* query : `Asia shares drift lower as investors factor in Fed rate hike.`
+* dataset : [ag_news](https://huggingface.co/datasets/ag_news)
+* query   : `Asia shares drift lower as investors factor in Fed rate hike.`
 
 Cosine distance
 
@@ -233,11 +189,6 @@ Asian Markets Mixed on China Rate Hike (AP) AP - Asian financial markets showed 
 top 10 | id : 76632, dist : 0.8489096
 Asian Stocks Ease After China Rate Rise (Reuters) Reuters - China's surprise interest rate rise\weighed down Asian stocks on Friday as investors sold shares of\miners, shippers and other firms whose fortunes have been\closely linked to the country's rapid growth.
 ```
-
-## Datasets
-
-* https://huggingface.co/datasets/ag_news
-* https://www.kaggle.com/datasets/ymaricar/cmu-book-summary-dataset
 
 ## References
 
