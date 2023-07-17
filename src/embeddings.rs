@@ -1,31 +1,12 @@
-use std::fs::{read_to_string, File};
 use std::time::Instant;
-use std::{env, process};
 
 use anyhow::Result;
-use csv::Reader;
 use indicatif::ProgressBar;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use semantic_search::hnsw_index::api::AnnT;
 use semantic_search::hnsw_index::dist::DistDot;
 use semantic_search::hnsw_index::hnsw::Hnsw;
 use semantic_search::utils::{load_data, load_model};
-
-#[derive(Debug, Clone)]
-struct Config {
-    dataset: String,
-}
-impl Config {
-    fn new(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 2 {
-            return Err("not enough arguments");
-        }
-
-        let dataset: String = args[1].clone();
-
-        Ok(Config { dataset })
-    }
-}
 
 fn main() -> Result<()> {
     let start: Instant = Instant::now();
@@ -63,7 +44,7 @@ fn main() -> Result<()> {
     index.parallel_insert(&embeddings_indices);
     println!("parallel insert : {:.3?}", start.elapsed());
 
-    _ = index.file_dump(&config.dataset);
+    _ = index.file_dump(&"news".to_string());
 
     Ok(())
 }
