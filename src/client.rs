@@ -1,14 +1,11 @@
-use std::{
-    env, process,
-    sync::mpsc,
-    time::{Duration, Instant},
-};
+use std::sync::mpsc;
+use std::time::{Duration, Instant};
+use std::{env, process};
 
 use anyhow::Result;
 use rayon::prelude::*;
-use semantic_search::ss::{
-    inference_client::InferenceClient, Features, PredictRequest, PredictResponse,
-};
+use semantic_search::ss::inference_client::InferenceClient;
+use semantic_search::ss::{Features, PredictRequest, PredictResponse};
 use tokio;
 
 #[derive(Debug, Clone)]
@@ -46,9 +43,7 @@ async fn execute(config: &Config) -> Result<Metrics> {
 
     let requests: PredictRequest = PredictRequest {
         features: vec![
-            Features {
-                query: "The story about the school life".to_string(),
-            };
+            Features { query: "The story about the school life".to_string() };
             config.bs
         ],
         k: config.k,
@@ -72,11 +67,7 @@ async fn execute(config: &Config) -> Result<Metrics> {
         search_lat[i] = response.search_latency;
     }
 
-    Ok(Metrics {
-        model_lat,
-        search_lat,
-        total_lat,
-    })
+    Ok(Metrics { model_lat, search_lat, total_lat })
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 8)]

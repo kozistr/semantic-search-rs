@@ -2,19 +2,17 @@
 //! This file provides a trait to be used as an opaque pointer for C or Julia calls used in file
 //! libext.rs
 
-use std::{
-    fs::OpenOptions,
-    io::{prelude::*, BufWriter},
-    path::PathBuf,
-};
+use std::fs::OpenOptions;
+use std::io::prelude::*;
+use std::io::BufWriter;
+use std::path::PathBuf;
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
-use crate::hnsw_index::{
-    dist::Distance,
-    hnsw::{Hnsw, Neighbour},
-    hnswio::{DumpMode, HnswIO},
-};
+use crate::hnsw_index::dist::Distance;
+use crate::hnsw_index::hnsw::{Hnsw, Neighbour};
+use crate::hnsw_index::hnswio::{DumpMode, HnswIO};
 
 pub trait AnnT {
     /// type of data vectors
@@ -32,7 +30,6 @@ pub trait AnnT {
         knbn: usize,
         ef_s: usize,
     ) -> Vec<Vec<Neighbour>>;
-    ///
     /// dumps a data and graph in 2 files.
     /// Datas are dumped in file filename.hnsw.data and graph in filename.hnsw.graph
     fn file_dump(&self, filename: &String) -> Result<i32, String>;
@@ -44,14 +41,17 @@ where
     D: Distance<T> + Send + Sync,
 {
     type Val = T;
+
     ///
     fn insert_data(&mut self, data: &Vec<Self::Val>, id: usize) {
         self.insert((data, id));
     }
+
     ///
     fn search_neighbours(&self, data: &Vec<T>, knbn: usize, ef_s: usize) -> Vec<Neighbour> {
         self.search(data, knbn, ef_s)
     }
+
     fn parallel_insert_data(&mut self, data: &Vec<(&Vec<Self::Val>, usize)>) {
         self.parallel_insert(data);
     }
@@ -64,6 +64,7 @@ where
     ) -> Vec<Vec<Neighbour>> {
         self.parallel_search(data, knbn, ef_s)
     }
+
     /// The main entry point to do a dump.  
     /// It will generate two files one for the graph part of the data. The other for the real data
     /// points of the structure.
@@ -81,14 +82,8 @@ where
             .open(&graphpath);
 
         if fileres.is_err() {
-            log::error!(
-                "api::file_dump could not open file {:?}",
-                graphpath.as_os_str()
-            );
-            println!(
-                "api::file_dump: could not open file {:?}",
-                graphpath.as_os_str()
-            );
+            log::error!("api::file_dump could not open file {:?}", graphpath.as_os_str());
+            println!("api::file_dump: could not open file {:?}", graphpath.as_os_str());
             return Err("api::file_dump could not open file".to_string());
         }
 
@@ -105,10 +100,7 @@ where
             .open(&datapath);
 
         if fileres.is_err() {
-            println!(
-                "api::file_dumpcould not open file {:?}",
-                datapath.as_os_str()
-            );
+            println!("api::file_dumpcould not open file {:?}", datapath.as_os_str());
             return Err("api::file_dump could not open file".to_string());
         }
         let datafile: std::fs::File = fileres.unwrap();

@@ -3,14 +3,10 @@ use std::time::Instant;
 use mimalloc::MiMalloc;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 
-use crate::{
-    hnsw_index::{
-        dist::DistDot,
-        hnsw::{Hnsw, Neighbour},
-    },
-    ss::{Features, Index, PredictRequest, PredictResponse},
-    utils::{load_index, load_model},
-};
+use crate::hnsw_index::dist::DistDot;
+use crate::hnsw_index::hnsw::{Hnsw, Neighbour};
+use crate::ss::{Features, Index, PredictRequest, PredictResponse};
+use crate::utils::{load_index, load_model};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;

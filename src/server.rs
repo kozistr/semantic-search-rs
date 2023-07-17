@@ -1,15 +1,12 @@
 use std::net::SocketAddr;
 
 use anyhow::Result;
-use semantic_search::{
-    search::search,
-    ss::{
-        inference_server::{Inference, InferenceServer},
-        PredictRequest, PredictResponse,
-    },
-};
+use semantic_search::search::search;
+use semantic_search::ss::inference_server::{Inference, InferenceServer};
+use semantic_search::ss::{PredictRequest, PredictResponse};
 use tokio;
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::transport::Server;
+use tonic::{Request, Response, Status};
 
 #[derive(Debug, Default)]
 pub struct VectorSearchService {}

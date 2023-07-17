@@ -1,18 +1,15 @@
-use std::{
-    fs::{File, OpenOptions},
-    io::BufReader,
-    path::{Path, PathBuf},
-};
+use std::fs::{File, OpenOptions};
+use std::io::BufReader;
+use std::path::{Path, PathBuf};
 
+use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModelType::AllMiniLmL12V2;
 use rust_bert::pipelines::sentence_embeddings::{
-    SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType::AllMiniLmL12V2,
+    SentenceEmbeddingsBuilder, SentenceEmbeddingsModel,
 };
 
-use crate::hnsw_index::{
-    dist::DistDot,
-    hnsw::Hnsw,
-    hnswio::{load_description, load_hnsw, Description},
-};
+use crate::hnsw_index::dist::DistDot;
+use crate::hnsw_index::hnsw::Hnsw;
+use crate::hnsw_index::hnswio::{load_description, load_hnsw, Description};
 
 pub fn load_model() -> SentenceEmbeddingsModel {
     let model: SentenceEmbeddingsModel = if Path::new("models").is_dir() {

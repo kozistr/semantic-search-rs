@@ -6,7 +6,11 @@
 //! The graph file is suffixed by "hnsw.graph" the other is suffixed by "hnsw.data"
 //!
 //! An example of dump and reload of structure Hnsw is given in the tests (see test_dump_reload)
-use std::{any::type_name, collections::HashMap, io, io::prelude::*, sync::Arc};
+use std::any::type_name;
+use std::collections::HashMap;
+use std::io;
+use std::io::prelude::*;
+use std::sync::Arc;
 
 use parking_lot::RwLock;
 ///
@@ -105,9 +109,7 @@ impl Description {
         out.write(&self.nb_layer.to_ne_bytes()).unwrap();
         if self.nb_layer != NB_LAYER_MAX {
             println!("dump of Description, nb_layer != NB_MAX_LAYER");
-            return Err(String::from(
-                "dump of Description, nb_layer != NB_MAX_LAYER",
-            ));
+            return Err(String::from("dump of Description, nb_layer != NB_MAX_LAYER"));
         }
 
         log::info!("dumping ef {:?}", self.ef);
@@ -133,7 +135,9 @@ impl Description {
         out.write(self.t_name.as_bytes()).unwrap();
 
         return Ok(1);
-    } // end fo dump
+    }
+
+    // end fo dump
 
     /// return data typename
     pub fn get_typename(&self) -> String {
@@ -170,10 +174,7 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
 
     if magic != MAGICDESCR_2 && magic != MAGICDESCR_3 {
         log::info!("bad magic");
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "bad magic at descr beginning",
-        ));
+        return Err(io::Error::new(io::ErrorKind::Other, "bad magic at descr beginning"));
     } else if magic == MAGICDESCR_2 {
         descr.format_version = 2;
     } else if magic == MAGICDESCR_3 {
@@ -210,11 +211,7 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
     io_in.read_exact(&mut it_slice)?;
     descr.dimension = usize::from_ne_bytes(it_slice);
-    log::info!(
-        "nb_point {:?} dimension {:?} ",
-        descr.nb_point,
-        descr.dimension
-    );
+    log::info!("nb_point {:?} dimension {:?} ", descr.nb_point, descr.dimension);
 
     // distance name
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
@@ -225,10 +222,7 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
     if len > 256 {
         log::info!(" length of distance name > 256");
         println!(" length of distance name should not exceed 256");
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "bad lenght for distance name",
-        ));
+        return Err(io::Error::new(io::ErrorKind::Other, "bad lenght for distance name"));
     }
 
     let mut distv: Vec<u8> = Vec::<u8>::new();
@@ -247,10 +241,7 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
     log::debug!("length of T  name {:?} ", len);
     if len > 256 {
         println!(" length of T name should not exceed 256");
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "bad lenght for T name",
-        ));
+        return Err(io::Error::new(io::ErrorKind::Other, "bad lenght for T name"));
     }
 
     let mut tnamev = Vec::<u8>::new();
@@ -265,7 +256,6 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
 
     Ok(descr)
 }
-//
 // dump and load of Point<T>
 // ==========================
 //
@@ -345,7 +335,6 @@ fn dump_point<'a, T: Serialize + Clone + Sized + Send + Sync, W: Write>(
     return Ok(1);
 } // end of dump for Point<T>
 
-//
 //  Reload a point from a dump.
 //
 //  The graph part is loaded from graph_in file
@@ -363,10 +352,7 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     let magic: u32 = u32::from_ne_bytes(it_slice);
     if magic != MAGICPOINT {
         log::debug!("got instead of MAGICPOINT {:x}", magic);
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "bad magic at point beginning",
-        ));
+        return Err(io::Error::new(io::ErrorKind::Other, "bad magic at point beginning"));
     }
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<DataId>()];
     graph_in.read_exact(&mut it_slice).unwrap();
@@ -381,10 +367,7 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<i32>()];
     graph_in.read_exact(&mut it_slice)?;
     let rank_in_l: i32 = i32::from_ne_bytes(it_slice);
-    let p_id: PointId = PointId {
-        0: layer,
-        1: rank_in_l,
-    };
+    let p_id: PointId = PointId { 0: layer, 1: rank_in_l };
     //    log::debug!(" point load {:?} {:?}  ", p_id, origin_id);
 
     // Now  for each layer , read neighbours
@@ -427,7 +410,6 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
         neighborhood.push(Vec::<Neighbour>::new());
     }
 
-    //
     // construct a point from data_in
     //
     let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
@@ -443,10 +425,7 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<u64>()];
     data_in.read_exact(&mut it_slice)?;
     let origin_id_data: usize = u64::from_ne_bytes(it_slice) as usize;
-    assert_eq!(
-        origin_id, origin_id_data,
-        "origin_id incoherent between graph and data"
-    );
+    assert_eq!(origin_id, origin_id_data, "origin_id incoherent between graph and data");
 
     // now read data. we use size_t that is in description, to take care of the casewhere we reload
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<u64>()];
@@ -495,7 +474,6 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     return Ok((Arc::new(point), neighborhood));
 } // end of load_point
 
-//
 // dump and load of PointIndexation<T>
 // ===================================
 //
@@ -526,13 +504,7 @@ impl<T: Serialize + DeserializeOwned + Clone + Send + Sync> HnswIO for PointInde
             graphout.write(&MAGICLAYER.to_ne_bytes()).unwrap();
             graphout.write(&nb_point.to_ne_bytes()).unwrap();
             for j in 0..layers[i].len() {
-                assert_eq!(
-                    layers[i][j].get_point_id(),
-                    PointId {
-                        0: i as u8,
-                        1: j as i32
-                    }
-                );
+                assert_eq!(layers[i][j].get_point_id(), PointId { 0: i as u8, 1: j as i32 });
                 dump_point(&layers[i][j], mode, graphout, dataout)?;
             }
         }
@@ -547,11 +519,7 @@ impl<T: Serialize + DeserializeOwned + Clone + Send + Sync> HnswIO for PointInde
             graphout.write(&p_id.0.to_ne_bytes()).unwrap();
             graphout.write(&p_id.1.to_ne_bytes()).unwrap();
         }
-        log::info!(
-            "dumped entry_point origin_d {:?}, p_id {:?} ",
-            ep.get_origin_id(),
-            p_id
-        );
+        log::info!("dumped entry_point origin_d {:?}, p_id {:?} ", ep.get_origin_id(), p_id);
         //
         Ok(1)
     } // end of dump for PointIndexation<T>
@@ -566,7 +534,6 @@ fn load_point_indexation<
 ) -> io::Result<PointIndexation<T>> {
     //
     log::debug!(" in load_point_indexation");
-    //
     // now we check that except for the case NoData, the typename are the sames.
     if std::any::TypeId::of::<T>() != std::any::TypeId::of::<NoData>()
         && std::any::type_name::<T>() != descr.t_name
@@ -587,10 +554,7 @@ fn load_point_indexation<
     let nb_layer: u8 = u8::from_ne_bytes(it_slice);
     log::debug!("nb layer {:?}", nb_layer);
     if nb_layer > NB_LAYER_MAX {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "inconsistent number of layErrers",
-        ));
+        return Err(io::Error::new(io::ErrorKind::Other, "inconsistent number of layErrers"));
     }
     //
     let mut nb_points_loaded: usize = 0;
@@ -602,10 +566,7 @@ fn load_point_indexation<
         graph_in.read_exact(&mut it_slice)?;
         let magic: u32 = u32::from_ne_bytes(it_slice);
         if magic != MAGICLAYER {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "bad magic at layer beginning",
-            ));
+            return Err(io::Error::new(io::ErrorKind::Other, "bad magic at layer beginning"));
         }
         let mut it_slice: [u8; 8] = [0u8; ::std::mem::size_of::<usize>()];
         graph_in.read_exact(&mut it_slice)?;
@@ -630,11 +591,7 @@ fn load_point_indexation<
             // some checks
             assert_eq!(l, p_id.0 as usize);
             if r != p_id.1 as usize {
-                log::debug!(
-                    "\n\n origin= {:?},  p_id = {:?}",
-                    point.get_origin_id(),
-                    p_id
-                );
+                log::debug!("\n\n origin= {:?},  p_id = {:?}", point.get_origin_id(), p_id);
                 log::debug!("storing at l {:?}, r {:?}", l, r);
             }
             assert_eq!(r, p_id.1 as usize);
@@ -661,7 +618,7 @@ fn load_point_indexation<
                 let n_pwo: PointWithOrder<T> = PointWithOrder::<T>::new(n_point, n.distance);
                 point.neighbours.write()[l].push(Arc::new(n_pwo));
             } // end of for n
-              //  must sort
+            //  must sort
             point.neighbours.write()[l].sort_unstable();
         } // end of for l
 
@@ -670,9 +627,8 @@ fn load_point_indexation<
             log::debug!("reloading nb_points neighbourhood completed : {}", nbp);
         }
     } // end loop in neighbourhood_map
-      //
-      // get id of entry_point
-      // load entry point
+    // get id of entry_point
+    // load entry point
     log::info!(
         "\n end of layer loading, allocating PointIndexation, nb points loaded {:?}",
         nb_points_loaded
@@ -721,16 +677,13 @@ fn load_point_indexation<
     Ok(point_indexation)
 } // end of load_pointIndexation
 
-//
 // dump and load of Hnsw<T>
 // =========================
 //
 //
 
-impl<
-        T: Serialize + DeserializeOwned + Clone + Sized + Send + Sync,
-        D: Distance<T> + Send + Sync,
-    > HnswIO for Hnsw<T, D>
+impl<T: Serialize + DeserializeOwned + Clone + Sized + Send + Sync, D: Distance<T> + Send + Sync>
+    HnswIO for Hnsw<T, D>
 {
     /// The dump method for hnsw.  
     /// - graphout is a BufWriter dedicated to the dump of the graph part of Hnsw
@@ -789,10 +742,7 @@ pub fn load_hnsw<
     data_in.read_exact(&mut it_slice)?;
 
     let magic: u32 = u32::from_ne_bytes(it_slice);
-    assert_eq!(
-        magic, MAGICDATAP,
-        "magic not equal to MAGICDATAP in load_point"
-    );
+    assert_eq!(magic, MAGICDATAP, "magic not equal to MAGICDATAP in load_point");
     //
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
     data_in.read_exact(&mut it_slice)?;
@@ -869,10 +819,7 @@ pub fn load_hnsw_with_dist<
     let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
     data_in.read_exact(&mut it_slice)?;
     let magic: u32 = u32::from_ne_bytes(it_slice);
-    assert_eq!(
-        magic, MAGICDATAP,
-        "magic not equal to MAGICDATAP in load_point"
-    );
+    assert_eq!(magic, MAGICDATAP, "magic not equal to MAGICDATAP in load_point");
     //
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
     data_in.read_exact(&mut it_slice)?;
@@ -935,13 +882,16 @@ pub fn load_hnsw_with_dist<
 #[cfg(test)]
 mod tests {
 
-    use std::{fs::OpenOptions, io::BufReader, path::PathBuf};
+    use std::fs::OpenOptions;
+    use std::io::BufReader;
+    use std::path::PathBuf;
 
     use rand::distributions::{Distribution, Uniform};
 
     use super::*;
+    pub use crate::api::AnnT;
     use crate::dist;
-    pub use crate::{api::AnnT, dist::*};
+    pub use crate::dist::*;
 
     fn log_init_test() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -1000,10 +950,7 @@ mod tests {
         let graphfileres: Result<std::fs::File, io::Error> =
             OpenOptions::new().read(true).open(&graphpath);
         if graphfileres.is_err() {
-            println!(
-                "test_dump_reload: could not open file {:?}",
-                graphpath.as_os_str()
-            );
+            println!("test_dump_reload: could not open file {:?}", graphpath.as_os_str());
             std::panic::panic_any("test_dump_reload: could not open file".to_string());
         }
         let graphfile: std::fs::File = graphfileres.unwrap();
@@ -1013,10 +960,7 @@ mod tests {
         let datafileres: Result<std::fs::File, io::Error> =
             OpenOptions::new().read(true).open(&datapath);
         if datafileres.is_err() {
-            println!(
-                "test_dump_reload : could not open file {:?}",
-                datapath.as_os_str()
-            );
+            println!("test_dump_reload : could not open file {:?}", datapath.as_os_str());
             std::panic::panic_any("test_dump_reload : could not open file".to_string());
         }
         let datafile: std::fs::File = datafileres.unwrap();
@@ -1080,10 +1024,7 @@ mod tests {
         let graphfileres: Result<std::fs::File, io::Error> =
             OpenOptions::new().read(true).open(&graphpath);
         if graphfileres.is_err() {
-            println!(
-                "test_dump_reload: could not open file {:?}",
-                graphpath.as_os_str()
-            );
+            println!("test_dump_reload: could not open file {:?}", graphpath.as_os_str());
             std::panic::panic_any("test_dump_reload: could not open file".to_string());
         }
         let graphfile: std::fs::File = graphfileres.unwrap();
@@ -1093,10 +1034,7 @@ mod tests {
         let datafileres: Result<std::fs::File, io::Error> =
             OpenOptions::new().read(true).open(&datapath);
         if datafileres.is_err() {
-            println!(
-                "test_dump_reload : could not open file {:?}",
-                datapath.as_os_str()
-            );
+            println!("test_dump_reload : could not open file {:?}", datapath.as_os_str());
             std::panic::panic_any("test_dump_reload : could not open file".to_string());
         }
         let datafile: std::fs::File = datafileres.unwrap();
@@ -1158,10 +1096,7 @@ mod tests {
         let graphpath = PathBuf::from(graphfname);
         let graphfileres = OpenOptions::new().read(true).open(&graphpath);
         if graphfileres.is_err() {
-            println!(
-                "test_dump_reload: could not open file {:?}",
-                graphpath.as_os_str()
-            );
+            println!("test_dump_reload: could not open file {:?}", graphpath.as_os_str());
             std::panic::panic_any("test_dump_reload: could not open file".to_string());
         }
         let graphfile = graphfileres.unwrap();
@@ -1170,10 +1105,7 @@ mod tests {
         let datapath = PathBuf::from(datafname);
         let datafileres = OpenOptions::new().read(true).open(&datapath);
         if datafileres.is_err() {
-            println!(
-                "test_dump_reload : could not open file {:?}",
-                datapath.as_os_str()
-            );
+            println!("test_dump_reload : could not open file {:?}", datapath.as_os_str());
             std::panic::panic_any("test_dump_reload : could not open file".to_string());
         }
         let datafile = datafileres.unwrap();

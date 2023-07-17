@@ -1,18 +1,15 @@
-use std::{
-    env,
-    fs::{read_to_string, File},
-    process,
-    time::Instant,
-};
+use std::fs::{read_to_string, File};
+use std::time::Instant;
+use std::{env, process};
 
 use anyhow::Result;
 use csv::Reader;
 use indicatif::ProgressBar;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
-use semantic_search::{
-    hnsw_index::{api::AnnT, dist::DistDot, hnsw::Hnsw},
-    utils::load_model,
-};
+use semantic_search::hnsw_index::api::AnnT;
+use semantic_search::hnsw_index::dist::DistDot;
+use semantic_search::hnsw_index::hnsw::Hnsw;
+use semantic_search::utils::load_model;
 use serde::Deserialize;
 
 #[derive(Debug, Clone)]

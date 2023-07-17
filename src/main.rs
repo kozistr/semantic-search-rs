@@ -1,14 +1,11 @@
-use std::{env, fs::File};
+use std::env;
+use std::fs::File;
 
 use csv;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
-use semantic_search::{
-    hnsw_index::{
-        dist::DistCosine,
-        hnsw::{Hnsw, Neighbour},
-    },
-    utils::{load_index, load_model},
-};
+use semantic_search::hnsw_index::dist::DistCosine;
+use semantic_search::hnsw_index::hnsw::{Hnsw, Neighbour};
+use semantic_search::utils::{load_index, load_model};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -36,12 +33,7 @@ fn main() {
     let neighbors: Vec<Neighbour> = index.search(&query_embedding[0], 10, 30);
 
     for (k, neighbor) in neighbors.iter().enumerate() {
-        println!(
-            "top {} | id : {}, dist : {}",
-            k + 1,
-            neighbor.d_id,
-            neighbor.distance,
-        );
+        println!("top {} | id : {}, dist : {}", k + 1, neighbor.d_id, neighbor.distance,);
         println!("{}", data[neighbor.d_id]);
     }
 }

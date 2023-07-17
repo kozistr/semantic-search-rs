@@ -16,7 +16,9 @@ use std::os::raw::*;
 
 use num_traits::float::*;
 use packed_simd_2::f32x16;
-use simdeez::{avx2::*, sse2::*, *};
+use simdeez::avx2::*;
+use simdeez::sse2::*;
+use simdeez::*;
 
 #[allow(unused)]
 enum DistKind {
@@ -351,7 +353,6 @@ pub fn l2_normalize(va: &mut [f32]) {
 
 //=======================================================================================
 
-///
 /// A structure to compute Hellinger distance between probalilities.
 /// Vector must be >= 0 and normalized to 1.
 ///   
@@ -433,7 +434,6 @@ impl Distance<f32> for DistHellinger {
 
 //=======================================================================================
 
-///
 /// A structure to compute Jeffreys divergence between probalilities.
 /// If p and q are 2 probability distributions
 /// the "distance" is computed as:
@@ -863,11 +863,7 @@ impl<T: Copy + Clone + Sized + Send + Sync> Distance<T> for DistCFFI<T> {
         let ptr_a: *const T = va.as_ptr();
         let ptr_b: *const T = vb.as_ptr();
         let dist: f32 = (self.dist_function)(ptr_a, ptr_b, len as c_ulonglong);
-        log::trace!(
-            "DistCFFI dist_function_ptr {:?} returning {:?} ",
-            self.dist_function,
-            dist
-        );
+        log::trace!("DistCFFI dist_function_ptr {:?} returning {:?} ", self.dist_function, dist);
         dist
     } // end of compute
 } // end of impl block
@@ -1032,10 +1028,7 @@ mod tests {
 
         let dot = DistDot.eval(&v1, &v2);
 
-        println!(
-            "dot  cos avec prenormalisation  = {:?} ,  avec for {:?}",
-            dot, dcos
-        );
+        println!("dot  cos avec prenormalisation  = {:?} ,  avec for {:?}", dot, dcos);
     }
 
     #[test]
@@ -1232,12 +1225,7 @@ mod tests {
                     .map(|(a, b)| if a != b { 1 } else { 0 })
                     .sum();
                 let easy_dist = easy_dist as f32 / va.len() as f32;
-                log::debug!(
-                    "test size {:?} simd  exact = {:?} {:?}",
-                    i,
-                    simd_dist,
-                    easy_dist
-                );
+                log::debug!("test size {:?} simd  exact = {:?} {:?}", i, simd_dist, easy_dist);
                 if (easy_dist - simd_dist).abs() > 1.0e-5 {
                     println!(" jsimd = {:?} , easy dist = {:?}", simd_dist, easy_dist);
                     println!("va = {:?}", va);
@@ -1461,12 +1449,7 @@ mod tests {
                 .map(|(a, b)| if a != b { 1 } else { 0 })
                 .sum();
             let easy_dist = easy_dist as f32 / va.len() as f32;
-            log::debug!(
-                "test size {:?} simd  exact = {:?} {:?}",
-                i,
-                simd_dist,
-                easy_dist
-            );
+            log::debug!("test size {:?} simd  exact = {:?} {:?}", i, simd_dist, easy_dist);
             if (easy_dist - simd_dist).abs() > 1.0e-5 {
                 println!(" jsimd = {:?} , jexact = {:?}", simd_dist, easy_dist);
                 println!("va = {:?}", va);
@@ -1505,10 +1488,7 @@ mod tests {
                 .map(|(a, b)| if a != b { 1 } else { 0 })
                 .sum();
             let easy_dist = easy_dist as f32 / va.len() as f32;
-            println!(
-                "test size {:?} simd  exact = {:?} {:?}",
-                i, simd_dist, easy_dist
-            );
+            println!("test size {:?} simd  exact = {:?} {:?}", i, simd_dist, easy_dist);
             if (easy_dist - simd_dist).abs() > 1.0e-5 {
                 println!(" jsimd = {:?} , jexact = {:?}", simd_dist, easy_dist);
                 println!("va = {:?}", va);

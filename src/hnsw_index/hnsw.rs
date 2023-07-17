@@ -2,14 +2,13 @@
 //! Efficient and robust approximate nearest neighbour search using Hierarchical Navigable
 //! small World graphs.
 //! Yu. A. Malkov, D.A Yashunin 2016, 2018
+use std::any::type_name;
+use std::cmp::Ordering;
+use std::collections::binary_heap::BinaryHeap;
 #[allow(unused)]
 use std::collections::HashSet;
-use std::{
-    any::type_name,
-    cmp::Ordering,
-    collections::binary_heap::BinaryHeap,
-    sync::{mpsc::channel, Arc},
-};
+use std::sync::mpsc::channel;
+use std::sync::Arc;
 
 use hashbrown::HashMap;
 use log::{debug, trace};
@@ -17,7 +16,8 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::hnsw_index::{dist::Distance, filter::FilterT};
+use crate::hnsw_index::dist::Distance;
+use crate::hnsw_index::filter::FilterT;
 
 // TODO
 // Profiling.
@@ -74,10 +74,7 @@ impl<T: Send + Sync + Clone + Copy> From<&PointWithOrder<T>> for PointIdWithOrde
 
 impl PointIdWithOrder {
     pub fn new(point_id: PointId, dist_to_ref: f32) -> Self {
-        PointIdWithOrder {
-            point_id,
-            dist_to_ref,
-        }
+        PointIdWithOrder { point_id, dist_to_ref }
     }
 } // end of impl block
 
@@ -98,16 +95,14 @@ pub struct Neighbour {
 
 impl Neighbour {
     pub fn new(d_id: DataId, distance: f32, p_id: PointId) -> Neighbour {
-        Neighbour {
-            d_id,
-            distance,
-            p_id,
-        }
+        Neighbour { d_id, distance, p_id }
     }
+
     /// retrieves original id of neighbour as given in hnsw initialization
     pub fn get_origin_id(&self) -> DataId {
         self.d_id
     }
+
     /// return the distance
     pub fn get_distance(&self) -> f32 {
         self.distance
@@ -139,12 +134,7 @@ impl<T: Clone + Send + Sync> Point<T> {
         for _ in 0..NB_LAYER_MAX {
             neighbours.push(Vec::<Arc<PointWithOrder<T>>>::new());
         }
-        Point {
-            v: v.to_vec(),
-            origin_id,
-            p_id,
-            neighbours: Arc::new(RwLock::new(neighbours)),
-        }
+        Point { v: v.to_vec(), origin_id, p_id, neighbours: Arc::new(RwLock::new(neighbours)) }
     }
 
     /// get a reference to vector data
@@ -243,17 +233,15 @@ impl<T: Clone + Send + Sync> Ord for PointWithOrder<T> {
 
 impl<T: Clone + Send + Sync> PointWithOrder<T> {
     pub fn new(point_ref: &Arc<Point<T>>, dist_to_ref: f32) -> Self {
-        PointWithOrder {
-            point_ref: Arc::clone(point_ref),
-            dist_to_ref,
-        }
+        PointWithOrder { point_ref: Arc::clone(point_ref), dist_to_ref }
     }
 } // end of impl block
 
 //============================================================================================
 
 //  LayerGenerator
-use rand::{distributions::Uniform, prelude::*};
+use rand::distributions::Uniform;
+use rand::prelude::*;
 
 /// a struct to randomly generate a level for an item according to an exponential law
 /// of parameter given by scale.
@@ -275,7 +263,7 @@ impl LayerGenerator {
             maxlevel,
         }
     }
-    //
+
     // l=0 most densely packed layer
     // if S is scale we sample so that P(l=n) = exp(-n/S) - exp(- (n+1)/S)
     // with S = 1./ln(max_nb_connection) P(l >= maxlevel) = exp(-maxlevel * ln(max_nb_connection))
@@ -390,7 +378,9 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
             nb_point: Arc::new(RwLock::new(0)),
             entry_point: Arc::new(RwLock::new(None)),
         }
-    } // end of new
+    }
+
+    // end of new
 
     /// returns the maximum level of layer observed
     pub fn get_max_level_observed(&self) -> u8 {
@@ -400,17 +390,14 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
             None => 0,
         }
     }
+
     ///
     fn debug_dump(&self) {
         println!(" debug dump of PointIndexation");
         let max_level_observed: u8 = self.get_max_level_observed();
         // CAVEAT a lock once
         for l in 0..=max_level_observed as usize {
-            println!(
-                " layer {} : length : {} ",
-                l,
-                self.points_by_layer.read()[l].len()
-            );
+            println!(" layer {} : length : {} ", l, self.points_by_layer.read()[l].len());
         }
         println!(" debug dump of PointIndexation end");
     }
@@ -425,10 +412,7 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
         {
             // open a write lock on points_by_layer
             let mut points_by_layer_ref = self.points_by_layer.write();
-            let mut p_id: PointId = PointId {
-                0: level as u8,
-                1: -1,
-            };
+            let mut p_id: PointId = PointId { 0: level as u8, 1: -1 };
             p_id.1 = points_by_layer_ref[p_id.0 as usize].len() as i32;
             // make a Point and then an Arc<Point>
             let point: Point<T> = Point::new(data, origin_id, p_id);
@@ -436,7 +420,7 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
             log::trace!("definitive pushing of point {:?}", p_id);
             points_by_layer_ref[p_id.0 as usize].push(Arc::clone(&new_point));
         } // close write lock on points_by_layer
-          //
+        //
         let nb_point: usize;
         {
             let mut lock_nb_point = self.nb_point.write();
@@ -449,11 +433,12 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
         log::trace!(" setting number of points {:?} ", *self.nb_point);
         // Now possibly this is a point on a new layer that will have no neighbours in its layer
         return (Arc::clone(&new_point), nb_point);
-    } // end of insert
+    }
+
+    // end of insert
 
     /// check if entry_point is modified
     fn check_entry_point(&self, new_point: &Arc<Point<T>>) {
-        //
         // take directly a write lock so that we are sure nobody can change anything between read
         // and write of entry_point_id
         log::trace!("trying to get a lock on entry point");
@@ -476,7 +461,9 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
                 *entry_point_ref = Some(Arc::clone(new_point));
             },
         }
-    } // end of check_entry_point
+    }
+
+    // end of check_entry_point
 
     /// returns the number of points in layered structure
     pub fn get_nb_point(&self) -> usize {
@@ -486,12 +473,10 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
     /// returns the number of points in a given layer, 0 on a bad layer num
     pub fn get_layer_nb_point(&self, layer: usize) -> usize {
         let nb_layer: usize = self.points_by_layer.read().len();
-        if layer < nb_layer {
-            self.points_by_layer.read()[layer].len()
-        } else {
-            0
-        }
-    } // end of get_layer_nb_point
+        if layer < nb_layer { self.points_by_layer.read()[layer].len() } else { 0 }
+    }
+
+    // end of get_layer_nb_point
 
     /// returns the size of data vector in graph if any, else return 0
     pub fn get_data_dimension(&self) -> usize {
@@ -518,7 +503,9 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
         } else {
             return None;
         }
-    } // end of get_point_data
+    }
+
+    // end of get_point_data
 
     /// returns (**by Arc::clone**) the point given it PointId, or None if PointId is not coherent.
     /// Can be useful after reloading from a dump.   
@@ -536,7 +523,9 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
         } else {
             return None;
         }
-    } // end of get_point
+    }
+
+    // end of get_point
 
     /// get an iterator on the points stored in a given layer
     pub fn get_layer_iterator(&self, layer: usize) -> IterPointLayer<T> {
@@ -559,18 +548,14 @@ pub struct IterPoint<'a, T: Clone + Send + Sync> {
 impl<'a, T: Clone + Send + Sync> IterPoint<'a, T> {
     pub fn new(point_indexation: &'a PointIndexation<T>) -> Self {
         let pi_guard: RwLockReadGuard<Vec<Layer<T>>> = point_indexation.points_by_layer.read();
-        IterPoint {
-            point_indexation,
-            pi_guard,
-            layer: -1,
-            slot_in_layer: -1,
-        }
+        IterPoint { point_indexation, pi_guard, layer: -1, slot_in_layer: -1 }
     }
 } // end of block impl IterPoint
 
 /// iterator for layer 0 to upper layer.
 impl<'a, T: Clone + Send + Sync> Iterator for IterPoint<'a, T> {
     type Item = Arc<Point<T>>;
+
     //
     fn next(&mut self) -> Option<Self::Item> {
         if self.layer == -1 {
@@ -607,8 +592,9 @@ impl<'a, T: Clone + Send + Sync> Iterator for IterPoint<'a, T> {
 } // end of impl Iterator
 
 impl<'a, T: Clone + Send + Sync> IntoIterator for &'a PointIndexation<T> {
-    type Item = Arc<Point<T>>;
     type IntoIter = IterPoint<'a, T>;
+    type Item = Arc<Point<T>>;
+
     //
     fn into_iter(self) -> Self::IntoIter {
         IterPoint::new(self)
@@ -627,18 +613,14 @@ pub struct IterPointLayer<'a, T: Clone + Send + Sync> {
 impl<'a, T: Clone + Send + Sync> IterPointLayer<'a, T> {
     pub fn new(point_indexation: &'a PointIndexation<T>, layer: usize) -> Self {
         let pi_guard: RwLockReadGuard<Vec<Layer<T>>> = point_indexation.points_by_layer.read();
-        IterPointLayer {
-            _point_indexation: point_indexation,
-            pi_guard,
-            layer,
-            slot_in_layer: 0,
-        }
+        IterPointLayer { _point_indexation: point_indexation, pi_guard, layer, slot_in_layer: 0 }
     }
 } // end of block impl IterPointLayer
 
 /// iterator for layer 0 to upper layer.
 impl<'a, T: Clone + Send + Sync> Iterator for IterPointLayer<'a, T> {
     type Item = Arc<Point<T>>;
+
     //
     fn next(&mut self) -> Option<Self::Item> {
         if (self.slot_in_layer as usize) < self.pi_guard[self.layer as usize].len() {
@@ -727,12 +709,15 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             dist_f: f,
             searching: false,
         }
-    } // end of new
+    }
+
+    // end of new
 
     /// get ef_construction used in graph creation
     pub fn get_ef_construction(&self) -> usize {
         self.ef_construction
     }
+
     /// returns the maximum layer authorized in construction
     pub fn get_max_level(&self) -> usize {
         self.max_layer
@@ -742,14 +727,17 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     pub fn get_max_level_observed(&self) -> u8 {
         self.layer_indexed_points.get_max_level_observed() as u8
     }
+
     /// returns the maximum of links between a point and others points in each layer
     pub fn get_max_nb_connection(&self) -> u8 {
         self.max_nb_connection as u8
     }
+
     /// returns number of points stored in hnsw structure
     pub fn get_nb_point(&self) -> usize {
         self.layer_indexed_points.get_nb_point()
     }
+
     /// set searching mode.  
     /// It is not possible to do parallel insertion and parallel searching simultaneously in
     /// different threads so to enable searching after parallel insertion the flag must be set
@@ -758,10 +746,12 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         // must use an atomic!
         self.searching = flag;
     }
+
     /// get name if distance
     pub fn get_distance_name(&self) -> String {
         type_name::<D>().to_string()
     }
+
     /// set the flag asking to keep pruned vectors by Navarro's heuristic (see Paper).
     /// It can be useful for small datasets where the pruning can make it difficult
     /// to get the exact number of neighbours asked for.
@@ -797,17 +787,16 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             self.layer_indexed_points
                 .layer_g
                 .set_scale_modification(scale_modification);
-            println!(
-                " new scale value {:?}",
-                self.layer_indexed_points.layer_g.scale
-            );
+            println!(" new scale value {:?}", self.layer_indexed_points.layer_g.scale);
         } else {
             println!(
                 "\n scale modificationarg {:?} not valid , factor must be between 0.5 and 2.)",
                 scale_modification
             );
         }
-    } // end of set_scale_modification
+    }
+
+    // end of set_scale_modification
 
     // here we could pass a point_id_with_order instead of entry_point_id: PointId
     // The efficacity depends on greedy part depends on how near entry point is from point.
@@ -823,7 +812,6 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     //** The guarantee is that the binary heap will return points in layer
     //** with a larger index, although we can expect that most often (at least in densely populated
     //** layers) the returned points will be found in searched layer
-    ///
     /// Greedy algorithm n° 2 in Malkov paper.
     /// search in a layer (layer) for the ef points nearest a point to be inserted in hnsw.
     fn search_layer(
@@ -841,7 +829,6 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             layer,
             ef
         );
-        //
         // here we allocate a binary_heap on values not on reference beccause we want to return
         // log2(skiplist_size) must be greater than 1.
         let skiplist_size: usize = ef.max(2);
@@ -868,14 +855,8 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         //
         let mut candidate_points: BinaryHeap<Arc<PointWithOrder<T>>> =
             BinaryHeap::<Arc<PointWithOrder<T>>>::with_capacity(skiplist_size);
-        candidate_points.push(Arc::new(PointWithOrder::new(
-            &entry_point,
-            -dist_to_entry_point,
-        )));
-        return_points.push(Arc::new(PointWithOrder::new(
-            &entry_point,
-            dist_to_entry_point,
-        )));
+        candidate_points.push(Arc::new(PointWithOrder::new(&entry_point, -dist_to_entry_point)));
+        return_points.push(Arc::new(PointWithOrder::new(&entry_point, dist_to_entry_point)));
         // at the beginning candidate_points contains point passed as arg in layer entry_point_id.0
         while candidate_points.len() > 0 {
             // get nearest point in candidate_points
@@ -884,11 +865,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             let f: &Arc<PointWithOrder<T>> = return_points.peek().unwrap();
             assert!(f.dist_to_ref >= 0.);
             assert!(c.dist_to_ref <= 0.);
-            log::trace!(
-                "comparaing c : {:?} f : {:?}",
-                -(c.dist_to_ref),
-                f.dist_to_ref
-            );
+            log::trace!("comparaing c : {:?} f : {:?}", -(c.dist_to_ref), f.dist_to_ref);
             if -(c.dist_to_ref) > f.dist_to_ref {
                 // this comparison requires that we are sure that distances compared are distances
                 // to the same point : This is the case we compare distance to point
@@ -968,13 +945,12 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 }
             } // end of for on neighbours_c
         } // end of while in candidates
-          //
-        trace!(
-            "return from search_layer, nb points : {:?}",
-            return_points.len()
-        );
+        //
+        trace!("return from search_layer, nb points : {:?}", return_points.len());
         return_points
-    } // end of search_layer
+    }
+
+    // end of search_layer
 
     /// insert a tuple (&Vec, usize) with its external id as given by the client.
     ///  The insertion method gives the point an internal id.
@@ -1007,10 +983,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             if let Some(arc_point) = self.layer_indexed_points.entry_point.read().as_ref() {
                 enter_point_copy = Some(Arc::clone(&arc_point));
                 if point_rank == 1 {
-                    log::debug!(
-                        "Hnsw  stored first point , direct return  {:?} ",
-                        new_point.p_id
-                    );
+                    log::debug!("Hnsw  stored first point , direct return  {:?} ", new_point.p_id);
                     return;
                 }
                 max_level_observed = enter_point_copy.as_ref().unwrap().p_id.0;
@@ -1119,16 +1092,17 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 }
             }
         } // for l
-          //
-          // new_point has been inserted at the beginning in table
-          // so that we can call reverse_update_neighborhoodwe consitently
-          // now reverse update of neighbours.
+        // new_point has been inserted at the beginning in table
+        // so that we can call reverse_update_neighborhoodwe consitently
+        // now reverse update of neighbours.
         self.reverse_update_neighborhood_simple(Arc::clone(&new_point));
         //
         self.layer_indexed_points.check_entry_point(&new_point);
         //
         log::trace!("Hnsw exiting insert new point {:?} ", new_point.p_id);
-    } // end of insert
+    }
+
+    // end of insert
 
     /// Insert in parallel a slice of Vec\<T\> each associated to its id.    
     /// It uses Rayon for threading so the number of insertions asked for must be large enough to be
@@ -1139,7 +1113,9 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         log::debug!("entering parallel_insert");
         datas.par_iter().for_each(|&item| self.insert(item));
         log::debug!("exiting parallel_insert");
-    } // end of parallel_insert
+    }
+
+    // end of parallel_insert
 
     /// Insert in parallel slices of \[T\] each associated to its id.    
     /// It uses Rayon for threading so the number of insertions asked for must be large enough to be
@@ -1148,15 +1124,14 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     /// order) from Array.
     pub fn parallel_insert_slice(&self, datas: &Vec<(&[T], usize)>) {
         datas.par_iter().for_each(|&item| self.insert_slice(item));
-    } // end of parallel_insert
+    }
+
+    // end of parallel_insert
 
     /// insert new_point in neighbourhood info of point
     fn reverse_update_neighborhood_simple(&self, new_point: Arc<Point<T>>) {
         //  println!("reverse update neighbourhood for  new point {:?} ", new_point.p_id);
-        log::trace!(
-            "reverse update neighbourhood for  new point {:?} ",
-            new_point.p_id
-        );
+        log::trace!("reverse update neighbourhood for  new point {:?} ", new_point.p_id);
         let level: u8 = new_point.p_id.0;
         for l in (0..level + 1).rev() {
             for q in &new_point.neighbours.read()[l as usize] {
@@ -1183,7 +1158,6 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     }
                     q_point_neighbours[l_n].push(Arc::new(n_to_add));
                     let nbn_at_l: usize = q_point_neighbours[l_n].len();
-                    //
                     // if l < level, update upward chaining, insert does a sort! t_q has a neighbour
                     // not yet in global table of points!
                     let threshold_shrinking: usize; // TODO optimize threshold
@@ -1192,11 +1166,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     } else {
                         threshold_shrinking = 2 * self.max_nb_connection;
                     }
-                    let shrink: bool = if nbn_at_l > threshold_shrinking {
-                        true
-                    } else {
-                        false
-                    };
+                    let shrink: bool = if nbn_at_l > threshold_shrinking { true } else { false };
                     {
                         // sort and shring if necessary
                         q_point_neighbours[l_n as usize].sort_unstable();
@@ -1209,7 +1179,9 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         }
         //   println!("     exitingreverse update neighbourhood for  new point {:?} ",
         // new_point.p_id);
-    } // end of reverse_update_neighborhood_simple
+    }
+
+    // end of reverse_update_neighborhood_simple
 
     pub fn get_point_indexation(&self) -> &PointIndexation<T> {
         &self.layer_indexed_points
@@ -1229,10 +1201,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         neighbours_vec: &mut Vec<Arc<PointWithOrder<T>>>,
     ) {
         //
-        log::trace!(
-            "entering select_neighbours : nb candidates: {}",
-            candidates.len()
-        );
+        log::trace!("entering select_neighbours : nb candidates: {}", candidates.len());
         //
         neighbours_vec.clear();
         // we will extend if we do not have enough candidates and it is explicitly asked in arg
@@ -1251,9 +1220,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 extend_candidates = true;
             }
         }
-        //
-        //
-        //extend_candidates = true;
+        // extend_candidates = true;
         //
         if extend_candidates {
             let mut candidates_set = HashMap::<PointId, Arc<Point<T>>>::new();
@@ -1283,7 +1250,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 candidates.push(Arc::new(PointWithOrder::new(p_point, -dist_topoint)));
             }
         } // end if extend_candidates
-          //
+        //
         let mut discarded_points = BinaryHeap::<Arc<PointWithOrder<T>>>::new();
         while candidates.len() > 0 && neighbours_vec.len() < nb_neighbours_asked {
             // compare distances of e to data. we do not need to recompute dists!
@@ -1299,20 +1266,16 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 }
                 if e_to_insert {
                     log::trace!("inserting neighbours : {:?} ", e_p.point_ref.p_id);
-                    neighbours_vec.push(Arc::new(PointWithOrder::new(
-                        &e_p.point_ref,
-                        -e_p.dist_to_ref,
-                    )));
+                    neighbours_vec
+                        .push(Arc::new(PointWithOrder::new(&e_p.point_ref, -e_p.dist_to_ref)));
                 } else {
                     log::trace!("discarded neighbours : {:?} ", e_p.point_ref.p_id);
                     // ep is taken from a binary heap, so it has a negative sign, we keep its sign
                     // to store it in another binary heap will possibly need to retain the best ones
                     // from the discarde binaryHeap
                     if keep_pruned {
-                        discarded_points.push(Arc::new(PointWithOrder::new(
-                            &e_p.point_ref,
-                            e_p.dist_to_ref,
-                        )));
+                        discarded_points
+                            .push(Arc::new(PointWithOrder::new(&e_p.point_ref, e_p.dist_to_ref)));
                     }
                 }
             }
@@ -1334,16 +1297,15 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         };
         //
         if log::log_enabled!(log::Level::Trace) {
-            log::trace!(
-                "exiting select_neighbours : nb candidates: {}",
-                neighbours_vec.len()
-            );
+            log::trace!("exiting select_neighbours : nb candidates: {}", neighbours_vec.len());
             for n in neighbours_vec {
                 println!("   neighbours {:?} ", n.point_ref.p_id);
             }
         }
         //
-    } // end of select_neighbours
+    }
+
+    // end of select_neighbours
 
     /// A utility to get printed info on how many points there are in each layer.
     pub fn dump_layer_info(&self) {
@@ -1406,7 +1368,9 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             .collect();
 
         knn_neighbours
-    } // end of knn_search
+    }
+
+    // end of knn_search
 
     /// a filtered version of [`Self::search`].  
     /// A filter can be added to the search to get nodes with a particular property or id
@@ -1453,8 +1417,8 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 pivot = Arc::clone(new_pivot.as_ref().unwrap());
             }
         } // end on for on layers
-          // ef must be greater than knbn. Possibly it should be between knbn and
-          // self.max_nb_connection
+        // ef must be greater than knbn. Possibly it should be between knbn and
+        // self.max_nb_connection
         let ef: usize = ef_arg.max(knbn);
         // now search with asked ef in layer 0
         let neighbours_heap: BinaryHeap<Arc<PointWithOrder<T>>> =
@@ -1477,7 +1441,9 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             .collect();
 
         knn_neighbours
-    } // end of search_filter
+    }
+
+    // end of search_filter
 
     #[inline]
     pub fn search_possible_filter(
@@ -1642,11 +1608,7 @@ where
             let p1: &Arc<Point<T1>> = &layers_1[i][j];
             let p2: &Arc<Point<T2>> = &layers_2[i][j];
             assert_eq!(p1.origin_id, p2.origin_id);
-            assert_eq!(
-                p1.p_id, p2.p_id,
-                "\n checking origin_id point {:?} ",
-                p1.origin_id
-            );
+            assert_eq!(p1.p_id, p2.p_id, "\n checking origin_id point {:?} ", p1.origin_id);
             nb_point_checked += 1;
             // check neighborhood
             let nbgh1 = p1.neighbours.read();
@@ -1655,10 +1617,7 @@ where
             for k in 0..nbgh1.len() {
                 assert_eq!(nbgh1[k].len(), nbgh2[k].len());
                 for l in 0..nbgh1[k].len() {
-                    assert_eq!(
-                        nbgh1[k][l].point_ref.origin_id,
-                        nbgh2[k][l].point_ref.origin_id
-                    );
+                    assert_eq!(nbgh1[k][l].point_ref.origin_id, nbgh2[k][l].point_ref.origin_id);
                     assert_eq!(nbgh1[k][l].point_ref.p_id, nbgh2[k][l].point_ref.p_id);
                     // CAVEAT for precision with f32
                     assert_eq!(nbgh1[k][l].dist_to_ref, nbgh2[k][l].dist_to_ref);
@@ -1673,7 +1632,6 @@ where
 } // end of check_reload
 
 #[cfg(test)]
-
 mod tests {
 
     use rand::distributions::Uniform;
@@ -1700,7 +1658,6 @@ mod tests {
                 data[j].push(xsi);
             }
         }
-        //
         // check insertion
         let ef_construct = 25;
         let nb_connection = 10;
@@ -1727,7 +1684,7 @@ mod tests {
                 break;
             }
         } // end while
-          //
+        //
         assert_eq!(nb_dumped, nbcolumn);
     } // end of test_iter_point
 
@@ -1749,7 +1706,6 @@ mod tests {
                 data[j].push(xsi);
             }
         }
-        //
         // check insertion
         let ef_construct = 25;
         let nb_connection = 10;
@@ -1779,10 +1735,7 @@ mod tests {
                 break;
             }
         } // end while
-        println!(
-            "test_iter_layerpoint : nb point in layer {} , nb found {}",
-            nbpl, nb_dumped
-        );
+        println!("test_iter_layerpoint : nb point in layer {} , nb found {}", nbpl, nb_dumped);
         //
         assert_eq!(nb_dumped, nbpl);
     } // end of test_iter_layerpoint
