@@ -33,7 +33,7 @@ fn main() {
     let neighbors: Vec<Neighbour> = index.search(&query_embedding[0], 10, 30);
 
     for (k, neighbor) in neighbors.iter().enumerate() {
-        println!("top {} | id : {}, dist : {}", k + 1, neighbor.d_id, neighbor.distance,);
+        println!("top {} | id : {}, dist : {}", k + 1, neighbor.d_id, neighbor.distance);
         println!("{}", data[neighbor.d_id]);
     }
 }
