@@ -1,7 +1,5 @@
 use std::env;
-use std::fs::File;
 
-use csv;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use semantic_search::hnsw_index::dist::DistDot;
 use semantic_search::hnsw_index::hnsw::{Hnsw, Neighbour};
