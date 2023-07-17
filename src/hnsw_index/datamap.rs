@@ -35,7 +35,7 @@ pub struct DataMap {
 
 impl DataMap {
     // TODO: specifiy mmap option 
-    pub fn from_hnsw<T:DeserializeOwned + std::fmt::Debug>(dir : &str, fname : &String) -> Result<DataMap, String> {
+    pub fn from_hnswdump<T: std::fmt::Debug>(dir: &str, fname: &String) -> Result<DataMap, String> {
         // we know data filename is hnswdump.hnsw.data
         let mut datapath: PathBuf = PathBuf::new();
         datapath.push(dir);
@@ -56,9 +56,10 @@ impl DataMap {
             log::error!("could not open file : {:?}", &datapath);
             std::process::exit(1);
         }
+
         let file: File = file_res.unwrap();
         let offset: u64 = 0;
-        //
+
         let mmap_opt: MmapOptions<'_> = MmapOptions::new(fsize).unwrap();
         let mmap_opt: MmapOptions<'_> = unsafe { mmap_opt.with_file(&file, offset) };
         let mapping_res: Result<Mmap, mmap_rs::Error> = mmap_opt.map();
@@ -66,6 +67,7 @@ impl DataMap {
             log::error!("could not memory map : {:?}", &datapath);
             std::process::exit(1);
         }
+
         let mmap: Mmap = mapping_res.unwrap();
 
         log::info!("mmap done on file : {:?}", &datapath);
@@ -89,7 +91,13 @@ impl DataMap {
         let mut graph_in: BufReader<File> = BufReader::new(graphfile);
 
         // we need to call load_description first to get distance name
-        let hnsw_description: Description = load_description(&mut graph_in).unwrap();
+        let hnsw_description = load_description(&mut graph_in).unwrap();
+        if hnsw_description.format_version <= 2 {
+            let msg = String::from("from_hnsw::from_hnsw : data mapping is only possible for dumps with the version >= 0.1.20 of this crate");
+            log::error!("from_hnsw::from_hnsw : data mapping is only possible for dumps with the version >= 0.1.20 of this crate");
+            return Err(msg);
+        }
+
         let t_name: String = hnsw_description.get_typename();
         // get dimension as declared in description
         let descr_dimension = hnsw_description.get_dimension();
@@ -129,16 +137,18 @@ impl DataMap {
             log::info!(" got dimension : {:?}", dimension);
         }
 
-        // now we know that each record consists in (MAGICDATAP, DataId, dimensionn and bson serialized Vec<T> of dimension dimension) 
-        // We have in fact dimension 2 times one explicit one in serialized length!
-        //
-        let record_size = 2 * std::mem::size_of::<u32>() + 2 * std::mem::size_of::<u64>() + dimension * std::mem::size_of::<T>();
+        // now we know that each record consists in 
+        //   - MAGICDATAP (u32), DataId  (u64), serialized_len (lenght in bytes * dimension) 
+        let record_size = std::mem::size_of::<u32>() + 2 * std::mem::size_of::<u64>() + dimension * std::mem::size_of::<T>();
         let residual = mmap.size() - current_mmap_addr;
         log::info!("mmap size {}, current_mmap_addr {}, residual : {}", mmap.size(), current_mmap_addr, residual);
+    
         let nb_record = residual / record_size;
         log::debug!("record size : {}, nb_record : {}", record_size, nb_record);
+
         // allocate hmap with correct capacity
         let mut hmap = HashMap::<DataId, usize>::with_capacity(nb_record);
+
         // fill hmap to have address of each data point in file
         let mut u64_slice = [0u8; std::mem::size_of::<u64>()];
 
@@ -157,9 +167,9 @@ impl DataMap {
             u64_slice.copy_from_slice(&mapped_slice[current_mmap_addr..current_mmap_addr+std::mem::size_of::<u64>()]);
             current_mmap_addr += std::mem::size_of::<u64>();
             let data_id = u64::from_ne_bytes(u64_slice) as usize;
-            log::debug!("got dataid : {:?}", data_id);
+            log::debug!("inserting in hmap : got dataid : {:?} current map address : {:?}", data_id, current_mmap_addr);
 
-            // Note we store address where we have to decode dimension and full bson encoded vector
+            // Note we store address where we have to decode dimension*size_of::<T>  and full bson encoded vector
             hmap.insert(data_id, current_mmap_addr);
 
             // now read serialized length
@@ -167,30 +177,26 @@ impl DataMap {
             current_mmap_addr += std::mem::size_of::<u64>();
             let serialized_len = u64::from_ne_bytes(u64_slice) as usize;
             log::debug!("serialized bytes len to reload {:?}", serialized_len);
+
             let mut v_serialized = Vec::<u8>::with_capacity(serialized_len);
             // TODO avoid initialization
             v_serialized.resize(serialized_len as usize, 0);
             v_serialized.copy_from_slice(&mapped_slice[current_mmap_addr..current_mmap_addr+serialized_len]);
 
             current_mmap_addr += serialized_len;
-            let v : Vec<T> = bincode::deserialize(&v_serialized).unwrap();
-            log::debug!("deserialized v : {:?}", v);
+            let slice_t = unsafe {std::slice::from_raw_parts(v_serialized.as_ptr() as *const T,dimension as usize) };            
+            log::debug!("deserialized v : {:?} address : {:?} ", slice_t, v_serialized.as_ptr() as *const T);
         } // end of for on record
 
-        log::debug!("end of from_hnsw");
+        log::debug!("\n end of from_hnsw");
   
         let datamap: DataMap = DataMap{datapath, mmap, hmap, t_name, dimension: descr_dimension};
 
         return Ok(datamap);
     } // end of new
 
-    /// get adress of data related to dataid
-    fn get_data_address(&self, dataid: DataId) -> u64 {
-        panic!("not yet implemented");
-    }
-
     /// return the data corresponding to dataid. Access is done via mmap
-    pub fn get_data<T>(&self, dataid: DataId) -> &[T] {
+    pub fn get_data<T:Clone + std::fmt::Debug>(&self, dataid : &DataId) -> Option<&[T]> {
         log::trace!("in DataMap::get_data, dataid : {:?}", dataid);
         let address = self.hmap.get(dataid);
         if address.is_none() {
@@ -202,24 +208,21 @@ impl DataMap {
         let mapped_slice = self.mmap.as_slice();
         let mut u64_slice = [0u8; std::mem::size_of::<u64>()];
         u64_slice.copy_from_slice(&mapped_slice[current_mmap_addr..current_mmap_addr+std::mem::size_of::<u64>()]);
-        current_mmap_addr += std::mem::size_of::<u64>();
+
         let serialized_len = u64::from_ne_bytes(u64_slice) as usize;
+        current_mmap_addr += std::mem::size_of::<u64>();
         log::debug!("serialized bytes len to reload {:?}", serialized_len);
-        let mut v_serialized = Vec::<u8>::with_capacity(serialized_len);
-        // TODO avoid initialization
-        v_serialized.resize(serialized_len as usize, 0);
-        v_serialized.copy_from_slice(&mapped_slice[current_mmap_addr..current_mmap_addr+serialized_len]);
-        current_mmap_addr += serialized_len;
-        let v : Vec<T>;
-        v = bincode::deserialize(&v_serialized).unwrap();
-        Some(v)
+
+        let slice_t = unsafe { 
+            std::slice::from_raw_parts(mapped_slice[current_mmap_addr..].as_ptr() as *const T, self.dimension as usize) 
+        };
+        Some(slice_t)
     }
 } // end of impl DataMap
 
 //=====================================================================================
 
 #[cfg(test)]
-
 mod tests {
 
     use super::*;

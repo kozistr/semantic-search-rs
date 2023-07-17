@@ -26,10 +26,15 @@ use crate::hnsw_index::{dist::Distance, hnsw::*};
 
 // magic before each graph point data for each point
 const MAGICPOINT: u32 = 0x000a678f;
-// magic at beginning of description format v& of dump
-const MAGICDESCR_1: u32 = 0x001a677f;
-// magic at beginning of description format v& of dump
+// magic at beginning of description format v2 of dump
 const MAGICDESCR_2: u32 = 0x002a677f;
+// magic at beginning of description format v3 of dump
+// format where we can use mmap to provide acces to data (not graph) via a memory mapping of file
+// data, useful when data vector are large and data uses more space than graph.
+// differ from v2 as we do not use bincode encoding for point. We dump pure binary
+// This help use mmap as we can return directly a slice.
+const MAGICDESCR_3: u32 = 0x002a6771;
+
 // magic at beginning of a layer dump
 const MAGICLAYER: u32 = 0x000a676f;
 // magic head of data file and before each data vector
@@ -56,6 +61,8 @@ pub trait HnswIO {
 /// Name of distance and type of data must be encoded in the dump file for a coherent reload.
 #[repr(C)]
 pub struct Description {
+    /// to keep track of format version
+    pub format_version: usize,
     ///  value is 1 for Full 0 for Light
     pub dumpmode: u8,
     /// max number of connections in layers != 0
@@ -76,7 +83,7 @@ pub struct Description {
 
 impl Description {
     /// The dump of Description consists in :
-    /// . The value MAGICDESCR_1 as a u32 (4 u8)
+    /// . The value MAGICDESCR_* as a u32 (4 u8)
     /// . The type of dump as u8
     /// . max_nb_connection as u8
     /// . ef (search parameter used in construction) as usize
@@ -84,13 +91,15 @@ impl Description {
     /// . the name of distance used. (nb byes as a usize then list of bytes)
     fn dump<W: Write>(&self, argmode: DumpMode, out: &mut io::BufWriter<W>) -> Result<i32, String> {
         log::info!("in dump of description");
-        out.write(&MAGICDESCR_2.to_ne_bytes()).unwrap();
+        out.write(&MAGICDESCR_3.to_ne_bytes()).unwrap();
         let mode: u8 = match argmode {
             DumpMode::Full => 1,
             _ => 0,
         };
+
         // CAVEAT should check mode == self.mode
         out.write(&mode.to_ne_bytes()).unwrap();
+
         // dump of max_nb_connection as u8!!
         out.write(&self.max_nb_connection.to_ne_bytes()).unwrap();
         out.write(&self.nb_layer.to_ne_bytes()).unwrap();
@@ -100,13 +109,13 @@ impl Description {
                 "dump of Description, nb_layer != NB_MAX_LAYER",
             ));
         }
-        //
+
         log::info!("dumping ef {:?}", self.ef);
         out.write(&self.ef.to_ne_bytes()).unwrap();
-        //
+
         log::info!("dumping nb point {:?}", self.nb_point);
         out.write(&self.nb_point.to_ne_bytes()).unwrap();
-        //
+
         log::info!("dumping dimension of data {:?}", self.dimension);
         out.write(&self.dimension.to_ne_bytes()).unwrap();
 
@@ -115,12 +124,14 @@ impl Description {
         log::info!("distance name {:?} ", self.distname);
         out.write(&namelen.to_ne_bytes()).unwrap();
         out.write(self.distname.as_bytes()).unwrap();
+
         // dump of T value typename
         let namelen: usize = self.t_name.len();
         log::info!("T name {:?} ", self.t_name);
+
         out.write(&namelen.to_ne_bytes()).unwrap();
         out.write(self.t_name.as_bytes()).unwrap();
-        //
+
         return Ok(1);
     } // end fo dump
 
@@ -139,8 +150,8 @@ impl Description {
 /// The method load_hnsw needs to know the typename , distance used, and construction parameters.
 /// So the reload is made in two steps.
 pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
-    //
     let mut descr = Description {
+        format_version: 0,
         dumpmode: 0,
         max_nb_connection: 0,
         nb_layer: 0,
@@ -150,46 +161,53 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
         distname: String::from(""),
         t_name: String::from(""),
     };
-    let mut it_slice = [0u8; std::mem::size_of::<u32>()];
+
+    let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
     io_in.read_exact(&mut it_slice)?;
-    let magic = u32::from_ne_bytes(it_slice);
+
+    let magic: u32 = u32::from_ne_bytes(it_slice);
     log::debug!(" magic {:X} ", magic);
-    if magic != MAGICDESCR_1 && magic != MAGICDESCR_2 {
+
+    if magic != MAGICDESCR_2 && magic != MAGICDESCR_3 {
         log::info!("bad magic");
         return Err(io::Error::new(
             io::ErrorKind::Other,
             "bad magic at descr beginning",
         ));
-    } else if magic == MAGICDESCR_1 {
-        log::info!("old version of dump..., exiting");
-        println!("old version of dump");
-        return Err(io::Error::new(io::ErrorKind::Other, "old format of dump"));
+    } else if magic == MAGICDESCR_2 {
+        descr.format_version = 2;
+    } else if magic == MAGICDESCR_3 {
+        descr.format_version = 3;
     }
-    let mut it_slice = [0u8; std::mem::size_of::<u8>()];
+
+    let mut it_slice: [u8; 1] = [0u8; std::mem::size_of::<u8>()];
     io_in.read_exact(&mut it_slice)?;
     descr.dumpmode = u8::from_ne_bytes(it_slice);
     log::info!(" dumpmode {:?} ", descr.dumpmode);
-    //
-    let mut it_slice = [0u8; std::mem::size_of::<u8>()];
+
+    let mut it_slice: [u8; 1] = [0u8; std::mem::size_of::<u8>()];
     io_in.read_exact(&mut it_slice)?;
     descr.max_nb_connection = u8::from_ne_bytes(it_slice);
     log::info!(" max_nb_connection {:?} ", descr.max_nb_connection);
-    //
-    let mut it_slice = [0u8; std::mem::size_of::<u8>()];
+
+    let mut it_slice: [u8; 1] = [0u8; std::mem::size_of::<u8>()];
     io_in.read_exact(&mut it_slice)?;
     descr.nb_layer = u8::from_ne_bytes(it_slice);
     log::info!("nb_layer  {:?} ", descr.nb_layer);
+
     // ef
-    let mut it_slice = [0u8; std::mem::size_of::<usize>()];
+    let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
     io_in.read_exact(&mut it_slice)?;
     descr.ef = usize::from_ne_bytes(it_slice);
     log::info!("ef  {:?} ", descr.ef);
+
     // nb_point
-    let mut it_slice = [0u8; std::mem::size_of::<usize>()];
+    let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
     io_in.read_exact(&mut it_slice)?;
     descr.nb_point = usize::from_ne_bytes(it_slice);
+
     // read dimension
-    let mut it_slice = [0u8; std::mem::size_of::<usize>()];
+    let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
     io_in.read_exact(&mut it_slice)?;
     descr.dimension = usize::from_ne_bytes(it_slice);
     log::info!(
@@ -197,9 +215,11 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
         descr.nb_point,
         descr.dimension
     );
+
     // distance name
-    let mut it_slice = [0u8; std::mem::size_of::<usize>()];
+    let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
     io_in.read_exact(&mut it_slice)?;
+
     let len: usize = usize::from_ne_bytes(it_slice);
     log::debug!("length of distance name {:?} ", len);
     if len > 256 {
@@ -210,15 +230,19 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
             "bad lenght for distance name",
         ));
     }
-    let mut distv = Vec::<u8>::new();
+
+    let mut distv: Vec<u8> = Vec::<u8>::new();
     distv.resize(len, 0);
     io_in.read_exact(distv.as_mut_slice())?;
-    let distname = String::from_utf8(distv).unwrap();
+
+    let distname: String = String::from_utf8(distv).unwrap();
     log::debug!("distance name {:?} ", distname);
     descr.distname = distname;
+
     // reload of type name
-    let mut it_slice = [0u8; std::mem::size_of::<usize>()];
+    let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
     io_in.read_exact(&mut it_slice)?;
+
     let len: usize = usize::from_ne_bytes(it_slice);
     log::debug!("length of T  name {:?} ", len);
     if len > 256 {
@@ -228,14 +252,17 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
             "bad lenght for T name",
         ));
     }
+
     let mut tnamev = Vec::<u8>::new();
     tnamev.resize(len, 0);
     io_in.read_exact(tnamev.as_mut_slice())?;
+
     let t_name = String::from_utf8(tnamev).unwrap();
     log::debug!("T type name {:?} ", t_name);
+
     descr.t_name = t_name;
     log::debug!(" end of description load \n");
-    //
+
     Ok(descr)
 }
 //
@@ -302,13 +329,19 @@ fn dump_point<'a, T: Serialize + Clone + Sized + Send + Sync, W: Write>(
     dataout.write(&MAGICDATAP.to_ne_bytes()).unwrap();
     let origin_u64: u64 = point.get_origin_id() as u64;
     dataout.write(&origin_u64.to_ne_bytes()).unwrap();
-    //
-    let serialized: Vec<u8> = bincode::serialize(point.get_v()).unwrap();
-    //    log::debug!("serializing len {:?}", serialized.len());
+
+    let serialized: &[u8] = unsafe {
+        std::slice::from_raw_parts(
+            point.get_v().as_ptr() as *const u8,
+            point.get_v().len() * std::mem::size_of::<T>(),
+        )
+    };
+    log::debug!("serializing len {:?}", serialized.len());
+
     let len_64: u64 = serialized.len() as u64;
     dataout.write(&len_64.to_ne_bytes()).unwrap();
     dataout.write_all(&serialized).unwrap();
-    //
+
     return Ok(1);
 } // end of dump for Point<T>
 
@@ -323,7 +356,6 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     descr: &Description,
     data_in: &mut dyn Read,
 ) -> io::Result<(Arc<Point<T>>, Vec<Vec<Neighbour>>)> {
-    //
     // read and check magic
     let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
     graph_in.read_exact(&mut it_slice).unwrap();
@@ -354,6 +386,7 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
         1: rank_in_l,
     };
     //    log::debug!(" point load {:?} {:?}  ", p_id, origin_id);
+
     // Now  for each layer , read neighbours
     let nb_layer: u8 = descr.nb_layer;
     let mut neighborhood: Vec<Vec<Neighbour>> =
@@ -389,9 +422,11 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
         }
         neighborhood.push(neighborhood_l);
     }
+
     for _l in nb_layer..NB_LAYER_MAX {
         neighborhood.push(Vec::<Neighbour>::new());
     }
+
     //
     // construct a point from data_in
     //
@@ -403,6 +438,7 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
         "magic not equal to MAGICDATAP in load_point, point_id : {:?} ",
         origin_id
     );
+
     // read origin id
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<u64>()];
     data_in.read_exact(&mut it_slice)?;
@@ -411,21 +447,43 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
         origin_id, origin_id_data,
         "origin_id incoherent between graph and data"
     );
+
     // now read data. we use size_t that is in description, to take care of the casewhere we reload
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<u64>()];
     data_in.read_exact(&mut it_slice)?;
     let serialized_len: u64 = u64::from_ne_bytes(it_slice);
-    //    log::debug!("serialized len to reload {:?}", serialized_len);
+    log::debug!("serialized len to reload {:?}", serialized_len);
+
     let mut v_serialized: Vec<u8> = Vec::<u8>::new();
     // TODO avoid initialization
     v_serialized.resize(serialized_len as usize, 0);
     data_in.read_exact(&mut v_serialized)?;
+
     let v: Vec<T>;
     if std::any::TypeId::of::<T>() != std::any::TypeId::of::<NoData>() {
-        v = bincode::deserialize(&v_serialized).unwrap();
+        v = match descr.format_version {
+            2 => bincode::deserialize(&v_serialized).unwrap(),
+            3 => {
+                let slice_t: &[T] = unsafe {
+                    std::slice::from_raw_parts(
+                        v_serialized.as_ptr() as *const T,
+                        descr.dimension as usize,
+                    )
+                };
+                slice_t.to_vec()
+            },
+            _ => {
+                log::error!(
+                    "error in load_point, unknow format_version : {:?}",
+                    descr.format_version
+                );
+                std::process::exit(1);
+            },
+        };
     } else {
         v = Vec::<T>::new();
     }
+
     let point: Point<T> = Point::<T>::new(&v, origin_id as usize, p_id);
     log::trace!(
         "load_point  origin {:?} allocated size {:?}, dim {:?}",
@@ -551,6 +609,7 @@ fn load_point_indexation<
         }
         let mut it_slice: [u8; 8] = [0u8; ::std::mem::size_of::<usize>()];
         graph_in.read_exact(&mut it_slice)?;
+
         let nbpoints: usize = usize::from_ne_bytes(it_slice);
         log::debug!(" layer {:?} , nb points {:?}", l, nbpoints);
         let mut vlayer: Vec<Arc<Point<T>>> = Vec::with_capacity(nbpoints);
@@ -579,6 +638,7 @@ fn load_point_indexation<
                 log::debug!("storing at l {:?}, r {:?}", l, r);
             }
             assert_eq!(r, p_id.1 as usize);
+
             // store neoghbour info of this point
             neighbourhood_map.insert(p_id, load_point_res.1);
             vlayer.push(point);
@@ -586,6 +646,7 @@ fn load_point_indexation<
         points_by_layer.push(vlayer);
         nb_points_loaded += nbpoints;
     }
+
     // at this step all points are loaded , but without their neighbours fileds are not yet
     // initialized
     let mut nbp: usize = 0;
@@ -616,6 +677,7 @@ fn load_point_indexation<
         "\n end of layer loading, allocating PointIndexation, nb points loaded {:?}",
         nb_points_loaded
     );
+
     //
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<DataId>()];
     graph_in.read_exact(&mut it_slice)?;
@@ -688,6 +750,7 @@ impl<
 
         let description: Description = Description {
             ///  value is 1 for Full 0 for Light
+            format_version: 3,
             dumpmode,
             max_nb_connection: self.get_max_nb_connection(),
             nb_layer: self.get_max_level() as u8,
@@ -870,7 +933,6 @@ pub fn load_hnsw_with_dist<
 //===============================================================================================================
 
 #[cfg(test)]
-
 mod tests {
 
     use std::{fs::OpenOptions, io::BufReader, path::PathBuf};
@@ -895,13 +957,13 @@ mod tests {
         println!("\n\n test_dump_reload_1");
         log_init_test();
         // generate a random test
-        let mut rng = rand::thread_rng();
-        let unif = Uniform::<f32>::new(0., 1.);
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
+        let unif: Uniform<f32> = Uniform::<f32>::new(0., 1.);
         // 1000 vectors of size 10 f32
-        let nbcolumn = 1000;
-        let nbrow = 10;
-        let mut xsi;
-        let mut data = Vec::with_capacity(nbcolumn);
+        let nbcolumn: usize = 1000;
+        let nbrow: usize = 10;
+        let mut xsi: f32;
+        let mut data: Vec<Vec<f32>> = Vec::with_capacity(nbcolumn);
         for j in 0..nbcolumn {
             data.push(Vec::with_capacity(nbrow));
             for _ in 0..nbrow {
@@ -910,8 +972,8 @@ mod tests {
             }
         }
         // define hnsw
-        let ef_construct = 25;
-        let nb_connection = 10;
+        let ef_construct: usize = 25;
+        let nb_connection: usize = 10;
         let hnsw = Hnsw::<f32, dist::DistL1>::new(
             nb_connection,
             nbcolumn,
@@ -974,13 +1036,13 @@ mod tests {
         println!("\n\n test_dump_reload_myfn");
         log_init_test();
         // generate a random test
-        let mut rng = rand::thread_rng();
-        let unif = Uniform::<f32>::new(0., 1.);
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
+        let unif: Uniform<f32> = Uniform::<f32>::new(0., 1.);
         // 1000 vectors of size 10 f32
-        let nbcolumn = 1000;
-        let nbrow = 10;
-        let mut xsi;
-        let mut data = Vec::with_capacity(nbcolumn);
+        let nbcolumn: usize = 1000;
+        let nbrow: usize = 10;
+        let mut xsi: f32;
+        let mut data: Vec<Vec<f32>> = Vec::with_capacity(nbcolumn);
         for j in 0..nbcolumn {
             data.push(Vec::with_capacity(nbrow));
             for _ in 0..nbrow {
@@ -989,8 +1051,8 @@ mod tests {
             }
         }
         // define hnsw
-        let ef_construct = 25;
-        let nb_connection = 10;
+        let ef_construct: usize = 25;
+        let nb_connection: usize = 10;
         let mydist = dist::DistPtr::<f32, f32>::new(my_fn);
         let hnsw = Hnsw::<f32, dist::DistPtr<f32, f32>>::new(
             nb_connection,
@@ -1013,9 +1075,10 @@ mod tests {
         log::debug!("\n\n  hnsw reload");
         // we will need a procedural macro to get from distance name to its instanciation.
         // from now on we test with DistL1
-        let graphfname = String::from("dumpreloadtest_myfn.hnsw.graph");
-        let graphpath = PathBuf::from(graphfname);
-        let graphfileres = OpenOptions::new().read(true).open(&graphpath);
+        let graphfname: String = String::from("dumpreloadtest_myfn.hnsw.graph");
+        let graphpath: PathBuf = PathBuf::from(graphfname);
+        let graphfileres: Result<std::fs::File, io::Error> =
+            OpenOptions::new().read(true).open(&graphpath);
         if graphfileres.is_err() {
             println!(
                 "test_dump_reload: could not open file {:?}",
@@ -1023,11 +1086,12 @@ mod tests {
             );
             std::panic::panic_any("test_dump_reload: could not open file".to_string());
         }
-        let graphfile = graphfileres.unwrap();
+        let graphfile: std::fs::File = graphfileres.unwrap();
         //
-        let datafname = String::from("dumpreloadtest_myfn.hnsw.data");
-        let datapath = PathBuf::from(datafname);
-        let datafileres = OpenOptions::new().read(true).open(&datapath);
+        let datafname: String = String::from("dumpreloadtest_myfn.hnsw.data");
+        let datapath: PathBuf = PathBuf::from(datafname);
+        let datafileres: Result<std::fs::File, io::Error> =
+            OpenOptions::new().read(true).open(&datapath);
         if datafileres.is_err() {
             println!(
                 "test_dump_reload : could not open file {:?}",
@@ -1035,12 +1099,12 @@ mod tests {
             );
             std::panic::panic_any("test_dump_reload : could not open file".to_string());
         }
-        let datafile = datafileres.unwrap();
+        let datafile: std::fs::File = datafileres.unwrap();
         //
-        let mut graph_in = BufReader::new(graphfile);
-        let mut data_in = BufReader::new(datafile);
+        let mut graph_in: BufReader<std::fs::File> = BufReader::new(graphfile);
+        let mut data_in: BufReader<std::fs::File> = BufReader::new(datafile);
         // we need to call load_description first to get distance name
-        let hnsw_description = load_description(&mut graph_in).unwrap();
+        let hnsw_description: Description = load_description(&mut graph_in).unwrap();
         let mydist = dist::DistPtr::<f32, f32>::new(my_fn);
         // we reload with the same function, no control (yet?)
         let _hnsw_loaded: Hnsw<f32, DistPtr<f32, f32>> =
@@ -1052,13 +1116,13 @@ mod tests {
         println!("\n\n test_dump_reload_graph_only");
         log_init_test();
         // generate a random test
-        let mut rng = rand::thread_rng();
-        let unif = Uniform::<f32>::new(0., 1.);
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
+        let unif: Uniform<f32> = Uniform::<f32>::new(0., 1.);
         // 1000 vectors of size 10 f32
-        let nbcolumn = 1000;
-        let nbrow = 10;
-        let mut xsi;
-        let mut data = Vec::with_capacity(nbcolumn);
+        let nbcolumn: usize = 1000;
+        let nbrow: usize = 10;
+        let mut xsi: f32;
+        let mut data: Vec<Vec<f32>> = Vec::with_capacity(nbcolumn);
         for j in 0..nbcolumn {
             data.push(Vec::with_capacity(nbrow));
             for _ in 0..nbrow {
@@ -1067,8 +1131,8 @@ mod tests {
             }
         }
         // define hnsw
-        let ef_construct = 25;
-        let nb_connection = 10;
+        let ef_construct: usize = 25;
+        let nb_connection: usize = 10;
         let hnsw = Hnsw::<f32, dist::DistL1>::new(
             nb_connection,
             nbcolumn,
