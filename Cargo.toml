@@ -30,7 +30,6 @@ name = "server"
 path = "src/server.rs"
 
 [dependencies]
-serde_json = "^1.0.100"
 serde = { version = "^1.0.166", features = ["derive"] }
 rust-bert = "^0.21.0"
 mimalloc = { version = "*", default-features = false }
