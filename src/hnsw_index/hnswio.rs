@@ -150,7 +150,7 @@ impl Description {
 /// The method load_hnsw needs to know the typename , distance used, and construction parameters.
 /// So the reload is made in two steps.
 pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
-    let mut descr = Description {
+    let mut descr: Description = Description {
         format_version: 0,
         dumpmode: 0,
         max_nb_connection: 0,
