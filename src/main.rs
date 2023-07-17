@@ -3,7 +3,7 @@ use std::fs::File;
 
 use csv;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
-use semantic_search::hnsw_index::dist::DistCosine;
+use semantic_search::hnsw_index::dist::DistDot;
 use semantic_search::hnsw_index::hnsw::{Hnsw, Neighbour};
 use semantic_search::utils::{load_index, load_model};
 
@@ -13,12 +13,12 @@ fn main() {
     let query: String = if args.len() < 2 {
         "Asia shares drift lower as investors factor in Fed rate hike.".to_string()
     } else {
-        args[1].to_string()
+        args[1].clone()
     };
     println!("query : {:?}", query);
 
     let model: SentenceEmbeddingsModel = load_model();
-    let index: Hnsw<f32, DistCosine> = load_index("news");
+    let index: Hnsw<f32, DistDot> = load_index("news");
 
     let file: File = File::open("data/ag_news.csv").unwrap();
     let mut reader = csv::Reader::from_reader(file);
