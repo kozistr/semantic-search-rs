@@ -22,7 +22,7 @@ impl Config {
             return Err("not enough arguments");
         }
 
-        let dataset: String = args[1].to_string();
+        let dataset: String = args[1].clone();
 
         Ok(Config { dataset })
     }
@@ -36,9 +36,7 @@ pub struct Library {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Book {
     pub title: String,
-
     pub author: String,
-
     pub summary: String,
 }
 
