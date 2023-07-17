@@ -2,6 +2,7 @@ use std::fs::{File, OpenOptions};
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
+use csv;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModelType::AllMiniLmL12V2;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel,
@@ -12,8 +13,8 @@ use crate::hnsw_index::hnsw::Hnsw;
 use crate::hnsw_index::hnswio::{load_description, load_hnsw, Description};
 
 pub fn load_data() -> Vec<String> {
-    let file: File = File::open("./data/ag_news.csv")?;
-    let mut reader = Reader::from_reader(file);
+    let file: File = File::open("./data/ag_news.csv").unwrap();
+    let mut reader = csv::Reader::from_reader(file);
 
     let data: Vec<String> = reader
         .records()
