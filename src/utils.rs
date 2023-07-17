@@ -41,5 +41,8 @@ pub fn load_index(dataset: &str) -> Hnsw<f32, DistDot> {
 
     let description: Description = load_description(&mut graph).unwrap();
     let index: Hnsw<f32, DistDot> = load_hnsw(&mut graph, &description, &mut data).unwrap();
+
+    index.set_searching_mode(true);
+
     index
 }
