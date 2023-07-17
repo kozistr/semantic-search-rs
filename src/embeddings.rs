@@ -9,8 +9,7 @@ use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use semantic_search::hnsw_index::api::AnnT;
 use semantic_search::hnsw_index::dist::DistDot;
 use semantic_search::hnsw_index::hnsw::Hnsw;
-use semantic_search::utils::load_model;
-use serde::Deserialize;
+use semantic_search::utils::{load_data, load_model};
 
 #[derive(Debug, Clone)]
 struct Config {
@@ -28,51 +27,13 @@ impl Config {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Library {
-    pub books: Vec<Book>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct Book {
-    pub title: String,
-    pub author: String,
-    pub summary: String,
-}
-
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
-
-    let config: Config = Config::new(&args).unwrap_or_else(|err: &str| {
-        println!("Problem parsing arguments: {}", err);
-        println!("Usage: embeddings dataset (news or book)");
-        process::exit(1);
-    });
-
     let start: Instant = Instant::now();
     let model: SentenceEmbeddingsModel = load_model();
     println!("load model : {:.3?}", start.elapsed());
 
     let start: Instant = Instant::now();
-
-    let data: Vec<String> = if config.dataset == "book" {
-        let json: String = read_to_string("data/books.json")?;
-        let library: Library = serde_json::from_str(&json)?;
-
-        library
-            .books
-            .iter()
-            .map(|book: &Book| book.summary.clone())
-            .collect()
-    } else {
-        let file: File = File::open("data/ag_news.csv")?;
-        let mut reader = Reader::from_reader(file);
-
-        reader
-            .records()
-            .map(|res| res.unwrap()[0].to_string())
-            .collect()
-    };
+    let data: Vec<String> = load_data();
     println!("load data : {:.3?}", start.elapsed());
 
     let nb_elem: usize = data.len();

@@ -11,6 +11,17 @@ use crate::hnsw_index::dist::DistDot;
 use crate::hnsw_index::hnsw::Hnsw;
 use crate::hnsw_index::hnswio::{load_description, load_hnsw, Description};
 
+pub fn load_data() -> Vec<String> {
+    let file: File = File::open("./data/ag_news.csv")?;
+    let mut reader = Reader::from_reader(file);
+
+    let data: Vec<String> = reader
+        .records()
+        .map(|res| res.unwrap()[0].to_string())
+        .collect();
+    data
+}
+
 pub fn load_model() -> SentenceEmbeddingsModel {
     let model: SentenceEmbeddingsModel = if Path::new("models").is_dir() {
         println!("load model from local");

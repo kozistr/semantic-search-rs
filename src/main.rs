@@ -5,7 +5,7 @@ use csv;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use semantic_search::hnsw_index::dist::DistDot;
 use semantic_search::hnsw_index::hnsw::{Hnsw, Neighbour};
-use semantic_search::utils::{load_index, load_model};
+use semantic_search::utils::{load_data, load_index, load_model};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -20,13 +20,7 @@ fn main() {
     let model: SentenceEmbeddingsModel = load_model();
     let index: Hnsw<f32, DistDot> = load_index("news");
 
-    let file: File = File::open("data/ag_news.csv").unwrap();
-    let mut reader = csv::Reader::from_reader(file);
-
-    let data: Vec<String> = reader
-        .records()
-        .map(|res| res.unwrap()[0].to_string())
-        .collect();
+    let data: Vec<String> = load_data();
 
     let query_embedding: Vec<Vec<f32>> = model.encode(&[query]).unwrap();
 
