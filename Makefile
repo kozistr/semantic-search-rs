@@ -10,7 +10,7 @@ server:
 	cargo +nightly run --release --bin server
 
 builder:
-	cargo +nightly run --release --features embedding --bin embedding news
+	cargo +nightly run --release --features embedding --bin embedding
 
 example:
 	cargo +nightly run --release --bin main
