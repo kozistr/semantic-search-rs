@@ -528,7 +528,7 @@ impl Distance<f32> for DistHellinger {
             .iter()
             .zip(vb.iter())
             .map(|t: (&f32, &f32)| ((*t.0).sqrt() * (*t.1).sqrt()) as f32)
-            .fold(0., |acc: f32, t| (acc + t));
+            .fold(0., |acc: f32, t: f32| (acc + t));
         // if too far away from >= panic else reset!
         assert!(1. - dist >= -0.000001);
         dist = (1. - dist).max(0.).sqrt();
@@ -700,7 +700,8 @@ unsafe fn distance_hamming_i32<S: Simd>(va: &[i32], vb: &[i32]) -> f32 {
 
     let nb_simd: usize = va.len() / S::VI32_WIDTH;
     let simd_length: usize = nb_simd * S::VI32_WIDTH;
-    let mut i = 0;
+
+    let mut i: usize = 0;
     while i < simd_length {
         let a: <S as Simd>::Vi32 = S::loadu_epi32(&va[i]);
         let b: <S as Simd>::Vi32 = S::loadu_epi32(&vb[i]);
@@ -709,12 +710,15 @@ unsafe fn distance_hamming_i32<S: Simd>(va: &[i32], vb: &[i32]) -> f32 {
         //
         i += S::VI32_WIDTH;
     }
+
     // get the sum of value in dist
     let mut simd_res: Vec<i32> = (0..S::VI32_WIDTH).into_iter().map(|_| 0).collect();
     S::storeu_epi32(&mut simd_res[0], dist_simd);
     let mut dist: i32 = simd_res.into_iter().sum();
+
     // Beccause simd returns 0xFFFF... when neq true and 0 else
     dist = -dist;
+
     // add the residue
     for i in simd_length..va.len() {
         dist = dist + if va[i] != vb[i] { 1 } else { 0 };
@@ -736,9 +740,10 @@ unsafe fn distance_hamming_f64<S: Simd>(va: &[f64], vb: &[f64]) -> f32 {
     let mut dist_simd: <S as Simd>::Vi64 = S::setzero_epi64();
     //    log::debug!("initial simd_res : {:?}", dist_simd);
 
-    let nb_simd = va.len() / S::VF64_WIDTH;
-    let simd_length = nb_simd * S::VF64_WIDTH;
-    let mut i = 0;
+    let nb_simd: usize = va.len() / S::VF64_WIDTH;
+    let simd_length: usize = nb_simd * S::VF64_WIDTH;
+
+    let mut i: usize = 0;
     while i < simd_length {
         let a = S::loadu_pd(&va[i]);
         let b = S::loadu_pd(&vb[i]);
@@ -750,13 +755,17 @@ unsafe fn distance_hamming_f64<S: Simd>(va: &[f64], vb: &[f64]) -> f32 {
         //
         i += S::VF64_WIDTH;
     }
+
     // get the sum of value in dist
     let mut simd_res: Vec<i64> = (0..S::VF64_WIDTH).into_iter().map(|_| 0).collect();
+
     //    log::trace!("simd_res : {:?}", dist_simd);
     S::storeu_epi64(&mut simd_res[0], dist_simd);
+
     // cmp_neq returns 0xFFFFFFFFFF if true and 0 else, we need to transform 0xFFFFFFF... to 1
     simd_res.iter_mut().for_each(|x| *x = -*x);
     //    log::debug!("simd_res : {:?}", simd_res);
+
     let mut dist: i64 = simd_res.into_iter().sum();
     // Beccause simd returns 0xFFFF... when neq true and 0 else
     // add the residue
@@ -805,7 +814,11 @@ impl Distance<f32> for DistHamming {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
         // in fact simd comparaison seems slower than simple iter
         assert_eq!(va.len(), vb.len());
-        let dist: usize = va.iter().zip(vb.iter()).filter(|t| t.0 != t.1).count();
+        let dist: usize = va
+            .iter()
+            .zip(vb.iter())
+            .filter(|t: &(&f32, &f32)| t.0 != t.1)
+            .count();
         (dist as f64 / va.len() as f64) as f32
     } // end of eval
 } // end implementation Distance<f32>
@@ -861,7 +874,7 @@ macro_rules! implementJaccardDistance (
                 );
 
             if max > 0 {
-                let dist = 1. - (min  as f64)/ (max as f64);
+                let dist = 1. - (min  as f64) / (max as f64);
                 assert!(dist >= 0.);
                 dist as f32
             }
@@ -927,7 +940,7 @@ impl Distance<u16> for DistLevenshtein {
                 pre = tmp;
             }
         }
-        let res = cur[len_b - 1] as f32;
+        let res: f32 = cur[len_b - 1] as f32;
         return res;
     }
 }
