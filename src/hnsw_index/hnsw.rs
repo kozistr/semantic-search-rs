@@ -1522,15 +1522,15 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     /// quantize from f32 into i8 vector
     #[allow(unused)]
     pub fn quantize(vector: Vec<f32>) -> Vec<i8> {
-        let max_value = vector
-            .iter()
-            .max_by_key(|x: &&f32| NotNaN::new(x.abs()).unwrap())
-            .unwrap_or_else(|| NotNan::new(MAX_QVALUE).unwrap());
+        let max_value: f32 = vector
+            .par_iter()
+            .map(|&x| x.abs())
+            .reduce(|| *NotNan::new(MAX_QVALUE).unwrap(), |max: f32, x: f32| f32::max(max, x));
 
-        let mut v: Vec<i8> = Vec::with_capacity(x.len());
+        let mut v: Vec<i8> = Vec::with_capacity(vector.len());
 
         for x in vector {
-            let vi: f32 = x * MAX_QVALUE / *max_value;
+            let vi: f32 = x * MAX_QVALUE / max_value;
             debug_assert!(-MAX_QVALUE - 0.0001 <= vi && vi <= MAX_QVALUE + 0.0001);
             v.push(vi as i8);
         }
