@@ -292,17 +292,17 @@ fn dot_i8(va: &[i8], vb: &[i8]) -> f32 {
 }
 
 impl Distance<f64> for DistCosine {
-    fn eval(&self, va: &[f64], vb: &[f64]) -> f64 {
+    fn eval(&self, va: &[f64], vb: &[f64]) -> f32 {
         let ab: f64 = dot_f64(va, vb);
         let a: f64 = dot_f64(va, va).sqrt();
         let b: f64 = dot_f64(vb, vb).sqrt();
 
-        let dist: f64 = if a > 0.0 && b > 0.0 {
+        let dist: f32 = if a > 0.0 && b > 0.0 {
             let d: f64 = 1.0 - ab / (a * b);
             assert!(d >= -0.00002);
-            d.max(0.0) as f64
+            d.max(0.0) as f32
         } else {
-            0.0
+            0.0f32
         };
         dist
     }
@@ -390,10 +390,10 @@ unsafe fn distance_dot_f32_sse2(va: &[f32], vb: &[f32]) -> f32 {
 }
 
 impl Distance<f64> for DistDot {
-    fn eval(&self, va: &[f64], vb: &[f64]) -> f64 {
-        let dot: f64 = 1.0 - dot_f32(va, vb);
+    fn eval(&self, va: &[f64], vb: &[f64]) -> f32 {
+        let dot: f64 = 1.0 - dot_f64(va, vb);
         assert!(dot >= -0.000002);
-        dot.max(0.) as f64
+        dot.max(0.) as f32
 
         // #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         // {
@@ -439,21 +439,6 @@ impl Distance<i8> for DistDot {
     fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
         let dot: f32 = 1.0 - dot_i8(va, vb);
         dot.max(0.) as f32
-
-        // #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        // {
-        //     if is_x86_feature_detected!("avx2") {
-        //         return unsafe { distance_dot_f32_avx2(va, vb) };
-        //     } else if is_x86_feature_detected!("sse2") {
-        //         return unsafe { distance_dot_f32_sse2(va, vb) };
-        //     }
-        // } // end x86
-
-        // let dot: f32 = 1.
-        //     - va.iter() .zip(vb.iter()) .map(|t| (*t.0 * *t.1) as f32) .fold(0., |acc, t| (acc +
-        //       t));
-        // assert!(dot >= 0.);
-        // dot
     } // end of eval
 }
 
