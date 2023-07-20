@@ -15,7 +15,7 @@
 use std::os::raw::*;
 
 use num_traits::float::*;
-use packed_simd_2::f32x16;
+use packed_simd_2::{f32x16, i8x64};
 use simdeez::avx2::*;
 use simdeez::sse2::*;
 use simdeez::*;
@@ -72,7 +72,7 @@ macro_rules! implementL1Distance (
     ($ty:ty) => (
 
     impl Distance<$ty> for DistL1  {
-        fn eval(&self, va:&[$ty], vb: &[$ty]) -> f32 {
+        fn eval(&self, va: &[$ty], vb: &[$ty]) -> f32 {
         // RUSTFLAGS = "-C opt-level=3 -C target-cpu=native"
             va.iter().zip(vb.iter()).map(|t| (*t.0 as f32- *t.1 as f32).abs()).sum()
         } // end of compute
@@ -115,6 +115,37 @@ impl Distance<f32> for DistL1 {
             .zip(vb.iter())
             .map(|t: (&f32, &f32)| (*t.0 as f32 - *t.1 as f32).abs())
             .sum()
+    } // end of eval
+}
+
+impl Distance<i8> for DistL1 {
+    #[allow(unreachable_code)]
+    fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        {
+            let size: usize = va.len() - (va.len() % 64);
+
+            let c: f32 = va
+                .chunks_exact(64)
+                .map(i8x64::from_slice_unaligned)
+                .zip(vb.chunks_exact(64).map(i8x64::from_slice_unaligned))
+                .map(|(a, b)| (a - b).abs())
+                .sum::<i8x64>()
+                .sum() as f32;
+
+            let d: f32 = va[size..]
+                .iter()
+                .zip(&vb[size..])
+                .map(|(p, q)| (p - q).abs())
+                .sum() as f32;
+
+            return c + d;
+        }
+
+        va.iter()
+            .zip(vb.iter())
+            .map(|t: (&i8, &i8)| (*t.0 as i8 - *t.1 as i8).abs())
+            .sum() as f32
     } // end of eval
 }
 //========================================================================
