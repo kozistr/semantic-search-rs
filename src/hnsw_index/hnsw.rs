@@ -12,12 +12,15 @@ use std::sync::Arc;
 
 use hashbrown::HashMap;
 use log::{debug, trace};
+use ordered_float::NotNan;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::hnsw_index::dist::Distance;
 use crate::hnsw_index::filter::FilterT;
+
+const MAX_QVALUE: f32 = 127.0f32;
 
 // TODO
 // Profiling.
@@ -1512,7 +1515,28 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             answers.push((req_res[*answer_i].1).clone());
         }
         answers
-    } // end of insert_parallel
+    }
+
+    // end of insert_parallel
+
+    /// quantize from f32 into i8 vector
+    #[allow(unused)]
+    pub fn quantize(vector: Vec<f32>) -> Vec<i8> {
+        let max_value = vector
+            .iter()
+            .max_by_key(|x: &&f32| NotNaN::new(x.abs()).unwrap())
+            .unwrap_or_else(|| NotNan::new(MAX_QVALUE).unwrap());
+
+        let mut v: Vec<i8> = Vec::with_capacity(x.len());
+
+        for x in vector {
+            let vi: f32 = x * MAX_QVALUE / *max_value;
+            debug_assert!(-MAX_QVALUE - 0.0001 <= vi && vi <= MAX_QVALUE + 0.0001);
+            v.push(vi as i8);
+        }
+
+        v
+    } // end of quantize
 } // end of Hnsw
 
 // This function takes a binary heap with points declared with a negative distance
@@ -1645,12 +1669,12 @@ mod tests {
         //
         println!("\n\n test_iter_point");
         //
-        let mut rng = rand::thread_rng();
-        let unif = Uniform::<f32>::new(0., 1.);
-        let nbcolumn = 5000;
-        let nbrow = 10;
-        let mut xsi;
-        let mut data = Vec::with_capacity(nbcolumn);
+        let mut rng: ThreadRng = rand::thread_rng();
+        let unif: Uniform<f32> = Uniform::<f32>::new(0., 1.);
+        let nbcolumn: usize = 5000;
+        let nbrow: usize = 10;
+        let mut xsi: f32;
+        let mut data: Vec<Vec<f32>> = Vec::with_capacity(nbcolumn);
         for j in 0..nbcolumn {
             data.push(Vec::with_capacity(nbrow));
             for _ in 0..nbrow {
@@ -1659,8 +1683,8 @@ mod tests {
             }
         }
         // check insertion
-        let ef_construct = 25;
-        let nb_connection = 10;
+        let ef_construct: usize = 25;
+        let nb_connection: usize = 10;
         let hns = Hnsw::<f32, dist::DistL1>::new(
             nb_connection,
             nbcolumn,
@@ -1675,7 +1699,7 @@ mod tests {
         hns.dump_layer_info();
         // now check iteration
         let mut ptiter = hns.get_point_indexation().into_iter();
-        let mut nb_dumped = 0;
+        let mut nb_dumped: usize = 0;
         loop {
             if let Some(_point) = ptiter.next() {
                 //    println!("point : {:?}", _point.p_id);
