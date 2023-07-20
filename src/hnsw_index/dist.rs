@@ -15,7 +15,7 @@
 use std::os::raw::*;
 
 use num_traits::float::*;
-use packed_simd_2::{f32x16, i8x64};
+use packed_simd_2::{f32x16, f64x8, i8x64};
 use simdeez::avx2::*;
 use simdeez::sse2::*;
 use simdeez::*;
@@ -213,10 +213,32 @@ macro_rules! implementCosDistance(
 );
 
 // implementCosDistance!(f32);
-implementCosDistance!(f64);
+// implementCosDistance!(f64);
 implementCosDistance!(i64);
 implementCosDistance!(i32);
 implementCosDistance!(u16);
+
+#[allow(unreachable_code)]
+fn dot_f64(va: &[f64], vb: &[f64]) -> f64 {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        let size: usize = va.len() - (va.len() % 8);
+
+        let c: f64 = va
+            .chunks_exact(8)
+            .map(f64x8::from_slice_unaligned)
+            .zip(vb.chunks_exact(8).map(f64x8::from_slice_unaligned))
+            .map(|(a, b)| a * b)
+            .sum::<f64x8>()
+            .sum();
+
+        let d: f64 = va[size..].iter().zip(&vb[size..]).map(|(p, q)| p * q).sum();
+
+        return c + d;
+    }
+
+    va.iter().zip(vb).map(|(p, q)| p * q).sum::<f64>()
+}
 
 #[allow(unreachable_code)]
 fn dot_f32(va: &[f32], vb: &[f32]) -> f32 {
@@ -267,6 +289,23 @@ fn dot_i8(va: &[i8], vb: &[i8]) -> f32 {
         .zip(vb)
         .map(|(p, q)| *p as f32 * *q as f32)
         .sum::<f32>()
+}
+
+impl Distance<f64> for DistCosine {
+    fn eval(&self, va: &[f64], vb: &[f64]) -> f64 {
+        let ab: f64 = dot_f64(va, vb);
+        let a: f64 = dot_f64(va, va).sqrt();
+        let b: f64 = dot_f64(vb, vb).sqrt();
+
+        let dist: f64 = if a > 0.0 && b > 0.0 {
+            let d: f64 = 1.0 - ab / (a * b);
+            assert!(d >= -0.00002);
+            d.max(0.0) as f64
+        } else {
+            0.0
+        };
+        dist
+    }
 }
 
 impl Distance<f32> for DistCosine {
