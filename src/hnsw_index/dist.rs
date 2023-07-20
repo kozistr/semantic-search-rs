@@ -118,35 +118,6 @@ impl Distance<f32> for DistL1 {
     } // end of eval
 }
 
-    #[allow(unreachable_code)]
-    fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        {
-            let size: usize = va.len() - (va.len() % 64);
-
-            let c: f32 = va
-                .chunks_exact(64)
-                .map(i8x64::from_slice_unaligned)
-                .zip(vb.chunks_exact(64).map(i8x64::from_slice_unaligned))
-                .map(|(a, b)| (a - b).abs())
-                .sum::<i8x64>()
-                .sum();
-
-            let d: f32 = va[size..]
-                .iter()
-                .zip(&vb[size..])
-                .map(|(p, q)| (p - q).abs())
-                .sum() as f32;
-
-            return c + d;
-        }
-
-        va.iter()
-            .zip(vb.iter())
-            .map(|t: (&i8, &i8)| (*t.0 as f32 - *t.1 as f32).abs())
-            .sum::<f32>()
-    } // end of eval
-}
 //========================================================================
 
 /// L2 distance : implemented for i32, f64, i64, u32 , u16 , u8 and with Simd avx2 for f32
