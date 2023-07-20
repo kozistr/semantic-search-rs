@@ -14,11 +14,11 @@ use crate::hnsw_index::hnswio::{load_description, load_hnsw, Description};
 
 pub fn load_data() -> Vec<String> {
     let file: File = File::open("./data/ag_news.csv").unwrap();
-    let mut reader = csv::Reader::from_reader(file);
+    let mut reader: csv::Reader<File> = csv::Reader::from_reader(file);
 
     let data: Vec<String> = reader
         .records()
-        .map(|res| res.unwrap()[0].to_string())
+        .map(|res: Result<csv::StringRecord, csv::Error>| res.unwrap()[0].to_string())
         .collect();
     data
 }
