@@ -306,6 +306,28 @@ fn dot_f32(va: &[f32], vb: &[f32]) -> f32 {
     va.iter().zip(vb).map(|(p, q)| p * q).sum::<f32>()
 }
 
+#[allow(unreachable_code)]
+fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        let size: usize = va.len() - (va.len() % 64);
+
+        let c: i32 = va
+            .chunks_exact(64)
+            .map(i8x64::from_slice_unaligned)
+            .zip(vb.chunks_exact(64).map(i8x64::from_slice_unaligned))
+            .map(|(a, b)| a * b)
+            .sum::<i8x64>()
+            .sum() as i32;
+
+        let d: i32 = va[size..].iter().zip(&vb[size..]).map(|(p, q)| p * q).sum() as i32;
+
+        return c + d;
+    }
+
+    va.iter().zip(vb).map(|(p, q)| p * q).sum::<i32>()
+}
+
 impl Distance<f32> for DistCosine {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
         let ab: f32 = dot_f32(va, vb);
@@ -392,6 +414,29 @@ impl Distance<f32> for DistDot {
         let dot: f32 = 1.0 - dot_f32(va, vb);
         assert!(dot >= -0.000002);
         dot.max(0.) as f32
+
+        // #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        // {
+        //     if is_x86_feature_detected!("avx2") {
+        //         return unsafe { distance_dot_f32_avx2(va, vb) };
+        //     } else if is_x86_feature_detected!("sse2") {
+        //         return unsafe { distance_dot_f32_sse2(va, vb) };
+        //     }
+        // } // end x86
+
+        // let dot: f32 = 1.
+        //     - va.iter() .zip(vb.iter()) .map(|t| (*t.0 * *t.1) as f32) .fold(0., |acc, t| (acc +
+        //       t));
+        // assert!(dot >= 0.);
+        // dot
+    } // end of eval
+}
+
+impl Distance<i8> for DistDot {
+    fn eval(&self, va: &[i8], vb: &[i8]) -> i32 {
+        let dot: i32 = 1.0 - dot_i8(va, vb);
+        dot.max(0.) as i32
+
         // #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         // {
         //     if is_x86_feature_detected!("avx2") {
