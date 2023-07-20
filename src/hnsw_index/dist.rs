@@ -15,7 +15,7 @@
 use std::os::raw::*;
 
 use num_traits::float::*;
-use packed_simd_2::{f32x16, f64x8, i8x64};
+use packed_simd_2::{f32x16, f64x8};
 use simdeez::avx2::*;
 use simdeez::sse2::*;
 use simdeez::*;
@@ -263,32 +263,36 @@ fn dot_f32(va: &[f32], vb: &[f32]) -> f32 {
 }
 
 #[allow(unreachable_code)]
-fn dot_i8(va: &[i8], vb: &[i8]) -> f32 {
+fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
-        let size: usize = va.len() - (va.len() % 64);
-
-        let c: f32 = va
-            .chunks_exact(64)
-            .map(i8x64::from_slice_unaligned)
-            .zip(vb.chunks_exact(64).map(i8x64::from_slice_unaligned))
-            .map(|(a, b)| a * b)
-            .sum::<i8x64>()
-            .sum();
-
-        let d: f32 = va[size..]
-            .iter()
-            .zip(&vb[size..])
-            .map(|(p, q)| *p as f32 * *q as f32)
-            .sum();
-
-        return c + d;
+    #[target_feature(enable = "avx2")]
+    unsafe fn compute_r_dx_dy_avx2(x: &[i8], y: &[i8]) -> i32 {
+        compute_r_dx_dy_fallback(x, y)
     }
 
-    va.iter()
-        .zip(vb)
-        .map(|(p, q)| *p as f32 * *q as f32)
-        .sum::<f32>()
+    #[inline(always)]
+    fn compute_r_dx_dy_fallback(x: &[i8], y: &[i8]) -> i32 {
+        let mut r: i32 = 0i32;
+
+        for (xi, yi) in x
+            .iter()
+            .map(|&xi| i32::from(xi))
+            .zip(y.iter().map(|&yi| i32::from(yi)))
+        {
+            r += xi * yi;
+        }
+
+        r
+    }
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        if is_x86_feature_detected!("avx2") {
+            return unsafe { compute_r_dx_dy_avx2(va, vb) };
+        }
+    }
+
+    compute_r_dx_dy_fallback(va, vb)
 }
 
 impl Distance<f64> for DistCosine {
@@ -437,8 +441,8 @@ impl Distance<f32> for DistDot {
 
 impl Distance<i8> for DistDot {
     fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
-        let dot: f32 = 1.0 - dot_i8(va, vb);
-        dot.max(0.) as f32
+        let dot: f32 = 1.0 - (dot_i8(va, vb) as f32);
+        dot.max(0.)
     } // end of eval
 }
 
