@@ -265,26 +265,24 @@ macro_rules! simd_dot_distance (
                         .sum::<$simd_type>()
                         .sum();
 
-                    let d: $data_type = va[size..]
-                        .iter()
-                        .zip(&vb[size..])
-                        .map(|(p, q)| p * q)
-                        .sum();
+                    // let d: $data_type = va[size..]
+                    //     .iter()
+                    //     .zip(&vb[size..])
+                    //     .map(|(p, q)| p * q)
+                    //     .sum();
 
-                    let dist: f32 = (1.0 - (c + d)) as f32;
-                    assert!(dist >= -0.000002);
+                    let dist: $data_type = 1.0 - c;
 
-                    return dist.max(0.);
+                    return dist.max(0.) as f32;
                 }
 
                 let dist: f32 = va.iter()
                     .zip(vb.iter())
                     .map(|(p, q)| *p as f32 * *q as f32)
                     .sum();
-                let dist: f32 = 1.0 - dist;
-                assert!(dist >= -0.000002);
+                let dist = 1.0 - dist;
 
-                dist.max(0.)
+                dist.max(0.) as f32
             }
         }
     }
