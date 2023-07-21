@@ -193,8 +193,8 @@ Asian Stocks Ease After China Rate Rise (Reuters) Reuters - China's surprise int
 
 ## References
 
-* https://github.com/hora-search/hora
-* https://github.com/jean-pierreBoth/hnswlib-rs
+* <https://github.com/hora-search/hora>
+* <https://github.com/jean-pierreBoth/hnswlib-rs>
 
 ## Maintainer
 
