@@ -1209,7 +1209,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         //
         neighbours_vec.clear();
         // we will extend if we do not have enough candidates and it is explicitly asked in arg
-        let mut extend_candidates = false;
+        let mut extend_candidates: bool = false;
         if candidates.len() <= nb_neighbours_asked {
             if !extend_candidates_asked {
                 // just transfer taking care of signs
@@ -1471,6 +1471,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         self.search_possible_filter(data, knbn, ef_arg, None)
     }
 
+    #[allow(dead_code)]
     fn search_with_id(
         &self,
         request: (usize, &Vec<T>),
@@ -1494,7 +1495,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         let nb_request: usize = datas.len();
         let requests: Vec<(usize, &Vec<T>)> =
             (0..nb_request).into_iter().zip(datas.iter()).collect();
-        //
+
         requests.par_iter().for_each_with(
             sender,
             |s: &mut mpsc::Sender<(usize, Vec<Neighbour>)>, item: &(usize, &Vec<T>)| {
