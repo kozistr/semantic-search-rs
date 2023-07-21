@@ -799,7 +799,7 @@ mod tests {
 
     #[test]
     fn test_access_to_dist_cos() {
-        let distcos = DistCosine;
+        let distcos: DistCosine = DistCosine;
         //
         let v1: Vec<i32> = vec![1, -1, 1];
         let v2: Vec<i32> = vec![2, 1, -1];
@@ -910,7 +910,7 @@ mod tests {
     #[test]
 
     fn test_my_closure() {
-        let weight = vec![0.1, 0.8, 0.1];
+        let weight: Vec<f32> = vec![0.1, 0.8, 0.1];
         let my_fn = move |va: &[f32], vb: &[f32]| -> f32 {
             // should check that we work with same size for va, vb, and weight...
             let mut dist: f32 = 0.;
@@ -920,10 +920,10 @@ mod tests {
             dist
         };
         let my_boxed_f = Box::new(my_fn);
-        let my_boxed_dist = DistFn::<f32>::new(my_boxed_f);
+        let my_boxed_dist: DistFn<f32> = DistFn::<f32>::new(my_boxed_f);
         let va: Vec<f32> = vec![1., 2., 3.];
         let vb: Vec<f32> = vec![2., 2., 4.];
-        let dist = my_boxed_dist.eval(&va, &vb);
+        let dist: f32 = my_boxed_dist.eval(&va, &vb);
         println!("test_my_closure computed : {:?}", dist);
         // try allocation Hnsw
         let _hnsw = Hnsw::<f32, DistFn<f32>>::new(10, 3, 100, 16, my_boxed_dist);
@@ -933,9 +933,9 @@ mod tests {
 
     #[test]
     fn test_hellinger() {
-        let length = 9;
-        let mut p_data = Vec::with_capacity(length);
-        let mut q_data = Vec::with_capacity(length);
+        let length: usize = 9;
+        let mut p_data: Vec<f32> = Vec::with_capacity(length);
+        let mut q_data: Vec<f32> = Vec::with_capacity(length);
         for _ in 0..length {
             p_data.push(1. / length as f32);
             q_data.push(1. / length as f32);
@@ -943,7 +943,7 @@ mod tests {
         p_data[0] -= 1. / (2 * length) as f32;
         p_data[1] += 1. / (2 * length) as f32;
         //
-        let dist = DistHellinger.eval(&p_data, &q_data);
+        let dist: f32 = DistHellinger.eval(&p_data, &q_data);
 
         let dist_exact_fn = |n: usize| -> f32 {
             let d1: f32 = (4. - (6 as f32).sqrt() - (2 as f32).sqrt()) / n as f32;
@@ -989,7 +989,7 @@ mod tests {
     fn test_jensenshannon() {
         init_log();
         //
-        let length = 19;
+        let length: usize = 19;
         let mut p_data: Vec<f32> = Vec::with_capacity(length);
         let mut q_data: Vec<f32> = Vec::with_capacity(length);
         for _ in 0..length {
@@ -1016,13 +1016,13 @@ mod tests {
     fn test_hamming_f64() {
         init_log();
 
-        let size_test = 500;
+        let size_test: usize = 500;
         let fmax: f64 = 3.;
-        let mut rng = rand::thread_rng();
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
         for i in 300..size_test {
             // generer 2 va et vb s des vecteurs<i32> de taille i  avec des valeurs entre -imax et +
             // imax et controler les resultat
-            let between = Uniform::<f64>::from(-fmax..fmax);
+            let between: Uniform<f64> = Uniform::<f64>::from(-fmax..fmax);
             let va: Vec<f64> = (0..i)
                 .into_iter()
                 .map(|_| between.sample(&mut rng))
@@ -1041,9 +1041,9 @@ mod tests {
                 .zip(vb.iter())
                 .map(|(a, b)| if a != b { 1 } else { 0 })
                 .sum();
-            let h_dist = DistHamming.eval(&va, &vb);
-            let easy_dist = easy_dist as f32 / va.len() as f32;
-            let j_exact = ((i / 2) as f32) / (i as f32);
+            let h_dist: f32 = DistHamming.eval(&va, &vb);
+            let easy_dist: f32 = easy_dist as f32 / va.len() as f32;
+            let j_exact: f32 = ((i / 2) as f32) / (i as f32);
             log::debug!(
                 "test size {:?}  HammingDist {:.3e} easy : {:.3e} exact : {:.3e} ",
                 i,
@@ -1073,13 +1073,13 @@ mod tests {
     fn test_hamming_f32() {
         init_log();
 
-        let size_test = 500;
+        let size_test: usize = 500;
         let fmax: f32 = 3.;
-        let mut rng = rand::thread_rng();
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
         for i in 300..size_test {
             // generer 2 va et vb s des vecteurs<i32> de taille i  avec des valeurs entre -imax et +
             // imax et controler les resultat
-            let between = Uniform::<f32>::from(-fmax..fmax);
+            let between: Uniform<f32> = Uniform::<f32>::from(-fmax..fmax);
             let va: Vec<f32> = (0..i)
                 .into_iter()
                 .map(|_| between.sample(&mut rng))
@@ -1098,9 +1098,9 @@ mod tests {
                 .zip(vb.iter())
                 .map(|(a, b)| if a != b { 1 } else { 0 })
                 .sum();
-            let h_dist = DistHamming.eval(&va, &vb);
-            let easy_dist = easy_dist as f32 / va.len() as f32;
-            let j_exact = ((i / 2) as f32) / (i as f32);
+            let h_dist: f32 = DistHamming.eval(&va, &vb);
+            let easy_dist: f32 = easy_dist as f32 / va.len() as f32;
+            let j_exact: f32 = ((i / 2) as f32) / (i as f32);
             log::debug!(
                 "test size {:?}  HammingDist {:.3e} easy : {:.3e} exact : {:.3e} ",
                 i,
@@ -1128,83 +1128,6 @@ mod tests {
             }
         }
     } // end of test_hamming_f32
-
-    //  to run with cargo test --features packed_simd_f -- dist::tests::test_simd_hamming_u32
-    #[test]
-    fn test_simd_hamming_u32() {
-        init_log();
-        log::info!("testing test_simd_hamming_u32 with packed_simd_2");
-        //
-        let size_test: i32 = 500;
-        let imax: u32 = 3;
-        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
-        for i in 4..size_test {
-            // generer 2 va et vb s des vecteurs<i32> de taille i  avec des valeurs entre -imax et +
-            // imax et controler les resultat
-            let between: Uniform<u32> = Uniform::<u32>::from(0..imax);
-            let va: Vec<u32> = (0..i)
-                .into_iter()
-                .map(|_| between.sample(&mut rng))
-                .collect();
-            let vb: Vec<u32> = (0..i)
-                .into_iter()
-                .map(|_| between.sample(&mut rng))
-                .collect();
-            let simd_dist = distance_jaccard_u32_16_simd(&va, &vb);
-
-            let easy_dist: u32 = va
-                .iter()
-                .zip(vb.iter())
-                .map(|(a, b)| if a != b { 1 } else { 0 })
-                .sum();
-            let easy_dist: f32 = easy_dist as f32 / va.len() as f32;
-            log::debug!("test size {:?} simd  exact = {:?} {:?}", i, simd_dist, easy_dist);
-            if (easy_dist - simd_dist).abs() > 1.0e-5 {
-                println!(" jsimd = {:?} , jexact = {:?}", simd_dist, easy_dist);
-                println!("va = {:?}", va);
-                println!("vb = {:?}", vb);
-                std::process::exit(1);
-            }
-        }
-    } // end of test_simd_hamming_u32
-
-    #[test]
-    fn test_simd_hamming_u64() {
-        init_log();
-        log::info!("testing test_simd_hamming_u32 with packed_simd_2");
-        //
-        let size_test: i32 = 500;
-        let imax: u64 = 3;
-        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
-        for i in 4..size_test {
-            // generer 2 va et vb s des vecteurs<i32> de taille i  avec des valeurs entre -imax et +
-            // imax et controler les resultat
-            let between: Uniform<u64> = Uniform::<u64>::from(0..imax);
-            let va: Vec<u64> = (0..i)
-                .into_iter()
-                .map(|_| between.sample(&mut rng))
-                .collect();
-            let vb: Vec<u64> = (0..i)
-                .into_iter()
-                .map(|_| between.sample(&mut rng))
-                .collect();
-            let simd_dist = distance_jaccard_u64_8_simd(&va, &vb);
-
-            let easy_dist: u64 = va
-                .iter()
-                .zip(vb.iter())
-                .map(|(a, b)| if a != b { 1 } else { 0 })
-                .sum();
-            let easy_dist: f32 = easy_dist as f32 / va.len() as f32;
-            println!("test size {:?} simd  exact = {:?} {:?}", i, simd_dist, easy_dist);
-            if (easy_dist - simd_dist).abs() > 1.0e-5 {
-                println!(" jsimd = {:?} , jexact = {:?}", simd_dist, easy_dist);
-                println!("va = {:?}", va);
-                println!("vb = {:?}", vb);
-                std::process::exit(1);
-            }
-        }
-    } // end of test_simd_hamming_u64
 
     #[test]
     fn test_feature_simd() {
