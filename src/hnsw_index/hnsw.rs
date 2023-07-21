@@ -7,12 +7,11 @@ use std::cmp::Ordering;
 use std::collections::binary_heap::BinaryHeap;
 #[allow(unused)]
 use std::collections::HashSet;
-use std::sync::mpsc::channel;
-use std::sync::Arc;
+use std::sync::{mpsc, Arc};
 
 use hashbrown::HashMap;
 use log::{debug, trace};
-use ordered_float::NotNan;
+// use ordered_float::NotNan;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -132,7 +131,8 @@ pub struct Point<T: Clone + Send + Sync> {
 
 impl<T: Clone + Send + Sync> Point<T> {
     pub fn new(v: &[T], origin_id: usize, p_id: PointId) -> Self {
-        let mut neighbours = Vec::with_capacity(NB_LAYER_MAX as usize);
+        let mut neighbours: Vec<Vec<Arc<PointWithOrder<T>>>> =
+            Vec::with_capacity(NB_LAYER_MAX as usize);
         // CAVEAT, perhaps pass nb layer as arg ?
         for _ in 0..NB_LAYER_MAX {
             neighbours.push(Vec::<Arc<PointWithOrder<T>>>::new());
@@ -159,11 +159,11 @@ impl<T: Clone + Send + Sync> Point<T> {
     /// useful for extern crate only as it reallocates vectors
     pub fn get_neighborhood_id(&self) -> Vec<Vec<Neighbour>> {
         let ref_neighbours = self.neighbours.read();
-        let nb_layer = ref_neighbours.len();
+        let nb_layer: usize = ref_neighbours.len();
         let mut neighborhood = Vec::<Vec<Neighbour>>::with_capacity(nb_layer);
         for i in 0..nb_layer {
-            let mut neighbours = Vec::<Neighbour>::new();
-            let nb_ngbh = ref_neighbours[i].len();
+            let mut neighbours: Vec<Neighbour> = Vec::<Neighbour>::new();
+            let nb_ngbh: usize = ref_neighbours[i].len();
             if nb_ngbh > 0usize {
                 neighbours.reserve(nb_ngbh);
                 for pointwo in &ref_neighbours[i] {
@@ -277,9 +277,9 @@ impl LayerGenerator {
     /// probabilities. thread safe method.
     fn generate(&self) -> usize {
         let mut protected_rng = self.rng.lock();
-        let xsi = protected_rng.sample(self.unif);
-        let level = -xsi.ln() * self.scale;
-        let mut ulevel = level.floor() as usize;
+        let xsi: f64 = protected_rng.sample(self.unif);
+        let level: f64 = -xsi.ln() * self.scale;
+        let mut ulevel: usize = level.floor() as usize;
         // we redispatch possibly sampled level  >= maxlevel to required range
         if ulevel >= self.maxlevel {
             // This occurs with very low probability. Cf commentary above.
@@ -1226,11 +1226,13 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         // extend_candidates = true;
         //
         if extend_candidates {
-            let mut candidates_set = HashMap::<PointId, Arc<Point<T>>>::new();
+            let mut candidates_set: HashMap<PointId, Arc<Point<T>>> =
+                HashMap::<PointId, Arc<Point<T>>>::new();
             for c in candidates.iter() {
                 candidates_set.insert(c.point_ref.p_id, Arc::clone(&c.point_ref));
             }
-            let mut new_candidates_set = HashMap::<PointId, Arc<Point<T>>>::new();
+            let mut new_candidates_set: HashMap<PointId, Arc<Point<T>>> =
+                HashMap::<PointId, Arc<Point<T>>>::new();
             // get a list of all neighbours of candidates
             for (_p_id, p_point) in candidates_set.iter() {
                 let n_p_layer: &Vec<Arc<PointWithOrder<T>>> =
@@ -1249,12 +1251,13 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 new_candidates_set.len()
             );
             for (_p_id, p_point) in new_candidates_set.iter() {
-                let dist_topoint = self.dist_f.eval(data, &p_point.v);
+                let dist_topoint: f32 = self.dist_f.eval(data, &p_point.v);
                 candidates.push(Arc::new(PointWithOrder::new(p_point, -dist_topoint)));
             }
         } // end if extend_candidates
         //
-        let mut discarded_points = BinaryHeap::<Arc<PointWithOrder<T>>>::new();
+        let mut discarded_points: BinaryHeap<Arc<PointWithOrder<T>>> =
+            BinaryHeap::<Arc<PointWithOrder<T>>>::new();
         while candidates.len() > 0 && neighbours_vec.len() < nb_neighbours_asked {
             // compare distances of e to data. we do not need to recompute dists!
             if let Some(e_p) = candidates.pop() {
@@ -1484,7 +1487,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         knbn: usize,
         ef: usize,
     ) -> Vec<Vec<Neighbour>> {
-        let (sender, receiver) = channel();
+        let (sender, receiver) = mpsc::channel();
 
         // make up requests
         let nb_request: usize = datas.len();
@@ -1493,7 +1496,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         //
         requests.par_iter().for_each_with(
             sender,
-            |s: &mut std::sync::mpsc::Sender<(usize, Vec<Neighbour>)>, item: &(usize, &Vec<T>)| {
+            |s: &mut mpsc::Sender<(usize, Vec<Neighbour>)>, item: &(usize, &Vec<T>)| {
                 s.send(self.search_with_id(*item, knbn, ef)).unwrap()
             },
         );
@@ -1522,15 +1525,16 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     /// quantize from f32 into i8 vector
     #[allow(unused)]
     pub fn quantize(vector: Vec<f32>) -> Vec<i8> {
-        let max_value: f32 = vector
-            .par_iter()
-            .map(|&x| x.abs())
-            .reduce(|| *NotNan::new(MAX_QVALUE).unwrap(), |max: f32, x: f32| f32::max(max, x));
+        // assume the given vector is l2 normalized vector.
+        // let max_value: f32 = vector
+        //     .par_iter()
+        //     .map(|&x| x.abs())
+        //     .reduce(|| *NotNan::new(MAX_QVALUE).unwrap(), |max: f32, x: f32| f32::max(max, x));
 
         let mut v: Vec<i8> = Vec::with_capacity(vector.len());
 
         for x in vector {
-            let vi: f32 = x * MAX_QVALUE / max_value;
+            let vi: f32 = x * MAX_QVALUE;
             debug_assert!(-MAX_QVALUE - 0.0001 <= vi && vi <= MAX_QVALUE + 0.0001);
             v.push(vi as i8);
         }
@@ -1717,12 +1721,12 @@ mod tests {
         //
         println!("\n\n test_iter_point");
         //
-        let mut rng = rand::thread_rng();
-        let unif = Uniform::<f32>::new(0., 1.);
-        let nbcolumn = 5000;
-        let nbrow = 10;
-        let mut xsi;
-        let mut data = Vec::with_capacity(nbcolumn);
+        let mut rng: ThreadRng = rand::thread_rng();
+        let unif: Uniform<f32> = Uniform::<f32>::new(0., 1.);
+        let nbcolumn: usize = 5000;
+        let nbrow: usize = 10;
+        let mut xsi: f32;
+        let mut data: Vec<Vec<f32>> = Vec::with_capacity(nbcolumn);
         for j in 0..nbcolumn {
             data.push(Vec::with_capacity(nbrow));
             for _ in 0..nbrow {
@@ -1731,8 +1735,8 @@ mod tests {
             }
         }
         // check insertion
-        let ef_construct = 25;
-        let nb_connection = 10;
+        let ef_construct: usize = 25;
+        let nb_connection: usize = 10;
         let hns = Hnsw::<f32, dist::DistL1>::new(
             nb_connection,
             nbcolumn,
@@ -1746,11 +1750,11 @@ mod tests {
 
         hns.dump_layer_info();
         // now check iteration
-        let layer_num = 0;
+        let layer_num: i32 = 0;
         let nbpl = hns.get_point_indexation().get_layer_nb_point(layer_num);
         let mut layer_iter = hns.get_point_indexation().get_layer_iterator(layer_num);
         //
-        let mut nb_dumped = 0;
+        let mut nb_dumped: i32 = 0;
         loop {
             if let Some(_point) = layer_iter.next() {
                 //    println!("point : {:?}", _point.p_id);
