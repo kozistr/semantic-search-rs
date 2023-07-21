@@ -186,7 +186,7 @@ simd_l2_distance!(f32, f32x16, 16);
 
 //=========================================================================
 
-/// Cosine distance : implemented for f32, f64, i64, i32 , u16
+/// Cosine distance : implemented for f32, f64, i64, i32, u16
 #[derive(Default)]
 pub struct DistCosine;
 
@@ -197,15 +197,14 @@ macro_rules! implementCosDistance(
                 let res = va.iter().zip(vb.iter()).map(|t| ((*t.0 * *t.1) as f64, (*t.0 * *t.0) as f64, (*t.1 * *t.1) as f64)).
                     fold((0., 0., 0.), |acc , t| (acc.0 + t.0, acc.1 + t.1, acc.2 + t.2));
 
-                let dist: f32;
-                if res.1 > 0.0 && res.2 > 0.0 {
-                    let dist_unchecked = 1. - res.0 / (res.1 * res.2).sqrt();
-                    assert!(dist_unchecked >= - 0.00002);
-                    dist = dist_unchecked.max(0.) as f32;
+                let dist: f32 = if res.1 > 0.0 && res.2 > 0.0 {
+                    let dist_unchecked = 1.0 - res.0 / (res.1 * res.2).sqrt();
+                    assert!(dist_unchecked >= -0.00002);
+                    dist_unchecked.max(0.) as f32
                 }
                 else {
-                    dist = 0.;
-                }
+                    0.0f32
+                };
 
                 dist
             } // end of function
@@ -216,50 +215,83 @@ macro_rules! implementCosDistance(
 implementCosDistance!(i64);
 implementCosDistance!(i32);
 implementCosDistance!(u16);
+implementCosDistance!(f64);
+implementCosDistance!(f32);
 
-#[allow(unreachable_code)]
-fn dot_f64(va: &[f64], vb: &[f64]) -> f64 {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
-        let size: usize = va.len() - (va.len() % 8);
+//=========================================================================
 
-        let c: f64 = va
-            .chunks_exact(8)
-            .map(f64x8::from_slice_unaligned)
-            .zip(vb.chunks_exact(8).map(f64x8::from_slice_unaligned))
-            .map(|(a, b)| a * b)
-            .sum::<f64x8>()
-            .sum();
+/// This is essentially the Cosine distance but we suppose
+/// all vectors (graph construction and request vectors have been l2 normalized to unity
+/// BEFORE INSERTING in HNSW!.   
+/// No control is made, so it is the user responsability to send normalized vectors
+/// everywhere in inserting and searching.
+///
+/// In large dimensions (hundreds) this pre-normalization spare cpu time.  
+/// At low dimensions (a few ten's there is not a significant gain).  
+/// This distance makes sense only for f16, f32 or f64
+/// We provide for avx2 implementations for f32 that provides consequent gains
+/// in large dimensions
 
-        let d: f64 = va[size..].iter().zip(&vb[size..]).map(|(p, q)| p * q).sum();
+#[derive(Default)]
+pub struct DistDot;
 
-        return c + d;
+#[allow(unused)]
+macro_rules! implementDotDistance(
+    ($ty:ty) => (
+        impl Distance<$ty> for DistDot  {
+            fn eval(&self, va: &[$ty], vb: &[$ty]) -> f32 {
+                let dot: f32 = va.iter().zip(vb.iter()).map(|t| (*t.0 * *t.1) as f32).fold(0., |acc , t| (acc + t));
+                assert(dot <= 1.);
+                return 1.0 - dot;
+            }  // end of function
+        }  // end of impl block
+    )  // end of matching
+);
+
+macro_rules! simd_dot_distance (
+    ($data_type:ident, $simd_type:ident, $size:expr) => {
+        #[allow(unreachable_code)]
+        impl Distance<$data_type> for DistDot {
+            fn eval(&self, va: &[$data_type], vb: &[$data_type]) -> f32 {
+                #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+                {
+                    let size: usize = va.len() - (va.len() % $size);
+
+                    let c: $data_type = va
+                        .chunks_exact($size)
+                        .map($simd_type::from_slice_unaligned)
+                        .zip(vb.chunks_exact($size).map($simd_type::from_slice_unaligned))
+                        .map(|(a, b)| a * b)
+                        .sum::<$simd_type>()
+                        .sum();
+
+                    let d: $data_type = va[size..]
+                        .iter()
+                        .zip(&vb[size..])
+                        .map(|(p, q)| p * q)
+                        .sum();
+
+                    let dist: f32 = (1.0 - (c + d)) as f32;
+                    assert!(dist >= -0.000002);
+
+                    return dist.max(0.);
+                }
+
+                let dist: f32 = va.iter()
+                    .zip(vb.iter())
+                    .map(|(p, q)| *p as f32 * *q as f32)
+                    .sum();
+                let dist: f32 = 1.0 - dist;
+                assert!(dist >= -0.000002);
+
+                dist.max(0.)
+            }
+        }
     }
+);
 
-    va.iter().zip(vb).map(|(p, q)| p * q).sum::<f64>()
-}
-
-#[allow(unreachable_code)]
-fn dot_f32(va: &[f32], vb: &[f32]) -> f32 {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
-        let size: usize = va.len() - (va.len() % 16);
-
-        let c: f32 = va
-            .chunks_exact(16)
-            .map(f32x16::from_slice_unaligned)
-            .zip(vb.chunks_exact(16).map(f32x16::from_slice_unaligned))
-            .map(|(a, b)| a * b)
-            .sum::<f32x16>()
-            .sum();
-
-        let d: f32 = va[size..].iter().zip(&vb[size..]).map(|(p, q)| p * q).sum();
-
-        return c + d;
-    }
-
-    va.iter().zip(vb).map(|(p, q)| p * q).sum::<f32>()
-}
+simd_dot_distance!(f64, f64x8, 8);
+simd_dot_distance!(f32, f32x16, 16);
 
 #[allow(unreachable_code)]
 fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
@@ -294,87 +326,6 @@ fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
     compute_r_dx_dy_fallback(va, vb)
 }
 
-impl Distance<f64> for DistCosine {
-    fn eval(&self, va: &[f64], vb: &[f64]) -> f32 {
-        let ab: f64 = dot_f64(va, vb);
-        let a: f64 = dot_f64(va, va).sqrt();
-        let b: f64 = dot_f64(vb, vb).sqrt();
-
-        let dist: f32 = if a > 0.0 && b > 0.0 {
-            let d: f64 = 1.0 - ab / (a * b);
-            assert!(d >= -0.00002);
-            d.max(0.0) as f32
-        } else {
-            0.0f32
-        };
-        dist
-    }
-}
-
-impl Distance<f32> for DistCosine {
-    fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        let ab: f32 = dot_f32(va, vb);
-        let a: f32 = dot_f32(va, va).sqrt();
-        let b: f32 = dot_f32(vb, vb).sqrt();
-
-        let dist: f32 = if a > 0.0 && b > 0.0 {
-            let d: f32 = 1.0 - ab / (a * b);
-            assert!(d >= -0.00002);
-            d.max(0.0) as f32
-        } else {
-            0.0
-        };
-        dist
-    }
-}
-
-//=========================================================================
-
-/// This is essentially the Cosine distance but we suppose
-/// all vectors (graph construction and request vectors have been l2 normalized to unity
-/// BEFORE INSERTING in  HNSW!.   
-/// No control is made, so it is the user responsability to send normalized vectors
-/// everywhere in inserting and searching.
-///
-/// In large dimensions (hundreds) this pre-normalization spare cpu time.  
-/// At low dimensions (a few ten's there is not a significant gain).  
-/// This distance makes sense only for f16, f32 or f64
-/// We provide for avx2 implementations for f32 that provides consequent gains
-/// in large dimensions
-
-#[derive(Default)]
-pub struct DistDot;
-
-#[allow(unused)]
-macro_rules! implementDotDistance(
-    ($ty:ty) => (
-        impl Distance<$ty> for DistDot  {
-            fn eval(&self, va: &[$ty], vb: &[$ty]) -> f32 {
-                let zero: f32 = 0f32;
-                let dot = va.iter().zip(vb.iter()).map(|t| (*t.0 * *t.1) as f32).fold(0., |acc , t| (acc + t));
-                assert(dot <= 1.);
-                return 1. - dot;
-            }  // end of function
-        }  // end of impl block
-    )  // end of matching
-);
-
-impl Distance<f64> for DistDot {
-    fn eval(&self, va: &[f64], vb: &[f64]) -> f32 {
-        let dot: f64 = 1.0 - dot_f64(va, vb);
-        assert!(dot >= -0.000002);
-        dot.max(0.) as f32
-    } // end of eval
-}
-
-impl Distance<f32> for DistDot {
-    fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        let dot: f32 = 1.0 - dot_f32(va, vb);
-        assert!(dot >= -0.000002);
-        dot.max(0.) as f32
-    } // end of eval
-}
-
 impl Distance<i8> for DistDot {
     fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
         let dot: f32 = 1.0 - (dot_i8(va, vb) as f32);
@@ -383,10 +334,14 @@ impl Distance<i8> for DistDot {
 }
 
 pub fn l2_normalize(va: &mut [f32]) {
-    let l2norm: f32 = va.iter().map(|t| (*t * *t) as f32).sum::<f32>().sqrt();
-    if l2norm > 0. {
+    let l2_norm: f32 = va
+        .iter()
+        .map(|t: &f32| (*t * *t) as f32)
+        .sum::<f32>()
+        .sqrt();
+    if l2_norm > 0. {
         for i in 0..va.len() {
-            va[i] = va[i] / l2norm;
+            va[i] = va[i] / l2_norm;
         }
     }
 }
