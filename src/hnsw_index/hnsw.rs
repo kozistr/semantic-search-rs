@@ -20,6 +20,7 @@ use crate::hnsw_index::dist::Distance;
 use crate::hnsw_index::filter::FilterT;
 
 const MAX_QVALUE: f32 = 127.0f32;
+const FACTOR: f32 = MAX_QVALUE / 128.0f32;
 
 // TODO
 // Profiling.
@@ -1530,16 +1531,18 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         //     .par_iter()
         //     .map(|&x| x.abs())
         //     .reduce(|| *NotNan::new(MAX_QVALUE).unwrap(), |max: f32, x: f32| f32::max(max, x));
-
         let mut v: Vec<i8> = Vec::with_capacity(vector.len());
 
-        for x in vector {
-            let vi: f32 = x * MAX_QVALUE;
-            debug_assert!(-MAX_QVALUE - 0.0001 <= vi && vi <= MAX_QVALUE + 0.0001);
-            v.push(vi as i8);
-        }
-
+        v.extend(vector.iter().copied().map(|x: f32| (x * FACTOR) as i8));
         v
+
+        // for x in vector {
+        //     let vi: f32 = x * MAX_QVALUE;
+        //     debug_assert!(-MAX_QVALUE - 0.0001 <= vi && vi <= MAX_QVALUE + 0.0001);
+        //     v.push(vi as i8);
+        // }
+
+        // v
     } // end of quantize
 } // end of Hnsw
 
