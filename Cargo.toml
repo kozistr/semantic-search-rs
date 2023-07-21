@@ -79,4 +79,4 @@ overflow-checks = false
 rpath = false
 
 [features]
-embedding = ["indicatif"]
+progress = ["indicatif"]

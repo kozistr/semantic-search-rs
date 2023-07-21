@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use anyhow::Result;
-#[cfg(feature = "embedding")]
+#[cfg(feature = "progress")]
 use indicatif::ProgressBar;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use semantic_search::hnsw_index::api::AnnT;
@@ -30,11 +30,11 @@ fn main() -> Result<()> {
     let bs: usize = 128;
 
     let pb;
-    #[cfg(feature = "embedding")]
+    #[cfg(feature = "progress")]
     {
         pb = ProgressBar::new((nb_elem / bs + 1) as u64);
     }
-    #[cfg(not(feature = "embedding"))]
+    #[cfg(not(feature = "progress"))]
     {
         pb = Instant::now();
     }
@@ -42,12 +42,12 @@ fn main() -> Result<()> {
     for chunk in data.chunks(bs) {
         let embeds: Vec<Vec<f32>> = model.encode(chunk).unwrap();
         embeddings.extend(embeds.into_iter());
-        #[cfg(feature = "embedding")]
+        #[cfg(feature = "progress")]
         {
             pb.inc(1);
         }
     }
-    #[cfg(feature = "embedding")]
+    #[cfg(feature = "progress")]
     {
         pb.finish();
     }
