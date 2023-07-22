@@ -310,21 +310,21 @@ fn dot_f32(va: &[f32], vb: &[f32]) -> f32 {
 }
 
 #[allow(unreachable_code)]
-fn dot_i8(va: &[i8], vb: &[i8]) -> f32 {
+fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     #[target_feature(enable = "avx2")]
-    unsafe fn compute_r_dx_dy_avx2(x: &[i8], y: &[i8]) -> f32 {
+    unsafe fn compute_r_dx_dy_avx2(x: &[i8], y: &[i8]) -> i32 {
         compute_r_dx_dy_fallback(x, y)
     }
 
     #[inline(always)]
-    fn compute_r_dx_dy_fallback(x: &[i8], y: &[i8]) -> f32 {
-        let mut r: f32 = 0.0f32;
+    fn compute_r_dx_dy_fallback(x: &[i8], y: &[i8]) -> i32 {
+        let mut r: i32 = 0i32;
 
         for (xi, yi) in x
             .iter()
-            .map(|&xi| f32::from(xi))
-            .zip(y.iter().map(|&yi| f32::from(yi)))
+            .map(|&xi| i32::from(xi))
+            .zip(y.iter().map(|&yi| i32::from(yi)))
         {
             r += xi * yi;
         }
@@ -342,7 +342,7 @@ fn dot_i8(va: &[i8], vb: &[i8]) -> f32 {
     compute_r_dx_dy_fallback(va, vb)
 }
 
-const MAX_VALUE: f32 = 16384.0f32;
+const MAX_VALUE: i32 = 16384;
 
 impl Distance<f32> for DistDot {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
@@ -360,8 +360,8 @@ impl Distance<f64> for DistDot {
 
 impl Distance<i8> for DistDot {
     fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
-        let dot: f32 = 1.0 - dot_i8(va, vb) / MAX_VALUE;
-        dot.max(0.)
+        let dot: i32 = MAX_VALUE - dot_i8(va, vb);
+        dot.max(0) as f32
     } // end of eval
 }
 
