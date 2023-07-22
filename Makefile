@@ -13,4 +13,4 @@ builder:
 	cargo +nightly run --release --features progress --bin embedding
 
 example:
-	cargo +nightly run --release --bin main
+	cargo +nightly run --release --bin main "Asia shares drift lower as investors factor in Fed rate hike." quantize
