@@ -825,20 +825,21 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         layer: u8,
         filter: Option<&dyn FilterT>,
     ) -> BinaryHeap<Arc<PointWithOrder<T>>> {
-        //
         trace!(
             "entering search_layer with entry_point_id {:?} layer : {:?} ef {:?} ",
             entry_point.p_id,
             layer,
             ef
         );
+
         // here we allocate a binary_heap on values not on reference beccause we want to return
         // log2(skiplist_size) must be greater than 1.
         let skiplist_size: usize = ef.max(2);
+
         // we will store positive distances in this one
         let mut return_points: BinaryHeap<Arc<PointWithOrder<T>>> =
             BinaryHeap::<Arc<PointWithOrder<T>>>::with_capacity(skiplist_size);
-        //
+
         if self.layer_indexed_points.points_by_layer.read()[layer as usize].len() == 0 {
             // at the beginning we can have nothing in layer
             trace!("search layer {:?}, empty layer", layer);
@@ -848,18 +849,21 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             trace!("search layer negative point id : {:?}", entry_point.p_id);
             return return_points;
         }
+
         // initialize visited points
         let dist_to_entry_point: f32 = self.dist_f.eval(point, &entry_point.v);
         log::trace!("       distance to entry point: {:?} ", dist_to_entry_point);
+
         // keep a list of id visited
         let mut visited_point_id: HashMap<PointId, Arc<Point<T>>> =
             HashMap::<PointId, Arc<Point<T>>>::new();
         visited_point_id.insert(entry_point.p_id, Arc::clone(&entry_point));
-        //
+
         let mut candidate_points: BinaryHeap<Arc<PointWithOrder<T>>> =
             BinaryHeap::<Arc<PointWithOrder<T>>>::with_capacity(skiplist_size);
         candidate_points.push(Arc::new(PointWithOrder::new(&entry_point, -dist_to_entry_point)));
         return_points.push(Arc::new(PointWithOrder::new(&entry_point, dist_to_entry_point)));
+
         // at the beginning candidate_points contains point passed as arg in layer entry_point_id.0
         while candidate_points.len() > 0 {
             // get nearest point in candidate_points
@@ -869,6 +873,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             assert!(f.dist_to_ref >= 0.);
             assert!(c.dist_to_ref <= 0.);
             log::trace!("comparaing c : {:?} f : {:?}", -(c.dist_to_ref), f.dist_to_ref);
+
             if -(c.dist_to_ref) > f.dist_to_ref {
                 // this comparison requires that we are sure that distances compared are distances
                 // to the same point : This is the case we compare distance to point
@@ -899,7 +904,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 neighbours_c_l.len()
             );
             for e in neighbours_c_l {
-                // HERE WE sEE THAT neighbours should be stored as PointIdWithOrder !!
+                // HERE WE SEE THAT neighbours should be stored as PointIdWithOrder !!
                 // CAVEAT what if several point_id with same distance to ref point?
                 if visited_point_id.contains_key(&e.point_ref.p_id) != true {
                     visited_point_id.insert(e.point_ref.p_id, Arc::clone(&e.point_ref));
@@ -1204,10 +1209,9 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         keep_pruned: bool,
         neighbours_vec: &mut Vec<Arc<PointWithOrder<T>>>,
     ) {
-        //
         log::trace!("entering select_neighbours : nb candidates: {}", candidates.len());
-        //
         neighbours_vec.clear();
+
         // we will extend if we do not have enough candidates and it is explicitly asked in arg
         let mut extend_candidates: bool = false;
         if candidates.len() <= nb_neighbours_asked {
@@ -1224,16 +1228,19 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 extend_candidates = true;
             }
         }
+
         // extend_candidates = true;
-        //
+
         if extend_candidates {
             let mut candidates_set: HashMap<PointId, Arc<Point<T>>> =
                 HashMap::<PointId, Arc<Point<T>>>::new();
             for c in candidates.iter() {
                 candidates_set.insert(c.point_ref.p_id, Arc::clone(&c.point_ref));
             }
+
             let mut new_candidates_set: HashMap<PointId, Arc<Point<T>>> =
                 HashMap::<PointId, Arc<Point<T>>>::new();
+
             // get a list of all neighbours of candidates
             for (_p_id, p_point) in candidates_set.iter() {
                 let n_p_layer: &Vec<Arc<PointWithOrder<T>>> =
@@ -1246,17 +1253,19 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     }
                 }
             } // end of for p
+
             log::trace!(
                 "select neighbours extend candidates from  : {:?} adding : {:?}",
                 candidates.len(),
                 new_candidates_set.len()
             );
+
             for (_p_id, p_point) in new_candidates_set.iter() {
                 let dist_topoint: f32 = self.dist_f.eval(data, &p_point.v);
                 candidates.push(Arc::new(PointWithOrder::new(p_point, -dist_topoint)));
             }
         } // end if extend_candidates
-        //
+
         let mut discarded_points: BinaryHeap<Arc<PointWithOrder<T>>> =
             BinaryHeap::<Arc<PointWithOrder<T>>>::new();
         while candidates.len() > 0 && neighbours_vec.len() < nb_neighbours_asked {
@@ -1265,6 +1274,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 let mut e_to_insert: bool = true;
                 let e_point_v: &Vec<T> = &e_p.point_ref.v;
                 assert!(e_p.dist_to_ref <= 0.);
+
                 // is e_p the nearest to reference? data than to previous neighbours
                 if neighbours_vec.len() > 0 {
                     e_to_insert = !neighbours_vec
