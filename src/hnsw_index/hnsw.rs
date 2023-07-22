@@ -11,7 +11,6 @@ use std::sync::{mpsc, Arc};
 
 use hashbrown::HashMap;
 use log::{debug, trace};
-// use ordered_float::NotNan;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -20,7 +19,6 @@ use crate::hnsw_index::dist::Distance;
 use crate::hnsw_index::filter::FilterT;
 
 const MAX_QVALUE: f32 = 127.0f32;
-const FACTOR: f32 = MAX_QVALUE / 128.0f32;
 
 // TODO
 // Profiling.
@@ -968,7 +966,6 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     ///  The insertion method gives the point an internal id.  
     ///  The slice insertion makes integration with ndarray crate easier than the vector insertion
     pub fn insert_slice(&self, data_with_id: (&[T], usize)) {
-        //
         let (data, origin_id) = data_with_id;
         let keep_pruned: bool = self.keep_pruned;
         // insert in indexation and get point_id adn generate a new entry_point if necessary
@@ -976,11 +973,13 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             .layer_indexed_points
             .generate_new_point(data, origin_id);
         log::trace!("\n\n Hnsw insert generated new point {:?} ", new_point.p_id);
+
         // now real work begins
         // allocate a binary heap
         let level: u8 = new_point.p_id.0;
         let mut enter_point_copy: Option<Arc<Point<T>>> = None;
         let mut max_level_observed: u8 = 0;
+
         // entry point has been set in
         {
             // I open a read lock on an option
@@ -1000,6 +999,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         let mut dist_to_entry: f32 = self
             .dist_f
             .eval(data, &enter_point_copy.as_ref().unwrap().v);
+
         // we go from self.max_level_observed to level+1 included
         for l in ((level + 1)..(max_level_observed + 1)).rev() {
             // CAVEAT could bypass when layer empty, avoid  allocation..
@@ -1044,6 +1044,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 log::trace!("layer still empty  {} : got null list", l);
             }
         }
+
         // now enter_point_id_copy contains id of nearest
         // now loop down to 0
         for l in (0..level + 1).rev() {
@@ -1526,25 +1527,25 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 
     /// quantize from f32 into i8 vector
     #[allow(unused)]
-    pub fn quantize(vector: Vec<f32>) -> Vec<i8> {
+    pub fn quantize(vector: &Vec<T>) -> Vec<i8> {
         // assume the given vector is l2 normalized vector.
-        // let max_value: f32 = vector
-        //     .par_iter()
-        //     .map(|&x| x.abs())
-        //     .reduce(|| *NotNan::new(MAX_QVALUE).unwrap(), |max: f32, x: f32| f32::max(max, x));
         let mut v: Vec<i8> = Vec::with_capacity(vector.len());
-
-        v.extend(vector.iter().copied().map(|x: f32| (x * FACTOR) as i8));
+        v.extend(vector.iter().copied().map(|x: f32| (x * MAX_QVALUE) as i8));
         v
+    }
 
-        // for x in vector {
-        //     let vi: f32 = x * MAX_QVALUE;
-        //     debug_assert!(-MAX_QVALUE - 0.0001 <= vi && vi <= MAX_QVALUE + 0.0001);
-        //     v.push(vi as i8);
-        // }
+    // end of quantize
 
-        // v
-    } // end of quantize
+    /// quantize from f32 into i8 vector
+    #[allow(unused)]
+    pub fn quantize_slice(vector: &[T]) -> Vec<i8> {
+        // assume the given vector is l2 normalized vector.
+        let mut v: Vec<i8> = Vec::with_capacity(vector.len());
+        v.extend(vector.iter().copied().map(|x: f32| (x * MAX_QVALUE) as i8));
+        v
+    } 
+
+    // end of quantize_slice
 } // end of Hnsw
 
 // This function takes a binary heap with points declared with a negative distance
