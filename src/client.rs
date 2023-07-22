@@ -49,8 +49,8 @@ async fn execute(config: &Config) -> Result<Metrics> {
         k: config.k,
     };
 
-    // warm-up 10 times to load model & index files on the server-side
-    for _ in 0..10 {
+    // warm-up 11 times to load model & index files on the server-side
+    for _ in 0..11 {
         _ = client.predict(requests.clone()).await?;
     }
 
