@@ -1,3 +1,4 @@
+use std::env;
 use std::time::Instant;
 
 use anyhow::Result;
@@ -24,25 +25,14 @@ fn main() -> Result<()> {
     let data: Vec<String> = load_data();
     println!("load data : {:.3?}", start.elapsed());
 
-    let nb_elem: usize = data.len();
-    let max_nb_connection: usize = 16;
-    let ef_c: usize = 200;
-    let nb_layer: usize = 16;
-
-    let index: Hnsw<_, DistDot> = if !do_quantize {
-        Hnsw::<f32, DistDot>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistDot {})
-    } else {
-        Hnsw::<i8, DistDot>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistDot {})
-    };
-
-    let mut embeddings: Vec<Vec<f32>> = Vec::with_capacity(nb_elem);
+    let mut embeddings: Vec<Vec<f32>> = Vec::with_capacity(data.len());
 
     let bs: usize = 128;
 
     let pb;
     #[cfg(feature = "progress")]
     {
-        pb = ProgressBar::new((nb_elem / bs + 1) as u64);
+        pb = ProgressBar::new((data.len() / bs + 1) as u64);
     }
     #[cfg(not(feature = "progress"))]
     {
@@ -64,26 +54,43 @@ fn main() -> Result<()> {
 
     println!("inference : {:.3?}", pb.elapsed());
 
-    let embeddings: Vec<Vec<_>> = if do_quantize {
+    let nb_elem: usize = data.len();
+    let max_nb_connection: usize = 16;
+    let ef_c: usize = 200;
+    let nb_layer: usize = 16;
+
+    if do_quantize {
+        let index: Hnsw<f32, DistDot> =
+            Hnsw::<f32, DistDot>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistDot {});
+
+        let embeddings_indices: Vec<(&Vec<f32>, usize)> =
+            embeddings.iter().zip(0..embeddings.len()).collect();
+
+        let start: Instant = Instant::now();
+        index.parallel_insert(&embeddings_indices);
+        println!("parallel insert : {:.3?}", start.elapsed());
+
+        _ = index.file_dump(&"news".to_string());
+    } else {
+        let index: Hnsw<i8, DistDot> =
+            Hnsw::<i8, DistDot>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistDot {});
+
         let start: Instant = Instant::now();
         let embeddings: Vec<Vec<i8>> = embeddings
             .par_iter()
             .map(|embedding: &Vec<f32>| quantize(embedding))
             .collect();
         println!("quantize : {:.3?}", start.elapsed());
-        embeddings
-    } else {
-        embeddings
-    };
 
-    let embeddings_indices: Vec<(&Vec<i8>, usize)> =
-        embeddings.iter().zip(0..embeddings.len()).collect();
+        let embeddings_indices: Vec<(&Vec<i8>, usize)> =
+            embeddings.iter().zip(0..embeddings.len()).collect();
 
-    let start: Instant = Instant::now();
-    index.parallel_insert(&embeddings_indices);
-    println!("parallel insert : {:.3?}", start.elapsed());
+        let start: Instant = Instant::now();
+        index.parallel_insert(&embeddings_indices);
+        println!("parallel insert : {:.3?}", start.elapsed());
 
-    _ = index.file_dump(&"news_q".to_string());
+        _ = index.file_dump(&"news_q".to_string());
+    }
 
     Ok(())
 }
