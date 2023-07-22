@@ -101,25 +101,29 @@ cargo +nightly run --release --features example --bin main "query"
   * compiled with `AVX2`, `FMA` flags (RUSTCFLAGS)
   * indexing : HNSW (FLAT)
   * embedding dimenstion : 384
+  * embedding data type : f32, i8
   * distance measure : L2, Cosine
   * k : 10
   * num of documents : 127.6K documents
   * warm up with 10 times
 
-| dist  |  bs   |  reqs  |   k   |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
-| :---: | :---: |  :---: | :---: | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
-|  L2   |    1  |   10k  |  10   | total  |   4.833 ms |   5.426 ms |   6.037 ms |   9.578 ms |  12.411 ms |
-|       |       |        |       | model  |   4.507 ms |   4.994 ms |   5.505 ms |   8.979 ms |  12.094 ms |
-|       |       |        |       | search |   0.203 ms |   0.308 ms |   0.354 ms |   0.449 ms |   0.567 ms |
-|       |   32  |   1k   |  10   | total  |  10.403 ms |  10.951 ms |  11.625 ms |  16.794 ms |  16.794 ms |
-|       |       |        |       | model  |   9.211 ms |   9.684 ms |  10.226 ms |  14.796 ms |  14.796 ms |
-|       |       |        |       | search |   0.981 ms |   1.183 ms |   1.386 ms |   2.386 ms |   2.386 ms |
-|       |  128  |   1k   |  10   | total  |  32.220 ms |  32.602 ms |  32.862 ms |  33.440 ms |  33.440 ms |
-|       |       |        |       | model  |  29.120 ms |  29.411 ms |  29.653 ms |  30.333 ms |  30.333 ms |
-|       |       |        |       | search |   2.855 ms |   3.007 ms |   3.154 ms |   3.452 ms |   3.452 ms |
-| Cos   |  128  |   1k   |  10   | total  |  31.547 ms |  31.890 ms |  32.087 ms |  33.479 ms |  33.479 ms |
-|       |       |        |       | model  |  28.992 ms |  29.229 ms |  29.438 ms |  30.936 ms |  30.936 ms |
-|       |       |        |       | search |   2.275 ms |   2.444 ms |   2.595 ms |   2.722 ms |   2.722 ms |
+| prec  | dist  |  bs   |  reqs  |   k   |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
+| :---: | :---: | :---: |  :---: | :---: | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
+|  f32  |  L2   |    1  |   10k  |  10   | total  |   4.833 ms |   5.426 ms |   6.037 ms |   9.578 ms |  12.411 ms |
+|       |       |       |        |       | model  |   4.507 ms |   4.994 ms |   5.505 ms |   8.979 ms |  12.094 ms |
+|       |       |       |        |       | search |   0.203 ms |   0.308 ms |   0.354 ms |   0.449 ms |   0.567 ms |
+|       |       |   32  |   1k   |  10   | total  |  10.403 ms |  10.951 ms |  11.625 ms |  16.794 ms |  16.794 ms |
+|       |       |       |        |       | model  |   9.211 ms |   9.684 ms |  10.226 ms |  14.796 ms |  14.796 ms |
+|       |       |       |        |       | search |   0.981 ms |   1.183 ms |   1.386 ms |   2.386 ms |   2.386 ms |
+|       |       |  128  |   1k   |  10   | total  |  32.220 ms |  32.602 ms |  32.862 ms |  33.440 ms |  33.440 ms |
+|       |       |       |        |       | model  |  29.120 ms |  29.411 ms |  29.653 ms |  30.333 ms |  30.333 ms |
+|       |       |       |        |       | search |   2.855 ms |   3.007 ms |   3.154 ms |   3.452 ms |   3.452 ms |
+|       | Cos   |  128  |   1k   |  10   | total  |  31.547 ms |  31.890 ms |  32.087 ms |  33.479 ms |  33.479 ms |
+|       |       |       |        |       | model  |  28.992 ms |  29.229 ms |  29.438 ms |  30.936 ms |  30.936 ms |
+|       |       |       |        |       | search |   2.275 ms |   2.444 ms |   2.595 ms |   2.722 ms |   2.722 ms |
+|  i8   | Cos   |  128  |   1k   |  10   | total  |  31.547 ms |  31.890 ms |  32.087 ms |  33.479 ms |  33.479 ms |
+|       |       |       |        |       | model  |  28.992 ms |  29.229 ms |  29.438 ms |  30.936 ms |  30.936 ms |
+|       |       |       |        |       | search |   2.275 ms |   2.444 ms |   2.595 ms |   2.722 ms |   2.722 ms |
 
 * QPS
   * total (mean, L2)
@@ -133,7 +137,7 @@ cargo +nightly run --release --features example --bin main "query"
   * search (mean, Cosine)
     * bs 128 : 56264 QPS
 
-* ~~quantized vector (i8) is 20% faster and saving about 4x times memory than f32 vector~~
+* quantized vector (i8) is 2x faster and saving about 4x times memory than f32 vector
 
 ## Examples
 
@@ -188,6 +192,31 @@ top 9 | id : 77269, dist : 0.84736
 Asian Markets Mixed on China Rate Hike (AP) AP - Asian financial markets showed a mixed reaction Friday to China's first interest rate rise in nine years, which analysts welcomed as a shift toward capitalist-style economic tools and away from central planning.
 top 10 | id : 76632, dist : 0.8489096
 Asian Stocks Ease After China Rate Rise (Reuters) Reuters - China's surprise interest rate rise\weighed down Asian stocks on Friday as investors sold shares of\miners, shippers and other firms whose fortunes have been\closely linked to the country's rapid growth.
+```
+
+Cosine distance w/ i8 (quantized)
+
+```text
+top 1 | id : 70945, dist : 8807
+Asian Shares Fall on Dollar; Gold, Oil Up (Reuters) Reuters - The U.S. dollar stumbled on Monday,\setting multi-month lows against the yen and euro and trading\around four-year lows against the Korean won and Singapore\dollar, prompting investors to clip Asian share markets.
+top 2 | id : 33140, dist : 10982
+US Stock-Index Futures Decline; Citigroup, GE Slip in Europe US stock-index futures declined. Dow Jones Industrial Average shares including General Electric Co. slipped in Europe. Citigroup Inc.
+top 3 | id : 33077, dist : 11208
+US Stock-Index Futures Are Little Changed; Citigroup, GE Slip US stock-index futures were little changed. Dow Jones Industrial Average shares including General Electric Co. slipped in Europe. Citigroup Inc.
+top 4 | id : 95897, dist : 11290
+Red hot Google shares cooling  Google Inc. may be subject to the law of gravity, after all. Its shares, which more than doubled in the two months after the company's Aug. 19 initial public offering and traded as high as \$201.60 on Nov. 3, have slipped about 17 percent over the past two weeks. They closed at \$167.54 yesterday, down 2.88 percent for the day, ...
+top 5 | id : 40354, dist : 11390
+Tokyo stocks open slightly lower TOKYO - Stocks opened slightly lower Monday on the Tokyo Stock Exchange as declines in US technology shares last Friday prompted selling.
+top 6 | id : 64025, dist : 12241
+E*Trade Profit Rises as Expenses Drop (Reuters) Reuters - E*Trade Financial Corp. , an\online bank and brokerage, on Monday said its third-quarter\profit rose as lower expenses offset a drop in net revenue.
+top 7 | id : 58035, dist : 12458
+UK inflation rate fall continues The UK's inflation rate fell in September, thanks in part to a fall in the price of airfares, increasing the chance that interest rates will be kept on hold.
+top 8 | id : 65573, dist : 12583
+Yen Eases Against Dollar  TOKYO (Reuters) - The yen edged down against the dollar on  Wednesday as Japanese stock prices slid, but it remained within  striking distance of three-month highs on persistent concerns  about the health of the U.S. economy.
+top 9 | id : 50470, dist : 12828
+Tower Auto Sees Wider Loss, Shares Fall  CHICAGO (Reuters) - Auto parts maker Tower Automotive Inc.  &lt;A HREF="http://www.investor.reuters.com/FullQuote.aspx?ticker=TWR.N target=/stocks/quickinfo/fullquote"&gt;TWR.N&lt;/A&gt; said on Tuesday its third-quarter loss would be twice  as deep as previously expected because of lower vehicle  production in North America and higher steel costs.
+top 10 | id : 1267, dist : 13020
+Study: Global Warming Could Change Calif. (AP) AP - Global warming could cause dramatically hotter summers and a depleted snow pack in California, leading to a sharp increase in heat-related deaths and jeopardizing the water supply, according to a study released Monday.
 ```
 
 ## References
