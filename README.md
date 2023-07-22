@@ -124,7 +124,9 @@ cargo +nightly run --release --features example --bin main "query"
 |       |  Cos  |  128  |   1k   |  10   | total  |  31.547 ms |  31.890 ms |  32.087 ms |  33.479 ms |  33.479 ms |
 |       |       |       |        |       | model  |  28.992 ms |  29.229 ms |  29.438 ms |  30.936 ms |  30.936 ms |
 |       |       |       |        |       | search |   2.275 ms |   2.444 ms |   2.595 ms |   2.722 ms |   2.722 ms |
-|   i8  |  Cos  |  128  |   1k   |  10   | search |   1.787 ms |   1.955 ms |   2.067 ms |   3.000 ms |   3.000 ms |
+|   i8  |  Cos  |  128  |   1k   |  10   | total  |  31.110 ms |  31.468 ms |  31.804 ms |  32.254 ms |  32.254 ms |
+|       |       |       |        |       | model  |  28.953 ms |  29.234 ms |  29.447 ms |  29.955 ms |  29.955 ms |
+|       |       |       |        |       | search |   1.794 ms |   1.956 ms |   2.056 ms |   2.517 ms |   2.517 ms |
 
 * QPS
   * total (mean, L2)
@@ -138,7 +140,7 @@ cargo +nightly run --release --features example --bin main "query"
   * search (mean, Cosine)
     * bs 128 : 56264 QPS
   * search (mean, Cosine, i8)
-    * bs 128 : 71628 QPS
+    * bs 128 : 71349 QPS
 
 * quantized vector (i8) is 40% faster and saving about 4x times memory than f32 vector
 
