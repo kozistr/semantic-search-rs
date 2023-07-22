@@ -110,7 +110,7 @@ cargo +nightly run --release --features example --bin main "query"
 % latency is bit different by rust version. In the recent version (1.73.0 nightly), the speed becomes slower (2.275 ms -> 3.000 ms).
 % i8 is benchmarked with 1.73.0.
 
-| prec  | dist  |  bs   |  reqs  |   k   |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
+|   p   | dist  |  bs   |  reqs  |   k   |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
 | :---: | :---: | :---: |  :---: | :---: | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
 |  f32  |  L2   |    1  |   10k  |  10   | total  |   4.833 ms |   5.426 ms |   6.037 ms |   9.578 ms |  12.411 ms |
 |       |       |       |        |       | model  |   4.507 ms |   4.994 ms |   5.505 ms |   8.979 ms |  12.094 ms |
@@ -121,12 +121,10 @@ cargo +nightly run --release --features example --bin main "query"
 |       |       |  128  |   1k   |  10   | total  |  32.220 ms |  32.602 ms |  32.862 ms |  33.440 ms |  33.440 ms |
 |       |       |       |        |       | model  |  29.120 ms |  29.411 ms |  29.653 ms |  30.333 ms |  30.333 ms |
 |       |       |       |        |       | search |   2.855 ms |   3.007 ms |   3.154 ms |   3.452 ms |   3.452 ms |
-|       | Cos   |  128  |   1k   |  10   | total  |  31.547 ms |  31.890 ms |  32.087 ms |  33.479 ms |  33.479 ms |
+|       |  Cos  |  128  |   1k   |  10   | total  |  31.547 ms |  31.890 ms |  32.087 ms |  33.479 ms |  33.479 ms |
 |       |       |       |        |       | model  |  28.992 ms |  29.229 ms |  29.438 ms |  30.936 ms |  30.936 ms |
 |       |       |       |        |       | search |   2.275 ms |   2.444 ms |   2.595 ms |   2.722 ms |   2.722 ms |
-|  i8   | Cos   |  128  |   1k   |  10   | total  |  31.547 ms |  31.890 ms |  32.087 ms |  33.479 ms |  33.479 ms |
-|       |       |       |        |       | model  |  28.992 ms |  29.229 ms |  29.438 ms |  30.936 ms |  30.936 ms |
-|       |       |       |        |       | search |   1.787 ms |   1.955 ms |   2.067 ms |   3.000 ms |   3.000 ms |
+|   i8  |  Cos  |  128  |   1k   |  10   | search |   1.787 ms |   1.955 ms |   2.067 ms |   3.000 ms |   3.000 ms |
 
 * QPS
   * total (mean, L2)
