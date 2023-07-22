@@ -968,6 +968,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     pub fn insert_slice(&self, data_with_id: (&[T], usize)) {
         let (data, origin_id) = data_with_id;
         let keep_pruned: bool = self.keep_pruned;
+
         // insert in indexation and get point_id adn generate a new entry_point if necessary
         let (new_point, point_rank) = self
             .layer_indexed_points
@@ -1115,9 +1116,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     /// Many consecutive parallel_insert can be done, so the size of vector inserted in one
     /// insertion can be optimized.
     pub fn parallel_insert(&self, datas: &Vec<(&Vec<T>, usize)>) {
-        log::debug!("entering parallel_insert");
         datas.par_iter().for_each(|&item| self.insert(item));
-        log::debug!("exiting parallel_insert");
     }
 
     // end of parallel_insert
@@ -1135,7 +1134,6 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 
     /// insert new_point in neighbourhood info of point
     fn reverse_update_neighborhood_simple(&self, new_point: Arc<Point<T>>) {
-        //  println!("reverse update neighbourhood for  new point {:?} ", new_point.p_id);
         log::trace!("reverse update neighbourhood for  new point {:?} ", new_point.p_id);
         let level: u8 = new_point.p_id.0;
         for l in (0..level + 1).rev() {
@@ -1524,29 +1522,29 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     }
 
     // end of insert_parallel
-
-    /// quantize from f32 into i8 vector
-    #[allow(unused)]
-    pub fn quantize(vector: &Vec<T>) -> Vec<i8> {
-        // assume the given vector is l2 normalized vector.
-        let mut v: Vec<i8> = Vec::with_capacity(vector.len());
-        v.extend(vector.iter().copied().map(|x: f32| (x * MAX_QVALUE) as i8));
-        v
-    }
-
-    // end of quantize
-
-    /// quantize from f32 into i8 vector
-    #[allow(unused)]
-    pub fn quantize_slice(vector: &[T]) -> Vec<i8> {
-        // assume the given vector is l2 normalized vector.
-        let mut v: Vec<i8> = Vec::with_capacity(vector.len());
-        v.extend(vector.iter().copied().map(|x: f32| (x * MAX_QVALUE) as i8));
-        v
-    } 
-
-    // end of quantize_slice
 } // end of Hnsw
+
+/// quantize from f32 into i8 vector
+#[allow(unused)]
+pub fn quantize(vector: &Vec<f32>) -> Vec<i8> {
+    // assume the given vector is l2 normalized vector.
+    let mut v: Vec<i8> = Vec::with_capacity(vector.len());
+    v.extend(vector.iter().copied().map(|x: f32| (x * MAX_QVALUE) as i8));
+    v
+}
+
+// end of quantize
+
+/// quantize from f32 into i8 vector
+#[allow(unused)]
+pub fn quantize_slice(vector: &[f32]) -> Vec<i8> {
+    // assume the given vector is l2 normalized vector.
+    let mut v: Vec<i8> = Vec::with_capacity(vector.len());
+    v.extend(vector.iter().copied().map(|x: f32| (x * MAX_QVALUE) as i8));
+    v
+}
+
+// end of quantize_slice
 
 // This function takes a binary heap with points declared with a negative distance
 // and returns a vector of points with their correct positive distance to some reference distance
