@@ -1,4 +1,5 @@
 use std::env;
+use std::time::Instant;
 
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use semantic_search::hnsw_index::dist::DistDot;
@@ -17,7 +18,6 @@ fn main() {
 
     let model: SentenceEmbeddingsModel = load_model();
     let index: Hnsw<f32, DistDot> = load_index("news");
-
     let data: Vec<String> = load_data();
 
     let query_embedding: Vec<Vec<f32>> = model.encode(&[query]).unwrap();
