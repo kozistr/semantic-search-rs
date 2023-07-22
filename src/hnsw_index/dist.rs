@@ -248,6 +248,7 @@ macro_rules! implementDotDistance(
     )  // end of matching
 );
 
+#[alloc[unused]]
 macro_rules! simd_dot_distance (
     ($data_type:ident, $simd_type:ident, $size:expr) => {
         #[allow(unreachable_code)]
@@ -288,8 +289,25 @@ macro_rules! simd_dot_distance (
     }
 );
 
-simd_dot_distance!(f64, f64x8, 8);
-simd_dot_distance!(f32, f32x16, 16);
+#[allow(unreachable_code)]
+fn dot_f64(va: &[f64], vb: &[f64]) -> f64 {
+    va.chunks_exact(8)
+        .map(f64x8::from_slice_unaligned)
+        .zip(vb.chunks_exact(8).map(f64x8::from_slice_unaligned))
+        .map(|(a, b)| a * b)
+        .sum::<f64x8>()
+        .sum()
+}
+
+#[allow(unreachable_code)]
+fn dot_f32(va: &[f32], vb: &[f32]) -> f32 {
+    va.chunks_exact(16)
+        .map(f32x16::from_slice_unaligned)
+        .zip(vb.chunks_exact(16).map(f32x16::from_slice_unaligned))
+        .map(|(a, b)| a * b)
+        .sum::<f32x16>()
+        .sum()
+}
 
 #[allow(unreachable_code)]
 fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
@@ -324,12 +342,29 @@ fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
     compute_r_dx_dy_fallback(va, vb)
 }
 
+impl Distance<f32> for DistDot {
+    fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
+        let dist: f32 = 1.0 - dot_f32(va, vb);
+        dist.max(0.)
+    }
+}
+
+impl Distance<f64> for DistDot {
+    fn eval(&self, va: &[f64], vb: &[f64]) -> f32 {
+        let dist: f32 = 1.0 - dot_f64(va, vb) as f32;
+        dist.max(0.)
+    }
+}
+
 impl Distance<i8> for DistDot {
     fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
         let dot: f32 = 1.0 - (dot_i8(va, vb) as f32);
         dot.max(0.)
     } // end of eval
 }
+
+// simd_dot_distance!(f64, f64x8, 8);
+// simd_dot_distance!(f32, f32x16, 16);
 
 pub fn l2_normalize(va: &mut [f32]) {
     let l2_norm: f32 = va
