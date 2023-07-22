@@ -133,7 +133,7 @@ cargo +nightly run --release --features example --bin main "query"
   * search (mean, Cosine)
     * bs 128 : 56264 QPS
 
-* quantized vector (i8) is 20% faster and saving about 4x times memory than f32 vector
+* ~~quantized vector (i8) is 20% faster and saving about 4x times memory than f32 vector~~
 
 ## Examples
 
