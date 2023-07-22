@@ -248,7 +248,7 @@ macro_rules! implementDotDistance(
     )  // end of matching
 );
 
-#[alloc(unused)]
+#[allow(unused)]
 macro_rules! simd_dot_distance (
     ($data_type:ident, $simd_type:ident, $size:expr) => {
         #[allow(unreachable_code)]
