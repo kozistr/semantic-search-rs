@@ -10,7 +10,7 @@ server:
 	cargo +nightly run --release --bin server
 
 builder:
-	cargo +nightly run --release --features progress --bin embedding
+	cargo +nightly run --release --features progress --bin embedding quantize
 
 example:
 	cargo +nightly run --release --bin main "Asia shares drift lower as investors factor in Fed rate hike." quantize
