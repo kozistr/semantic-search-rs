@@ -1515,7 +1515,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             req_hash.insert(req_res[i].0, i);
         });
 
-        (0..datas.len()).for_each(|i| {
+        (0..datas.len()).for_each(|i: usize| {
             let answer_i: usize = *req_hash.get(&i).unwrap();
             answers.push((req_res[answer_i].1).clone());
         });
