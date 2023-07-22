@@ -45,6 +45,7 @@ fn load_file(filename: &String) -> BufReader<File> {
     reader
 }
 
+#[allow(unused)]
 pub fn load_index(dataset: &str) -> Hnsw<f32, DistDot> {
     println!("load index");
 
@@ -56,6 +57,26 @@ pub fn load_index(dataset: &str) -> Hnsw<f32, DistDot> {
         let description: Description = load_description(&mut graph).unwrap();
 
         let mut index: Hnsw<f32, DistDot> = load_hnsw(&mut graph, &description, &mut data).unwrap();
+        index.set_searching_mode(true);
+
+        index
+    };
+
+    index
+}
+
+#[allow(unused)]
+pub fn load_quantize_index(dataset: &str) -> Hnsw<i8, DistDot> {
+    println!("load quantize index");
+
+    let index: Hnsw<i8, DistDot> = {
+        let mut graph: BufReader<File> = load_file(&format!("{}_q.hnsw.graph", dataset));
+        // todo: offload to the disk (memmmap) to save the memmory
+        let mut data: BufReader<File> = load_file(&format!("{}_q.hnsw.data", dataset));
+
+        let description: Description = load_description(&mut graph).unwrap();
+
+        let mut index: Hnsw<i8, DistDot> = load_hnsw(&mut graph, &description, &mut data).unwrap();
         index.set_searching_mode(true);
 
         index
