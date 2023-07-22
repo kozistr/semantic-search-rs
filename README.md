@@ -103,11 +103,8 @@ cargo +nightly run --release --features example --bin main "query"
   * embedding dimenstion : 384
   * distance measure : L2, Cosine
   * k : 10
+  * num of documents : 127.6K documents
   * warm up with 10 times
-
-### AG News
-
-* num of documents : 127.6K documents
 
 | dist  |  bs   |  reqs  |   k   |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
 | :---: | :---: |  :---: | :---: | :---:  |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |
@@ -135,6 +132,8 @@ cargo +nightly run --release --features example --bin main "query"
     * bs 128 : 44834 QPS
   * search (mean, Cosine)
     * bs 128 : 56264 QPS
+
+* quantized vector (i8) is 20% faster than f32 vector
 
 ## Examples
 
