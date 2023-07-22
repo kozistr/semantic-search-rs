@@ -9,6 +9,7 @@ use std::collections::binary_heap::BinaryHeap;
 use std::collections::HashSet;
 use std::sync::{mpsc, Arc};
 
+use dashmap::DashMap;
 use hashbrown::HashMap;
 use log::{debug, trace};
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
@@ -1508,16 +1509,17 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         let mut answers: Vec<Vec<Neighbour>> = Vec::<Vec<Neighbour>>::with_capacity(datas.len());
 
         // get a map from request id to rank
-        let mut req_hash: HashMap<usize, usize> = HashMap::<usize, usize>::new();
-        for i in 0..req_res.len() {
-            // the response of request req_res[i].0 is at rank i
-            req_hash.insert(req_res[i].0, i);
-        }
+        let req_hash: DashMap<usize, usize> = DashMap::<usize, usize>::with_capacity(req_res.len());
 
-        for i in 0..datas.len() {
-            let answer_i: &usize = req_hash.get_key_value(&i).unwrap().1;
-            answers.push((req_res[*answer_i].1).clone());
-        }
+        (0..req_res.len()).into_par_iter().for_each(|i: usize| {
+            req_hash.insert(req_res[i].0, i);
+        });
+
+        (0..datas.len()).for_each(|i| {
+            let answer_i: usize = *req_hash.get(&i).unwrap();
+            answers.push((req_res[answer_i].1).clone());
+        });
+
         answers
     }
 
