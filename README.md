@@ -11,8 +11,9 @@ semantic search demo with gRPC server in Rust
 ## Non-Goals
 
 * distributed & sharded index building & searching
-* reduce the embedding dimension
+* utilze any vector database or engine products
 * support various indexing algorithms
+* reduce the embedding dimension
 
 ## To-Do
 
@@ -46,9 +47,11 @@ semantic search demo with gRPC server in Rust
 
 ## Requirements
 
-* Rust (nightly)
-* libtorch 2.0
-* protobuf
+* Intel (modern) CPU (which supports AVX2, FMA instructions)
+  * some of distance measures doesn't support M1 Silcon or AMD CPUs.
+* [Rust (nightly)](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html)
+* [libtorch 2.0](https://github.com/LaurentMazare/tch-rs#libtorch-manual-install)
+* [protobuf](https://github.com/protocolbuffers/protobuf)
 
 ## Run
 
