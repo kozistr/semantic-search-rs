@@ -49,15 +49,15 @@ fn main() {
     }
 
     {
-        let index: Hnsw<f32, DistDot> = load_index("news");
-        // let index: Hnsw<i8, DistDot> = load_quantize_index("news");
-        // let query_embedding: Vec<i8> = quantize(&query_embedding[0]);
+        // let index: Hnsw<f32, DistDot> = load_index("news");
+        let index: Hnsw<i8, DistDot> = load_quantize_index("news");
+        let query_embedding: Vec<i8> = quantize(&query_embedding[0]);
 
         let n: usize = 2000;
 
         for bs in [1024, 2048, 4096, 8192] {
-            // let query_embeddings: Vec<Vec<i8>> = vec![query_embedding.clone(); bs];
-            let query_embeddings: Vec<Vec<f32>> = vec![query_embedding[0].clone(); bs];
+            let query_embeddings: Vec<Vec<i8>> = vec![query_embedding.clone(); bs];
+            // let query_embeddings: Vec<Vec<f32>> = vec![query_embedding[0].clone(); bs];
             let mut search_lat: Vec<u64> = vec![0u64; n];
 
             (0..n).into_iter().for_each(|i: usize| {
