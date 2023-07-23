@@ -144,18 +144,22 @@ cargo +nightly run --release --features example --bin main "query"
   * search (mean, Cosine, i8)
     * bs 128 : 71709 QPS
 
-* quantized vector (i8) is 40% faster and saving about 4x times memory than f32 vector
-
 ### Search Latency
 
 * testing with large batch size (>= 1024)
 
 |   p   | dist  |  bs   |  reqs  |   k   |    mean    |    p50     |    p95     |     p99    |    p99.9   |    max     |   QPS   |
 | :---: | :---: | :---: |  :---: | :---: |    :---:   |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |  :---:  |
+|  f32  |  cos  | 1024  |   2k   |  10   |  10.969 ms |  10.856 ms |  12.078 ms |  12.384 ms |  14.817 ms |  18.024 ms |  186714 |
+|       |       | 2048  |   2k   |  10   |  21.829 ms |  21.617 ms |  23.952 ms |  24.514 ms |  25.892 ms |  26.171 ms |  187638 |
+|       |       | 4096  |   2k   |  10   |  43.538 ms |  43.199 ms |  46.303 ms |  48.374 ms |  50.194 ms |  57.159 ms |  188156 |
+|       |       | 8192  |   2k   |  10   |  86.234 ms |  85.684 ms |  90.645 ms |  93.850 ms | 101.188 ms | 102.607 ms |  189994 |
 |   i8  |  cos  | 1024  |   2k   |  10   |   9.208 ms |   9.100 ms |  10.191 ms |  10.639 ms |  12.063 ms |  12.886 ms |  222410 |
 |       |       | 2048  |   2k   |  10   |  18.170 ms |  18.035 ms |  19.381 ms |  20.473 ms |  21.053 ms |  21.618 ms |  225430 |
 |       |       | 4096  |   2k   |  10   |  37.731 ms |  36.396 ms |  43.214 ms |  50.123 ms |  73.045 ms |  78.618 ms |  217116 |
 |       |       | 8192  |   2k   |  10   |  74.684 ms |  72.121 ms |  84.736 ms |  96.821 ms | 133.254 ms | 149.281 ms |  219378 |
+
+* quantized vector (i8) is about 20% faster and saving about 4x times memory than f32 vector
 
 ## Examples
 
