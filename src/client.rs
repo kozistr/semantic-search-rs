@@ -112,7 +112,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn log_stats(description: &str, i: usize, latencies: &Vec<u64>) {
+fn log_stats(description: &str, i: usize, bs: usize, latencies: &Vec<u64>) {
     let mut lats: Vec<u64> = latencies.clone();
     lats.sort_unstable();
 
@@ -125,12 +125,13 @@ fn log_stats(description: &str, i: usize, latencies: &Vec<u64>) {
         .collect();
 
     println!(
-        "{} latency : {} mean={:1.3} ms {} max={:1.3} ms",
+        "{} latency : {} mean={:1.3} ms {} max={:1.3} ms QPS={:?}",
         description,
         i,
         mean,
         ps.join(" "),
         max,
+        (i / (mean / bs)) as i32,
     );
 }
 
@@ -142,7 +143,7 @@ fn percentiles(ps: &[f32], lats: &mut Vec<u64>) -> Vec<(f32, u64)> {
 
 fn report(config: &Config, metrics: &Metrics) {
     println!("REPORT =====================================================================");
-    log_stats("total", config.n, &metrics.total_lat);
-    log_stats("model", config.n, &metrics.model_lat);
-    log_stats("search", config.n, &metrics.search_lat);
+    log_stats("total", config.n, config.bs, &metrics.total_lat);
+    log_stats("model", config.n, config.bs, &metrics.model_lat);
+    log_stats("search", config.n, config.bs, &metrics.search_lat);
 }
