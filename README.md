@@ -41,14 +41,13 @@ semantic search demo with gRPC server in Rust
 
 ### Data
 
-* Input  : query. String.
-* Output : top k indices. list of int32.
+* Input  : queries. list of String.
+* Output : top k indices. 2d list of int32.
 
 ## Requirements
 
 * Rust (nightly)
 * libtorch 2.0
-* rust-bert
 * protobuf
 
 ## Run
