@@ -342,8 +342,6 @@ fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
     compute_r_dx_dy_fallback(va, vb)
 }
 
-const MAX_VALUE: i32 = 16384;
-
 impl Distance<f32> for DistDot {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
         let dist: f32 = 1.0 - dot_f32(va, vb);
@@ -360,7 +358,7 @@ impl Distance<f64> for DistDot {
 
 impl Distance<i8> for DistDot {
     fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
-        let dot: i32 = MAX_VALUE - dot_i8(va, vb);
+        let dot: i32 = 16384 - dot_i8(va, vb);
         dot.max(0) as f32
     } // end of eval
 }
