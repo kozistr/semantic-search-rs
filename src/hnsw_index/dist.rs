@@ -395,34 +395,41 @@ pub fn l2_normalize(va: &mut [f32]) {
 #[derive(Default)]
 pub struct DistHellinger;
 
-// default implementation
-macro_rules! implementHellingerDistance (
-    ($ty:ty) => (
-        impl Distance<$ty> for DistHellinger {
-            fn eval(&self, va: &[$ty], vb: &[$ty]) -> f32 {
-            // RUSTFLAGS = "-C opt-level=3 -C target-cpu=native"
-            // to // by rayon
-                let mut dist = va.iter().zip(vb.iter()).map(|t| ((*t.0).sqrt() * (*t.1).sqrt()) as f32).fold(0., |acc , t| (acc + t*t));
-                dist = (1. - dist).sqrt();
-                dist
-            } // end of compute
-        } // end of impl block
-    )  // end of pattern matching
-);
+fn hellinger_f64(va: &[f64], vb: &[f64]) -> f64 {
+    va.chunks_exact(8)
+        .map(f64x8::from_slice_unaligned)
+        .zip(vb.chunks_exact(8).map(f64x8::from_slice_unaligned))
+        .map(|(a, b)| {
+            let c = (a * b).sqrt();
+            c * c
+        })
+        .sum::<f64x8>()
+        .sum()
+}
 
-implementHellingerDistance!(f64);
+fn hellinger_f32(va: &[f32], vb: &[f32]) -> f32 {
+    va.chunks_exact(16)
+        .map(f32x16::from_slice_unaligned)
+        .zip(vb.chunks_exact(16).map(f32x16::from_slice_unaligned))
+        .map(|(a, b)| {
+            let c = (a * b).sqrt();
+            c * c
+        })
+        .sum::<f32x16>()
+        .sum()
+}
+
+impl Distance<f64> for DistHellinger {
+    fn eval(&self, va: &[f64], vb: &[f64]) -> f32 {
+        let mut dist: f32 = 1.0 - hellinger_f32(va, vb) as f32;
+        dist.max(0.).sqrt()
+    } // end of eval
+}
 
 impl Distance<f32> for DistHellinger {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        let mut dist: f32 = va
-            .iter()
-            .zip(vb.iter())
-            .map(|t: (&f32, &f32)| ((*t.0).sqrt() * (*t.1).sqrt()) as f32)
-            .fold(0., |acc: f32, t: f32| (acc + t));
-        // if too far away from >= panic else reset!
-        assert!(1. - dist >= -0.000001);
-        dist = (1. - dist).max(0.).sqrt();
-        dist
+        let mut dist: f32 = 1.0 - hellinger_f32(va, vb) as f32;
+        dist.max(0.).sqrt()
     } // end of eval
 }
 
