@@ -1,6 +1,6 @@
 # semantic-search-rs
 
-navie semantic search demo with gRPC server in Rust
+semantic search demo with gRPC server in Rust
 
 ## Goals
 
@@ -13,16 +13,6 @@ navie semantic search demo with gRPC server in Rust
 * distributed & sharded index building & searching
 * reduce the embedding dimension
 * support various indexing algorithms
-
-### real thing does matter
-
-To serve billion-scale vector search in real-time, effectively, there're two things to be achieved, followed by [this post](https://0x65.dev/blog/2019-12-07/indexing-billions-of-text-vectors.html).
-
-1. vector
-    * reduce vector size
-    * quantize vector
-2. offload the index (to the local disk)
-    * to save memory
 
 ## To-Do
 
@@ -45,7 +35,7 @@ To serve billion-scale vector search in real-time, effectively, there're two thi
 * ANN (modified hnswlib-rs)
   * multi-threaded insertion and search.
   * SIMD accelrated distance calculation. (re-implemented)
-  * HNSW (FLAT) index
+  * HNSW index
 
 ### Data
 
@@ -54,9 +44,9 @@ To serve billion-scale vector search in real-time, effectively, there're two thi
 
 ## Requirements
 
-* libtorch 2.0 (cuda)
+* Rust (nightly)
+* libtorch 2.0
 * rust-bert
-* (modified) hnswlib-rs
 * protobuf
 
 ## Run
@@ -66,20 +56,32 @@ To serve billion-scale vector search in real-time, effectively, there're two thi
 Extract embeddings from the given documents and build & save an index to the local disk.
 
 ```shell
-make run-builder
+cargo +nightly run --release --features progress --bin embedding
+```
+
+If you want i8 vector (quantized vector), pass `quantize` to the argument.
+
+```shell
+cargo +nightly run --release --features progress --bin embedding quantize
 ```
 
 ### gRPC Client
 
-Run gRPC client.
+Build & Run gRPC client.
 
 ```shell
 make run-client
 ```
 
+You can also change the arguments. e.g. `./client num_users num_requests bs k`
+
+```shell
+cargo +nightly run --release --bin client 1 1000 128 10
+```
+
 ### gRPC Server
 
-Run gRPC server (for model & search inference).
+Build & Run gRPC server (for model & search inference).
 
 ```shell
 make run-server
@@ -90,7 +92,7 @@ make run-server
 Run example with the given query. (there must be a built index with `ag_news` dataset)
 
 ```shell
-cargo +nightly run --release --features example --bin main "query"
+cargo +nightly run --release --features progress --bin main "query"
 ```
 
 ## Benchmarks
@@ -98,16 +100,17 @@ cargo +nightly run --release --features example --bin main "query"
 * GPU : GTX 1060 6G (CUDA 11.8, CuDNN 8.8.x)
 * CPU : i7-7700K
 * Info
-  * compiled with `AVX2`, `FMA` flags (RUSTCFLAGS)
-  * indexing : HNSW (FLAT)
+  * compiled with `AVX2`, `FMA` flags
+  * indexing : HNSW
   * embedding dimenstion : 384
   * embedding data type : f32, i8
   * distance measure : L2, Cosine
   * k : 10
   * num of documents : 127.6K documents
-  * warm up with 10 times
+  * warm up with 11 times
 
 % latency is bit different by rust version. In the recent version (1.73.0 nightly), the speed becomes slower (2.275 ms -> 3.000 ms).
+
 % i8 is benchmarked with 1.73.0.
 
 |   p   | dist  |  bs   |  reqs  |   k   |  type  |    mean    |    p95     |     p99    |    p99.9   |     max    |
