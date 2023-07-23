@@ -419,14 +419,14 @@ fn hellinger_f32(va: &[f32], vb: &[f32]) -> f32 {
 
 impl Distance<f64> for DistHellinger {
     fn eval(&self, va: &[f64], vb: &[f64]) -> f32 {
-        let mut dist: f32 = 1.0 - hellinger_f32(va, vb) as f32;
-        dist.max(0.).sqrt()
+        let dist: f64 = 1.0 - hellinger_f64(va, vb);
+        dist.max(0.).sqrt() as f32
     } // end of eval
 }
 
 impl Distance<f32> for DistHellinger {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
-        let mut dist: f32 = 1.0 - hellinger_f32(va, vb) as f32;
+        let dist: f32 = 1.0 - hellinger_f32(va, vb);
         dist.max(0.).sqrt()
     } // end of eval
 }
