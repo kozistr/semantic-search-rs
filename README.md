@@ -32,6 +32,8 @@ semantic search demo with gRPC server in Rust
 * dynamic batch inference (both of model & search)
 * inference a LM in a real time on the GPU.
   * model info : [hf - Mini-LM L12 v2](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)
+* vector quantization (post-quantization)
+  * rescale f32 to i8
 * ANN (modified hnswlib-rs)
   * multi-threaded insertion and search.
   * SIMD accelrated distance calculation. (re-implemented)
