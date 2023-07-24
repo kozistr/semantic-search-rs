@@ -313,21 +313,15 @@ fn dot_f32(va: &[f32], vb: &[f32]) -> f32 {
 fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     #[target_feature(enable = "avx2")]
-    unsafe fn compute_r_dx_dy_avx2(x: &[i8], y: &[i8]) -> i32 {
-        compute_r_dx_dy_fallback(x, y)
+    unsafe fn compute_r_avx2(x: &[i8], y: &[i8]) -> i32 {
+        compute_r_fallback(x, y)
     }
 
     #[inline(always)]
-    fn compute_r_dx_dy_fallback(x: &[i8], y: &[i8]) -> i32 {
+    fn compute_r_fallback(x: &[i8], y: &[i8]) -> i32 {
         let mut r: i32 = 0i32;
 
-        for (xi, yi) in x
-            .iter()
-            .map(|&xi| i32::from(xi))
-            .zip(y.iter().map(|&yi| i32::from(yi)))
-        {
-            r += xi * yi;
-        }
+        (0..x.len()).for_each(|i: usize| r += i32::from(x[i]) * i32::from(y[i]));
 
         r
     }
@@ -335,11 +329,11 @@ fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
         if is_x86_feature_detected!("avx2") {
-            return unsafe { compute_r_dx_dy_avx2(va, vb) };
+            return unsafe { compute_r_avx2(va, vb) };
         }
     }
 
-    compute_r_dx_dy_fallback(va, vb)
+    compute_r_fallback(va, vb)
 }
 
 impl Distance<f32> for DistDot {
