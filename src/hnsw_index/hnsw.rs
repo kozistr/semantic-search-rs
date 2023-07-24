@@ -1330,7 +1330,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     }
 
     // search the first knbn nearest neigbours of a data, but can modify ef for layer > 1
-    // This function return Vec<Arc<PointWithOrder<T> >>
+    // This function return Vec<Arc<PointWithOrder<T>>>
     // The parameter ef controls the width of the search in the lowest level, it must be greater
     // than number of neighbours asked. A rule of thumb could be between knbn and max_nb_connection.
     #[allow(unused)]
@@ -1375,7 +1375,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         let last: usize = knbn.min(ef).min(neighbours.len());
         let knn_neighbours: Vec<Neighbour> = neighbours[0..last]
             .iter()
-            .map(|p| {
+            .map(|p: &Arc<PointWithOrder<T>>| {
                 Neighbour::new(
                     p.as_ref().point_ref.origin_id,
                     p.as_ref().dist_to_ref,
@@ -1448,7 +1448,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         let last: usize = knbn.min(ef).min(neighbours.len());
         let knn_neighbours: Vec<Neighbour> = neighbours[0..last]
             .iter()
-            .map(|p| {
+            .map(|p: &Arc<PointWithOrder<T>>| {
                 Neighbour::new(
                     p.as_ref().point_ref.origin_id,
                     p.as_ref().dist_to_ref,
