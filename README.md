@@ -102,7 +102,7 @@ cargo +nightly run --release --features progress --bin main "query"
 ## Benchmarks
 
 * GPU : GTX 1060 6G (CUDA 11.8, CuDNN 8.8.x)
-* CPU : i7-7700K
+* CPU : i7-7700K (4 cores 8 threads, not overclocked)
 * Info
   * compiled with `AVX2`, `FMA` flags
   * indexing : HNSW
@@ -154,6 +154,7 @@ cargo +nightly run --release --features progress --bin main "query"
 ### Search Latency
 
 * testing with large batch size (>= 1024)
+* quantized vector (i8) is about 20% faster and saving about 4x times memory than f32 vector
 
 |   p   | dist  |  bs   |  reqs  |   k   |    mean    |    p50     |    p95     |     p99    |    p99.9   |    max     |   QPS   |
 | :---: | :---: | :---: |  :---: | :---: |    :---:   |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |  :---:  |
@@ -166,7 +167,14 @@ cargo +nightly run --release --features progress --bin main "query"
 |       |       | 4096  |   2k   |  10   |  36.469 ms |  36.014 ms |  40.318 ms |  41.312 ms |  42.603 ms |  43.144 ms |  224629 |
 |       |       | 8192  |   2k   |  10   |  72.644 ms |  71.954 ms |  77.323 ms |  79.242 ms |  86.294 ms |  87.690 ms |  225539 |
 
-* quantized vector (i8) is about 20% faster and saving about 4x times memory than f32 vector
+* Macbook Pro 16-inch 2019, i9 8 cores 16 threads (2.3 GHz)
+
+|   p   | dist  |  bs   |  reqs  |   k   |    mean    |    p50     |    p95     |     p99    |    p99.9   |    max     |   QPS   |
+| :---: | :---: | :---: |  :---: | :---: |    :---:   |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |  :---:  |
+|   i8  |  cos  | 1024  |   2k   |  10   |   7.053 ms |   6.784 ms |   8.324 ms |   8.834 ms |   9.628 ms |   9.713 ms |  290391 |
+|       |       | 2048  |   2k   |  10   |  14.980 ms |  14.922 ms |  16.382 ms |  17.128 ms |  18.990 ms |  19.560 ms |  273429 |
+|       |       | 4096  |   2k   |  10   |  29.228 ms |  28.870 ms |  31.287 ms |  34.784 ms |  81.193 ms | 115.540 ms |  280275 |
+|       |       | 8192  |   2k   |  10   |  55.073 ms |  71.954 ms |  77.323 ms |  79.242 ms |  86.294 ms |  87.690 ms |  297497 |
 
 ## Examples
 
