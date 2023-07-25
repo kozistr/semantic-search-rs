@@ -69,26 +69,26 @@ If you want i8 vector (quantized vector), pass `quantize` to the argument.
 cargo +nightly run --release --features progress --bin embedding quantize
 ```
 
-### gRPC Client
+### gRPC Server
 
-Build & Run gRPC client.
+Build & Run gRPC server (for model & search inference).
 
 ```shell
-make run-client
+make server
+```
+
+### gRPC Client
+
+Build & Run gRPC client. The client will start to benchmark the server based on the given parameters.
+
+```shell
+make client
 ```
 
 You can also change the arguments. e.g. `./client num_users num_requests bs k`
 
 ```shell
 cargo +nightly run --release --bin client 1 1000 128 10
-```
-
-### gRPC Server
-
-Build & Run gRPC server (for model & search inference).
-
-```shell
-make run-server
 ```
 
 ### Example
