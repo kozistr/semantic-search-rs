@@ -83,7 +83,7 @@ fn main() {
                 mean,
                 ps.join(" "),
                 max,
-                (n as f64 / (mean / bs as f64)) as i32,
+                (1000. * (bs as f64 / mean)) as i32,
             );
         }
     }
