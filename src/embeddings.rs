@@ -79,8 +79,10 @@ fn main() -> Result<()> {
         let quantized_embeddings: Vec<Vec<i8>> = embeddings.par_iter().map(quantize).collect();
         println!("quantize : {:.3?}", start.elapsed());
 
-        let embeddings_indices: Vec<(&Vec<i8>, usize)> =
-            quantized_embeddings.iter().enumerate().collect();
+        let embeddings_indices: Vec<(&Vec<i8>, usize)> = quantized_embeddings
+            .iter()
+            .zip(0..embeddings.len())
+            .collect();
 
         let start: Instant = Instant::now();
         index.parallel_insert(&embeddings_indices);
