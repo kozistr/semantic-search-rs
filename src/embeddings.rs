@@ -11,6 +11,7 @@ use semantic_search::hnsw_index::dist::DistDot;
 use semantic_search::hnsw_index::hnsw::{quantize, Hnsw};
 use semantic_search::utils::{load_data, load_model};
 
+#[allow(clippy::range_zip_with_len)]
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 

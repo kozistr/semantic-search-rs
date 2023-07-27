@@ -754,10 +754,10 @@ impl<T: Copy + Clone + Sized + Send + Sync, F: Float> Distance<T> for DistPtr<T,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hnsw::*;
+    use crate::hnsw_index::hnsw::*;
 
     fn init_log() -> u64 {
-        let mut builder = env_logger::Builder::from_default_env();
+        let mut builder: env_logger::Builder = env_logger::Builder::from_default_env();
         let _ = builder.is_test(true).try_init();
         println!("\n ************** initializing logger *****************\n");
         return 1;
@@ -766,7 +766,7 @@ mod tests {
     #[test]
     fn test_access_to_dist_l1() {
         let distl1: DistL1 = DistL1;
-        //
+
         let v1: Vec<i32> = vec![1, 2, 3];
         let v2: Vec<i32> = vec![2, 2, 3];
 
