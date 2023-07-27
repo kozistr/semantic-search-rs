@@ -891,16 +891,20 @@ mod tests {
     use rand::distributions::{Distribution, Uniform};
 
     use super::*;
-    pub use crate::api::AnnT;
-    use crate::dist;
-    pub use crate::dist::*;
+    pub use crate::hnsw_index::api::AnnT;
+    use crate::hnsw_index::dist;
+    pub use crate::hnsw_index::dist::*;
 
     fn log_init_test() {
         let _ = env_logger::builder().is_test(true).try_init();
     }
 
     fn my_fn(v1: &[f32], v2: &[f32]) -> f32 {
-        let norm_l1: f32 = v1.iter().zip(v2.iter()).map(|t| (*t.0 - *t.1).abs()).sum();
+        let norm_l1: f32 = v1
+            .iter()
+            .zip(v2.iter())
+            .map(|t: (&f32, &f32)| (*t.0 - *t.1).abs())
+            .sum();
         norm_l1 as f32
     }
 
@@ -908,9 +912,11 @@ mod tests {
     fn test_dump_reload_1() {
         println!("\n\n test_dump_reload_1");
         log_init_test();
+
         // generate a random test
         let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
         let unif: Uniform<f32> = Uniform::<f32>::new(0., 1.);
+
         // 1000 vectors of size 10 f32
         let nbcolumn: usize = 1000;
         let nbrow: usize = 10;
@@ -926,7 +932,7 @@ mod tests {
         // define hnsw
         let ef_construct: usize = 25;
         let nb_connection: usize = 10;
-        let hnsw = Hnsw::<f32, dist::DistL1>::new(
+        let hnsw: Hnsw<f32, DistL1> = Hnsw::<f32, dist::DistL1>::new(
             nb_connection,
             nbcolumn,
             16,
@@ -940,7 +946,7 @@ mod tests {
         hnsw.dump_layer_info();
         // dump in a file.  Must take care of name as tests runs in // !!!
         let fname: String = String::from("dumpreloadtest1");
-        let _res = hnsw.file_dump(&fname);
+        let _res: Result<i32, String> = hnsw.file_dump(&fname);
         // This will dump in 2 files named dumpreloadtest.hnsw.graph and dumpreloadtest.hnsw.data
         //
         // reload
@@ -999,8 +1005,8 @@ mod tests {
         // define hnsw
         let ef_construct: usize = 25;
         let nb_connection: usize = 10;
-        let mydist = dist::DistPtr::<f32, f32>::new(my_fn);
-        let hnsw = Hnsw::<f32, dist::DistPtr<f32, f32>>::new(
+        let mydist: DistPtr<f32, f32> = dist::DistPtr::<f32, f32>::new(my_fn);
+        let hnsw: Hnsw<f32, DistPtr<f32, f32>> = Hnsw::<f32, dist::DistPtr<f32, f32>>::new(
             nb_connection,
             nbcolumn,
             16,
@@ -1013,8 +1019,8 @@ mod tests {
         // some loggin info
         hnsw.dump_layer_info();
         // dump in a file.  Must take care of name as tests runs in // !!!
-        let fname = String::from("dumpreloadtest_myfn");
-        let _res = hnsw.file_dump(&fname);
+        let fname: String = String::from("dumpreloadtest_myfn");
+        let _res: Result<i32, String> = hnsw.file_dump(&fname);
         // This will dump in 2 files named dumpreloadtest.hnsw.graph and dumpreloadtest.hnsw.data
         //
         // reload
@@ -1073,7 +1079,7 @@ mod tests {
         // define hnsw
         let ef_construct: usize = 25;
         let nb_connection: usize = 10;
-        let hnsw = Hnsw::<f32, dist::DistL1>::new(
+        let hnsw: Hnsw<f32, DistL1> = Hnsw::<f32, dist::DistL1>::new(
             nb_connection,
             nbcolumn,
             16,
@@ -1086,36 +1092,38 @@ mod tests {
         // some loggin info
         hnsw.dump_layer_info();
         // dump in a file. Must take care of name as tests runs in // !!!
-        let fname = String::from("dumpreloadtestgraph");
-        let _res = hnsw.file_dump(&fname);
+        let fname: String = String::from("dumpreloadtestgraph");
+        let _res: Result<i32, String> = hnsw.file_dump(&fname);
         // This will dump in 2 files named dumpreloadtest.hnsw.graph and dumpreloadtest.hnsw.data
         //
         // reload
         log::debug!("\n\n  hnsw reload");
         // we will need a procedural macro to get from distance name to its instanciation.
         // from now on we test with DistL1
-        let graphfname = String::from("dumpreloadtestgraph.hnsw.graph");
-        let graphpath = PathBuf::from(graphfname);
-        let graphfileres = OpenOptions::new().read(true).open(&graphpath);
+        let graphfname: String = String::from("dumpreloadtestgraph.hnsw.graph");
+        let graphpath: PathBuf = PathBuf::from(graphfname);
+        let graphfileres: Result<std::fs::File, io::Error> =
+            OpenOptions::new().read(true).open(&graphpath);
         if graphfileres.is_err() {
             println!("test_dump_reload: could not open file {:?}", graphpath.as_os_str());
             std::panic::panic_any("test_dump_reload: could not open file".to_string());
         }
-        let graphfile = graphfileres.unwrap();
+        let graphfile: std::fs::File = graphfileres.unwrap();
         //
-        let datafname = String::from("dumpreloadtestgraph.hnsw.data");
-        let datapath = PathBuf::from(datafname);
-        let datafileres = OpenOptions::new().read(true).open(&datapath);
+        let datafname: String = String::from("dumpreloadtestgraph.hnsw.data");
+        let datapath: PathBuf = PathBuf::from(datafname);
+        let datafileres: Result<std::fs::File, io::Error> =
+            OpenOptions::new().read(true).open(&datapath);
         if datafileres.is_err() {
             println!("test_dump_reload : could not open file {:?}", datapath.as_os_str());
             std::panic::panic_any("test_dump_reload : could not open file".to_string());
         }
-        let datafile = datafileres.unwrap();
+        let datafile: std::fs::File = datafileres.unwrap();
         //
-        let mut graph_in = BufReader::new(graphfile);
-        let mut data_in = BufReader::new(datafile);
+        let mut graph_in: BufReader<std::fs::File> = BufReader::new(graphfile);
+        let mut data_in: BufReader<std::fs::File> = BufReader::new(datafile);
         // we need to call load_description first to get distance name
-        let hnsw_description = load_description(&mut graph_in).unwrap();
+        let hnsw_description: Description = load_description(&mut graph_in).unwrap();
         let hnsw_loaded: Hnsw<NoData, NoDist> =
             load_hnsw(&mut graph_in, &hnsw_description, &mut data_in).unwrap();
         // test equality
@@ -1124,11 +1132,11 @@ mod tests {
 
     #[test]
     fn test_bincode() {
-        let mut rng = rand::thread_rng();
-        let unif = Uniform::<f32>::new(0., 1.);
-        let size = 10;
-        let mut xsi;
-        let mut data = Vec::with_capacity(size);
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
+        let unif: Uniform<f32> = Uniform::<f32>::new(0., 1.);
+        let size: usize = 10;
+        let mut xsi: f32;
+        let mut data: Vec<f32> = Vec::with_capacity(size);
         for _ in 0..size {
             xsi = unif.sample(&mut rng);
             println!("xsi = {:?}", xsi);

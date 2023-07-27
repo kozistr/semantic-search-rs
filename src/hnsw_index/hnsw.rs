@@ -1690,7 +1690,7 @@ mod tests {
     use rand::distributions::Uniform;
 
     use super::*;
-    use crate::dist;
+    use crate::hnsw_index::dist;
 
     #[test]
 
@@ -1714,7 +1714,7 @@ mod tests {
         // check insertion
         let ef_construct: usize = 25;
         let nb_connection: usize = 10;
-        let hns = Hnsw::<f32, dist::DistL1>::new(
+        let hns: Hnsw<f32, dist::DistL1> = Hnsw::<f32, dist::DistL1>::new(
             nb_connection,
             nbcolumn,
             16,
@@ -1762,7 +1762,7 @@ mod tests {
         // check insertion
         let ef_construct: usize = 25;
         let nb_connection: usize = 10;
-        let hns = Hnsw::<f32, dist::DistL1>::new(
+        let hns: Hnsw<f32, dist::DistL1> = Hnsw::<f32, dist::DistL1>::new(
             nb_connection,
             nbcolumn,
             16,
@@ -1775,11 +1775,11 @@ mod tests {
 
         hns.dump_layer_info();
         // now check iteration
-        let layer_num: i32 = 0;
-        let nbpl = hns.get_point_indexation().get_layer_nb_point(layer_num);
+        let layer_num: usize = 0;
+        let nbpl: usize = hns.get_point_indexation().get_layer_nb_point(layer_num);
         let mut layer_iter = hns.get_point_indexation().get_layer_iterator(layer_num);
         //
-        let mut nb_dumped: i32 = 0;
+        let mut nb_dumped: usize = 0;
         loop {
             if let Some(_point) = layer_iter.next() {
                 //    println!("point : {:?}", _point.p_id);
