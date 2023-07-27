@@ -360,12 +360,12 @@ impl Distance<i8> for DistDot {
 // simd_dot_distance!(f64, f64x8, 8);
 // simd_dot_distance!(f32, f32x16, 16);
 
-pub fn l2_normalize(va: &mut [f32]) {
+pub fn l2_normalize(mut va: &mut [f32]) {
     let l2_norm: f32 = va.iter().map(|t: &f32| *t * *t).sum::<f32>().sqrt();
 
     if l2_norm > 0. {
-        for i in 0..va.len() {
-            va[i] /= l2_norm;
+        for mut v in &mut va {
+            v /= l2_norm;
         }
     }
 }
@@ -464,9 +464,7 @@ impl Distance<f32> for DistJeffreys {
         let dist: f32 = va
             .iter()
             .zip(vb.iter())
-            .map(|t: (&f32, &f32)| {
-                (*t.0 - *t.1) * ((*t.0).max(M_MIN) / (*t.1).max(M_MIN)).ln() as f32
-            })
+            .map(|t: (&f32, &f32)| (*t.0 - *t.1) * ((*t.0).max(M_MIN) / (*t.1).max(M_MIN)).ln())
             .fold(0., |acc, t| (acc + t));
         dist
     } // end of eval
@@ -647,12 +645,7 @@ impl Distance<u16> for DistLevenshtein {
 
         let mut pre: usize;
         let mut tmp: usize;
-        let mut cur: Vec<usize> = vec![0; len_b];
-
-        // initialize string b
-        for i in 1..len_b {
-            cur[i] = i;
-        }
+        let mut cur: Vec<usize> = (0..len_b).collect();
 
         // calculate edit distance
         for (i, ca) in a.iter().enumerate() {
