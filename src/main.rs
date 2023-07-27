@@ -10,23 +10,17 @@ static BENCH_SIZE: usize = 2000;
 static K: usize = 10;
 
 #[allow(dead_code)]
-fn find_documents(query: String, do_quantize: bool) {
-    println!("query : {:?}", query);
-    println!("do quantize : {:?}", do_quantize);
-
+fn find_documents(query_embedding: &Vec<f32>, do_quantize: bool) {
     let data: Vec<String> = load_data();
-    let model: SentenceEmbeddingsModel = load_model();
-
-    let query_embedding: Vec<Vec<f32>> = model.encode(&[query]).unwrap();
 
     let neighbors: Vec<Neighbour> = if !do_quantize {
         let index: Hnsw<f32, DistDot> = load_index("news");
 
-        index.search(&query_embedding[0], K, 30)
+        index.search(query_embedding, K, 30)
     } else {
         let index: Hnsw<i8, DistDot> = load_quantize_index("news");
 
-        let query_embedding: Vec<i8> = quantize(&query_embedding[0]);
+        let query_embedding: Vec<i8> = quantize(query_embedding);
 
         index.search(query_embedding.as_slice(), K, 30)
     };
@@ -38,10 +32,10 @@ fn find_documents(query: String, do_quantize: bool) {
 }
 
 #[allow(dead_code)]
-fn bench_search() {
+fn bench_search(query_embedding: &Vec<f32>) {
     // let index: Hnsw<f32, DistDot> = load_index("news");
     let index: Hnsw<i8, DistDot> = load_quantize_index("news");
-    let query_embedding: Vec<i8> = quantize(&query_embedding[0]);
+    let query_embedding: Vec<i8> = quantize(query_embedding);
 
     for bs in [1024, 2048, 4096, 8192] {
         let query_embeddings: Vec<Vec<i8>> = vec![query_embedding.clone(); bs];
@@ -66,9 +60,17 @@ fn main() {
         process::exit(1);
     }
 
-    // let query: String = args[1].clone();
-    // let do_quantize: bool = args[2] == "quantize";
-    // find_documents(query, do_quantize);
+    let query: String = args[1].clone();
+    let do_quantize: bool = args[2] == "quantize";
 
-    bench_search();
+    println!("query : {:?}", query);
+    println!("do quantize : {:?}", do_quantize);
+
+    let model: SentenceEmbeddingsModel = load_model();
+    let query_embedding: Vec<Vec<f32>> = model.encode(&[query]).unwrap();
+    let query_embedding: &Vec<f32> = &query_embedding[0];
+
+    // find_documents(query_embedding, do_quantize);
+
+    bench_search(query_embedding);
 }
