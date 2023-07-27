@@ -130,7 +130,7 @@ fn log_stats(description: &str, i: usize, bs: usize, latencies: &Vec<u64>) {
         mean,
         ps.join(" "),
         max,
-        (1000.0 / (bs as f64 / mean)) as i32,
+        (1000.0 * (bs as f64 / mean)) as i32,
     );
 }
 
