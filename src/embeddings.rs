@@ -14,7 +14,7 @@ use semantic_search::utils::{load_data, load_model};
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
-    let do_quantize: bool = if args.len() < 2 { false } else { true };
+    let do_quantize: bool = args.len() < 2;
     println!("do quantize (f32 to i8) : {:?}", do_quantize);
 
     let start: Instant = Instant::now();
@@ -41,7 +41,7 @@ fn main() -> Result<()> {
 
     for chunk in data.chunks(bs) {
         let embeds: Vec<Vec<f32>> = model.encode(chunk).unwrap();
-        embeddings.extend(embeds.into_iter());
+        embeddings.extend(embeds);
         #[cfg(feature = "progress")]
         {
             pb.inc(1);
