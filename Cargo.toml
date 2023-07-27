@@ -4,12 +4,10 @@ version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["kozistr <kozistr@gmail.com>"]
-
 description = "naive semantic search demo with gRPC server in Rust"
 homepage = "https://github.com/kozistr/semantic-search-rs"
 readme = "README.md"
 repository = "https://github.com/kozistr/semantic-search-rs"
-
 categories = ["search", "retrival", "server"]
 keywords = ["semantic-search", "nlp", "bert", "gRPC", "vector-search", "embedding"]
 
@@ -32,7 +30,7 @@ path = "src/server.rs"
 [dependencies]
 serde = { version = "^1.0.166", features = ["derive"] }
 rust-bert = "^0.21.0"
-mimalloc = { version = "*", default-features = false }
+mimalloc = { version = "^0.1.37", default-features = false }
 tokio = { version = "^1.29.1", features = ["macros", "rt-multi-thread"] }
 tonic = "^0.9.2"
 prost = "^0.11.9"
