@@ -360,16 +360,6 @@ impl Distance<i8> for DistDot {
 // simd_dot_distance!(f64, f64x8, 8);
 // simd_dot_distance!(f32, f32x16, 16);
 
-pub fn l2_normalize(va: &mut [f32]) {
-    let l2_norm: f32 = va.iter().map(|t: &f32| *t * *t).sum::<f32>().sqrt();
-
-    if l2_norm > 0. {
-        for i in 0..va.len() {
-            va[i] /= l2_norm;
-        }
-    }
-}
-
 //=======================================================================================
 
 /// A structure to compute Hellinger distance between probalilities.
@@ -847,31 +837,6 @@ mod tests {
         }
         let dcos: f32 = 1. - prod / (normv1 * normv2).sqrt();
         println!("dist cos avec macro = {:?} ,  avec for {:?}", d1, dcos);
-    }
-
-    #[test]
-    fn test_dot_distances() {
-        let mut v1: Vec<f32> = vec![1.234, -1.678, 1.367];
-        let mut v2: Vec<f32> = vec![4.234, -6.678, 10.367];
-
-        let mut normv1: f32 = 0.;
-        let mut normv2: f32 = 0.;
-        let mut prod: f32 = 0.;
-        for i in 0..v1.len() {
-            prod += v1[i] * v2[i];
-            normv1 += v1[i] * v1[i];
-            normv2 += v2[i] * v2[i];
-        }
-        let dcos: f32 = 1. - prod / (normv1 * normv2).sqrt();
-        //
-        l2_normalize(&mut v1);
-        l2_normalize(&mut v2);
-
-        println!(" after normalisation v1 = {:?}", v1);
-
-        let dot: f32 = DistDot.eval(&v1, &v2);
-
-        println!("dot  cos avec prenormalisation  = {:?} ,  avec for {:?}", dot, dcos);
     }
 
     #[test]
