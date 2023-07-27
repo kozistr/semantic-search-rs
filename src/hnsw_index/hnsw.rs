@@ -258,7 +258,7 @@ pub struct LayerGenerator {
 
 impl LayerGenerator {
     pub fn new(max_nb_connection: usize, maxlevel: usize) -> Self {
-        let scale = 1. / (max_nb_connection as f64).ln();
+        let scale: f64 = 1. / (max_nb_connection as f64).ln();
         LayerGenerator {
             rng: Arc::new(Mutex::new(StdRng::from_entropy())),
             unif: Uniform::<f64>::new(0., 1.),
@@ -373,6 +373,7 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
         }
 
         let layer_g: LayerGenerator = LayerGenerator::new(max_nb_connection, max_layer);
+
         PointIndexation {
             max_nb_connection,
             max_layer,
@@ -559,7 +560,6 @@ impl<'a, T: Clone + Send + Sync> IterPoint<'a, T> {
 impl<'a, T: Clone + Send + Sync> Iterator for IterPoint<'a, T> {
     type Item = Arc<Point<T>>;
 
-    //
     fn next(&mut self) -> Option<Self::Item> {
         if self.layer == -1 {
             self.layer = 0;
@@ -572,6 +572,7 @@ impl<'a, T: Clone + Send + Sync> Iterator for IterPoint<'a, T> {
         } else {
             self.slot_in_layer = 0;
             self.layer += 1;
+
             // must reach a non empty layer if possible
             let entry_point_ref = self.point_indexation.entry_point.read();
             let points_by_layer = self.point_indexation.points_by_layer.read();
@@ -581,6 +582,7 @@ impl<'a, T: Clone + Send + Sync> Iterator for IterPoint<'a, T> {
             {
                 self.layer += 1;
             }
+
             // now here either  (self.layer as u8) > self.point_indexation.max_level_observed
             // or self.point_indexation.points_by_layer[self.layer as usize ].len() > 0
             if (self.layer as u8) <= entry_point_level {
@@ -689,18 +691,18 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             PointIndexation::<T>::new(max_nb_connection, adjusted_max_layer, max_elements);
         let extend_candidates: bool = false;
         let keep_pruned: bool = false;
-        //
+
         if max_nb_connection > 256 {
             println!("error max_nb_connection must be less equal than 256");
             std::process::exit(1);
         }
-        //
+
         log::info!("Hnsw max_nb_connection {:?}", max_nb_connection);
         log::info!("Hnsw nb elements {:?}", max_elements);
         log::info!("Hnsw ef_construction {:?}", ef_construction);
         log::info!("Hnsw distance {:?}", type_name::<D>());
         log::info!("Hnsw extend candidates {:?}", extend_candidates);
-        //
+
         Hnsw {
             max_nb_connection,
             ef_construction,
@@ -785,7 +787,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
              and 2.)",
             scale_modification, self.layer_indexed_points.layer_g.scale
         );
-        //
+
         if scale_modification >= 0.5 && scale_modification <= 2. {
             self.layer_indexed_points
                 .layer_g
@@ -1335,7 +1337,6 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     // than number of neighbours asked. A rule of thumb could be between knbn and max_nb_connection.
     #[allow(unused)]
     fn search_general(&self, data: &Vec<T>, knbn: usize, ef_arg: usize) -> Vec<Neighbour> {
-        //
         let mut entry_point: Arc<Point<T>>;
         {
             // a lock on an option an a Arc<Point>
@@ -1361,6 +1362,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 }
             }
         }
+
         // ef must be greater than knbn. Possibly it should be between knbn and
         // self.max_nb_connection
         let ef: usize = ef_arg.max(knbn);
