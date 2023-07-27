@@ -95,58 +95,59 @@ impl Description {
     /// . the name of distance used. (nb byes as a usize then list of bytes)
     fn dump<W: Write>(&self, argmode: DumpMode, out: &mut io::BufWriter<W>) -> Result<i32, String> {
         log::info!("in dump of description");
-        out.write(&MAGICDESCR_3.to_ne_bytes()).unwrap();
+        out.write_all(&MAGICDESCR_3.to_ne_bytes()).unwrap();
         let mode: u8 = match argmode {
             DumpMode::Full => 1,
             _ => 0,
         };
 
         // CAVEAT should check mode == self.mode
-        out.write(&mode.to_ne_bytes()).unwrap();
+        out.write_all(&mode.to_ne_bytes()).unwrap();
 
         // dump of max_nb_connection as u8!!
-        out.write(&self.max_nb_connection.to_ne_bytes()).unwrap();
-        out.write(&self.nb_layer.to_ne_bytes()).unwrap();
+        out.write_all(&self.max_nb_connection.to_ne_bytes())
+            .unwrap();
+        out.write_all(&self.nb_layer.to_ne_bytes()).unwrap();
         if self.nb_layer != NB_LAYER_MAX {
             println!("dump of Description, nb_layer != NB_MAX_LAYER");
             return Err(String::from("dump of Description, nb_layer != NB_MAX_LAYER"));
         }
 
         log::info!("dumping ef {:?}", self.ef);
-        out.write(&self.ef.to_ne_bytes()).unwrap();
+        out.write_all(&self.ef.to_ne_bytes()).unwrap();
 
         log::info!("dumping nb point {:?}", self.nb_point);
-        out.write(&self.nb_point.to_ne_bytes()).unwrap();
+        out.write_all(&self.nb_point.to_ne_bytes()).unwrap();
 
         log::info!("dumping dimension of data {:?}", self.dimension);
-        out.write(&self.dimension.to_ne_bytes()).unwrap();
+        out.write_all(&self.dimension.to_ne_bytes()).unwrap();
 
         // dump of distance name
         let namelen: usize = self.distname.len();
         log::info!("distance name {:?} ", self.distname);
-        out.write(&namelen.to_ne_bytes()).unwrap();
-        out.write(self.distname.as_bytes()).unwrap();
+        out.write_all(&namelen.to_ne_bytes()).unwrap();
+        out.write_all(self.distname.as_bytes()).unwrap();
 
         // dump of T value typename
         let namelen: usize = self.t_name.len();
         log::info!("T name {:?} ", self.t_name);
 
-        out.write(&namelen.to_ne_bytes()).unwrap();
-        out.write(self.t_name.as_bytes()).unwrap();
+        out.write_all(&namelen.to_ne_bytes()).unwrap();
+        out.write_all(self.t_name.as_bytes()).unwrap();
 
-        return Ok(1);
+        Ok(1)
     }
 
     // end fo dump
 
     /// return data typename
     pub fn get_typename(&self) -> String {
-        return self.t_name.clone();
+        self.t_name.clone()
     }
 
     /// returns dimension of data
     pub fn get_dimension(&self) -> usize {
-        return self.dimension;
+        self.dimension
     }
 } // end of HnswIO impl for Descr
 
@@ -274,22 +275,22 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
 ///  2. origin_id as a u64
 ///  3. The vector of data (the length is known from Description)
 
-fn dump_point<'a, T: Serialize + Clone + Sized + Send + Sync, W: Write>(
+fn dump_point<T: Serialize + Clone + Sized + Send + Sync, W: Write>(
     point: &Point<T>,
     mode: DumpMode,
     graphout: &mut io::BufWriter<W>,
     dataout: &mut io::BufWriter<W>,
 ) -> Result<i32, String> {
-    graphout.write(&MAGICPOINT.to_ne_bytes()).unwrap();
+    graphout.write_all(&MAGICPOINT.to_ne_bytes()).unwrap();
     // dump ext_id: usize , layer : u8 , rank in layer : i32
     graphout
-        .write(&point.get_origin_id().to_ne_bytes())
+        .write_all(&point.get_origin_id().to_ne_bytes())
         .unwrap();
 
     let p_id: PointId = point.get_point_id();
     if mode == DumpMode::Full {
-        graphout.write(&p_id.0.to_ne_bytes()).unwrap();
-        graphout.write(&p_id.1.to_ne_bytes()).unwrap();
+        graphout.write_all(&p_id.0.to_ne_bytes()).unwrap();
+        graphout.write_all(&p_id.1.to_ne_bytes()).unwrap();
     }
     log::trace!(" point dump {:?} {:?}  ", p_id, point.get_origin_id());
 
@@ -299,44 +300,45 @@ fn dump_point<'a, T: Serialize + Clone + Sized + Send + Sync, W: Write>(
 
     // in any case nb_layers are dumped with possibly 0 neighbours at a layer, but this does not
     // occur by construction
-    for l in 0..neighborhood.len() {
-        let neighbours_at_l: &Vec<Neighbour> = &neighborhood[l];
+    for (l, n) in neighborhood.iter().enumerate() {
+        let neighbours_at_l: &Vec<Neighbour> = &n;
         // Caution : we dump number of neighbours as a usize, even if it cannot be so large!
         let nbg_l: usize = neighbours_at_l.len();
         log::trace!("\t dumping nbng : {} at l {}", nbg_l, l);
-        graphout.write(&nbg_l.to_ne_bytes()).unwrap();
+
+        graphout.write_all(&nbg_l.to_ne_bytes()).unwrap();
         for n in neighbours_at_l {
             // dump d_id : uszie , distance : f32, layer : u8, rank in layer : i32
-            graphout.write(&n.d_id.to_ne_bytes()).unwrap();
+            graphout.write_all(&n.d_id.to_ne_bytes()).unwrap();
             if mode == DumpMode::Full {
-                graphout.write(&n.p_id.0.to_ne_bytes()).unwrap();
-                graphout.write(&n.p_id.1.to_ne_bytes()).unwrap();
+                graphout.write_all(&n.p_id.0.to_ne_bytes()).unwrap();
+                graphout.write_all(&n.p_id.1.to_ne_bytes()).unwrap();
             }
-            graphout.write(&n.distance.to_ne_bytes()).unwrap();
+            graphout.write_all(&n.distance.to_ne_bytes()).unwrap();
             //                log::debug!("        voisins  {:?}  {:?}  {:?}", n.p_id,  n.d_id ,
             // n.distance);
         }
     }
 
     // now we dump data vector!
-    dataout.write(&MAGICDATAP.to_ne_bytes()).unwrap();
+    dataout.write_all(&MAGICDATAP.to_ne_bytes()).unwrap();
 
     let origin_u64: u64 = point.get_origin_id() as u64;
-    dataout.write(&origin_u64.to_ne_bytes()).unwrap();
+    dataout.write_all(&origin_u64.to_ne_bytes()).unwrap();
 
     let serialized: &[u8] = unsafe {
         std::slice::from_raw_parts(
             point.get_v().as_ptr() as *const u8,
-            point.get_v().len() * std::mem::size_of::<T>(),
+            std::mem::size_of_val(point.get_v()),
         )
     };
     log::debug!("serializing len {:?}", serialized.len());
 
     let len_64: u64 = serialized.len() as u64;
-    dataout.write(&len_64.to_ne_bytes()).unwrap();
-    dataout.write_all(&serialized).unwrap();
+    dataout.write_all(&len_64.to_ne_bytes()).unwrap();
+    dataout.write_all(serialized).unwrap();
 
-    return Ok(1);
+    Ok(1)
 } // end of dump for Point<T>
 
 //  Reload a point from a dump.
@@ -367,12 +369,10 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     graph_in.read_exact(&mut it_slice)?;
     let layer: u8 = u8::from_ne_bytes(it_slice);
 
-    //
     let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<i32>()];
     graph_in.read_exact(&mut it_slice)?;
     let rank_in_l: i32 = i32::from_ne_bytes(it_slice);
-    let p_id: PointId = PointId { 0: layer, 1: rank_in_l };
-    //    log::debug!(" point load {:?} {:?}  ", p_id, origin_id);
+    let p_id: PointId = PointId(layer, rank_in_l);
 
     // Now  for each layer , read neighbours
     let nb_layer: u8 = descr.nb_layer;
@@ -385,7 +385,7 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
         let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
         graph_in.read_exact(&mut it_slice)?;
         let nb_neighbours: usize = usize::from_ne_bytes(it_slice);
-        let mut neighborhood_l: Vec<Neighbour> = Vec::with_capacity(nb_neighbours as usize);
+        let mut neighborhood_l: Vec<Neighbour> = Vec::with_capacity(nb_neighbours);
         for _j in 0..nb_neighbours {
             let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<DataId>()];
             graph_in.read_exact(&mut it_slice)?;
@@ -442,16 +442,12 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     v_serialized.resize(serialized_len as usize, 0);
     data_in.read_exact(&mut v_serialized)?;
 
-    let v: Vec<T>;
-    if std::any::TypeId::of::<T>() != std::any::TypeId::of::<NoData>() {
-        v = match descr.format_version {
+    let v: Vec<T> = if std::any::TypeId::of::<T>() != std::any::TypeId::of::<NoData>() {
+        match descr.format_version {
             2 => bincode::deserialize(&v_serialized).unwrap(),
             3 => {
                 let slice_t: &[T] = unsafe {
-                    std::slice::from_raw_parts(
-                        v_serialized.as_ptr() as *const T,
-                        descr.dimension as usize,
-                    )
+                    std::slice::from_raw_parts(v_serialized.as_ptr() as *const T, descr.dimension)
                 };
                 slice_t.to_vec()
             },
@@ -462,20 +458,20 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
                 );
                 std::process::exit(1);
             },
-        };
+        }
     } else {
-        v = Vec::<T>::new();
-    }
+        Vec::<T>::new()
+    };
 
-    let point: Point<T> = Point::<T>::new(&v, origin_id as usize, p_id);
+    let point: Point<T> = Point::<T>::new(&v, origin_id, p_id);
     log::trace!(
         "load_point  origin {:?} allocated size {:?}, dim {:?}",
         origin_id,
         point.get_v().len(),
         descr.dimension
     );
-    //
-    return Ok((Arc::new(point), neighborhood));
+
+    Ok((Arc::new(point), neighborhood))
 } // end of load_point
 
 // dump and load of PointIndexation<T>
@@ -498,17 +494,17 @@ impl<T: Serialize + DeserializeOwned + Clone + Send + Sync> HnswIO for PointInde
         // dump max_layer
         let layers = self.points_by_layer.read();
         let nb_layer: u8 = layers.len() as u8;
-        graphout.write(&nb_layer.to_ne_bytes()).unwrap();
+        graphout.write_all(&nb_layer.to_ne_bytes()).unwrap();
 
         // dump layers from lower (most populatated to higher level)
         for i in 0..layers.len() {
             let nb_point: usize = layers[i].len();
             log::debug!("dumping layer {:?}, nb_point {:?}", i, nb_point);
 
-            graphout.write(&MAGICLAYER.to_ne_bytes()).unwrap();
-            graphout.write(&nb_point.to_ne_bytes()).unwrap();
+            graphout.write_all(&MAGICLAYER.to_ne_bytes()).unwrap();
+            graphout.write_all(&nb_point.to_ne_bytes()).unwrap();
             for j in 0..layers[i].len() {
-                assert_eq!(layers[i][j].get_point_id(), PointId { 0: i as u8, 1: j as i32 });
+                assert_eq!(layers[i][j].get_point_id(), PointId(i as u8, j as i32));
                 dump_point(&layers[i][j], mode, graphout, dataout)?;
             }
         }
@@ -517,11 +513,14 @@ impl<T: Serialize + DeserializeOwned + Clone + Send + Sync> HnswIO for PointInde
         assert!(ep_read.is_some());
 
         let ep: &Arc<Point<T>> = ep_read.as_ref().unwrap();
-        graphout.write(&ep.get_origin_id().to_ne_bytes()).unwrap();
+        graphout
+            .write_all(&ep.get_origin_id().to_ne_bytes())
+            .unwrap();
+
         let p_id: PointId = ep.get_point_id();
         if mode == DumpMode::Full {
-            graphout.write(&p_id.0.to_ne_bytes()).unwrap();
-            graphout.write(&p_id.1.to_ne_bytes()).unwrap();
+            graphout.write_all(&p_id.0.to_ne_bytes()).unwrap();
+            graphout.write_all(&p_id.1.to_ne_bytes()).unwrap();
         }
         log::info!("dumped entry_point origin_d {:?}, p_id {:?} ", ep.get_origin_id(), p_id);
         //
@@ -560,9 +559,9 @@ fn load_point_indexation<
     if nb_layer > NB_LAYER_MAX {
         return Err(io::Error::new(io::ErrorKind::Other, "inconsistent number of layErrers"));
     }
-    //
+
     let mut nb_points_loaded: usize = 0;
-    //
+
     for l in 0..nb_layer as usize {
         // read and check magic
         log::debug!("loading layer {:?}", l);
@@ -581,13 +580,11 @@ fn load_point_indexation<
         for r in 0..nbpoints {
             // load graph and data part of point. Points are dumped in the same order.
             let load_point_res = load_point(graph_in, descr, data_in);
-            match load_point_res {
-                Err(other) => {
-                    log::error!("in load_point_indexation, loading of point {} failed", r);
-                    return Err(other);
-                },
-                _ => {},
+            if let Err(other) = load_point_res {
+                log::error!("in load_point_indexation, loading of point {} failed", r);
+                return Err(other);
             }
+
             let load_point_res: (Arc<Point<T>>, Vec<Vec<Neighbour>>) = load_point_res.unwrap();
             let point: Arc<Point<T>> = load_point_res.0;
             let p_id: PointId = point.get_point_id();
@@ -613,8 +610,8 @@ fn load_point_indexation<
     let mut nbp: usize = 0;
     for (p_id, neighbours) in &neighbourhood_map {
         let point: &Arc<Point<T>> = &points_by_layer[p_id.0 as usize][p_id.1 as usize];
-        for l in 0..neighbours.len() {
-            for n in &neighbours[l] {
+        for (l, neighbor) in neighbours.iter().enumerate() {
+            for n in neighbor {
                 let n_point: &Arc<Point<T>> =
                     &points_by_layer[n.p_id.0 as usize][n.p_id.1 as usize];
                 // now n_point is the Arc<Point> corresponding to neighbour n of point,
@@ -622,7 +619,7 @@ fn load_point_indexation<
                 let n_pwo: PointWithOrder<T> = PointWithOrder::<T>::new(n_point, n.distance);
                 point.neighbours.write()[l].push(Arc::new(n_pwo));
             } // end of for n
-            //  must sort
+            // must sort
             point.neighbours.write()[l].sort_unstable();
         } // end of for l
 
@@ -720,8 +717,8 @@ impl<T: Serialize + DeserializeOwned + Clone + Sized + Send + Sync, D: Distance<
         description.dump(mode, graphout)?;
 
         // We must dump a header for dataout.
-        dataout.write(&MAGICDATAP.to_ne_bytes()).unwrap();
-        dataout.write(&datadim.to_ne_bytes()).unwrap();
+        dataout.write_all(&MAGICDATAP.to_ne_bytes()).unwrap();
+        dataout.write_all(&datadim.to_ne_bytes()).unwrap();
 
         self.layer_indexed_points.dump(mode, graphout, dataout)?;
         Ok(1)
@@ -787,7 +784,7 @@ pub fn load_hnsw<
     log::debug!("T type name in dump = {:?}", t_type);
 
     let layer_point_indexation: PointIndexation<T> =
-        load_point_indexation(graph_in, &description, data_in)?;
+        load_point_indexation(graph_in, description, data_in)?;
     let data_dim: usize = layer_point_indexation.get_data_dimension();
 
     let hnsw: Hnsw<T, D> = Hnsw {
@@ -860,7 +857,7 @@ pub fn load_hnsw_with_dist<
     let t_type: String = description.t_name.clone();
     log::debug!("T type name in dump = {:?}", t_type);
     let layer_point_indexation: PointIndexation<T> =
-        load_point_indexation(graph_in, &description, data_in)?;
+        load_point_indexation(graph_in, description, data_in)?;
     let data_dim: usize = layer_point_indexation.get_data_dimension();
 
     let hnsw: Hnsw<T, D> = Hnsw {

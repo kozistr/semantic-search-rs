@@ -28,7 +28,7 @@ pub fn preprocess(request: &PredictRequest) -> (Vec<String>, usize) {
         .map(|f: &Features| f.query.clone() as String)
         .collect();
 
-    let k: usize = request.k.clone() as usize;
+    let k: usize = request.k as usize;
 
     (query, k)
 }
@@ -41,10 +41,7 @@ pub fn search(request: PredictRequest) -> PredictResponse {
         MODEL.with(|model: &SentenceEmbeddingsModel| model.encode(&query).unwrap());
     let model_latency: u64 = start.elapsed().as_nanos() as u64;
 
-    let query_embeddings: Vec<Vec<i8>> = query_embeddings
-        .par_iter()
-        .map(|embedding: &Vec<f32>| quantize(embedding))
-        .collect();
+    let query_embeddings: Vec<Vec<i8>> = query_embeddings.par_iter().map(quantize).collect();
 
     let start: Instant = Instant::now();
     // let neighbor_index: Vec<Vec<Neighbour>> =
