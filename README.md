@@ -132,9 +132,9 @@ cargo +nightly run --release --features progress --bin main "query"
 |       |  Cos  |  128  |  1k   |  10   | total  |  31.547 ms |  31.890 ms |  32.087 ms |  33.479 ms |  33.479 ms |    4128 |
 |       |       |       |       |       | model  |  28.992 ms |  29.229 ms |  29.438 ms |  30.936 ms |  30.936 ms |         |
 |       |       |       |       |       | search |   2.275 ms |   2.444 ms |   2.595 ms |   2.722 ms |   2.722 ms |   56264 |
-|   i8  |  Cos  |  128  |  1k   |  10   | total  |  31.006 ms |  31.378 ms |  31.665 ms |  32.360 ms |  32.360 ms |         |
-|       |       |       |       |       | model  |  28.880 ms |  29.171 ms |  29.406 ms |  30.182 ms |  30.182 ms |         |
-|       |       |       |       |       | search |   1.785 ms |   1.944 ms |   2.015 ms |   2.193 ms |   2.193 ms |   71709 |
+|   i8  |  Cos  |  128  |  1k   |  10   | total  |  30.896 ms |  31.271 ms |  31.483 ms |  31.786 ms |  31.786 ms |    4142 |
+|       |       |       |       |       | model  |  28.816 ms |  29.123 ms |  29.286 ms |  29.598 ms |  29.598 ms |    4442 |
+|       |       |       |       |       | search |   1.764 ms |   1.934 ms |   2.006 ms |   2.308 ms |   2.308 ms |   72560 |
 
 ### Search Latency
 
