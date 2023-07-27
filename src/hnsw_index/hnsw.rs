@@ -113,6 +113,8 @@ impl Neighbour {
 
 //=======================================================================================
 
+type Neighbors<T> = Vec<Vec<Arc<PointWithOrder<T>>>>;
+
 /// The basestructure representing a data point.  
 /// Its constains data as coming from the client, its client id,  
 /// and position in layer representation and neighbours.
@@ -126,14 +128,12 @@ pub struct Point<T: Clone + Send + Sync> {
     /// a point id identifying point as stored in our structure
     p_id: PointId,
     /// neighbours info
-    #[allow(clippy::type_complexity)]
-    pub(crate) neighbours: Arc<RwLock<Vec<Vec<Arc<PointWithOrder<T>>>>>>,
+    pub(crate) neighbours: Arc<RwLock<Neighbors<T>>>,
 }
 
 impl<T: Clone + Send + Sync> Point<T> {
     pub fn new(v: &[T], origin_id: usize, p_id: PointId) -> Self {
-        let mut neighbours: Vec<Vec<Arc<PointWithOrder<T>>>> =
-            Vec::with_capacity(NB_LAYER_MAX as usize);
+        let mut neighbours: Neighbors<T> = Vec::with_capacity(NB_LAYER_MAX as usize);
         // CAVEAT, perhaps pass nb layer as arg ?
         for _ in 0..NB_LAYER_MAX {
             neighbours.push(Vec::<Arc<PointWithOrder<T>>>::new());
@@ -161,7 +161,7 @@ impl<T: Clone + Send + Sync> Point<T> {
     pub fn get_neighborhood_id(&self) -> Vec<Vec<Neighbour>> {
         let ref_neighbours = self.neighbours.read();
         let nb_layer: usize = ref_neighbours.len();
-        let mut neighborhood = Vec::<Vec<Neighbour>>::with_capacity(nb_layer);
+        let mut neighborhood: Vec<Vec<Neighbour>> = Vec::<Vec<Neighbour>>::with_capacity(nb_layer);
         for i in 0..nb_layer {
             let mut neighbours: Vec<Neighbour> = Vec::<Neighbour>::new();
             let nb_ngbh: usize = ref_neighbours[i].len();
@@ -1362,7 +1362,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 
             neighbours = from_positive_binaryheap_to_negative_binary_heap(&neighbours);
             if let Some(entry_point_tmp) = neighbours.pop() {
-                // get the lowest  distance point.
+                // get the lowest distance point.
                 let tmp_dist: f32 = self.dist_f.eval(data, &entry_point_tmp.point_ref.v);
                 if tmp_dist < dist_to_entry {
                     entry_point = Arc::clone(&entry_point_tmp.point_ref);
