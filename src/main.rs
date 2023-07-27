@@ -6,7 +6,7 @@ use semantic_search::hnsw_index::dist::DistDot;
 use semantic_search::hnsw_index::hnsw::{quantize, Hnsw, Neighbour};
 use semantic_search::utils::{load_data, load_index, load_model, load_quantize_index};
 
-fn percentiles(ps: &[f32], lats: &mut Vec<u64>) -> Vec<(f32, u64)> {
+fn percentiles(ps: &[f32], lats: &Vec<u64>) -> Vec<(f32, u64)> {
     ps.iter()
         .map(|p: &f32| (*p, lats[((lats.len() as f32) * p) as usize]))
         .collect()
@@ -72,7 +72,7 @@ fn main() {
             let mean: f64 = (lats.clone().iter().sum::<u64>() / n as u64) as f64 * 1e-6;
             let max: f64 = *lats.clone().last().unwrap() as f64 * 1e-6;
 
-            let ps: Vec<String> = percentiles(&[0.5, 0.95, 0.99, 0.999], &mut lats)
+            let ps: Vec<String> = percentiles(&[0.5, 0.95, 0.99, 0.999], &lats)
                 .iter()
                 .map(|(p, x)| format!("p{:2.1}={:1.3} ms", 100.0 * p, *x as f64 * 1e-6))
                 .collect();

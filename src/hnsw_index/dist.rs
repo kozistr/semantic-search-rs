@@ -360,12 +360,12 @@ impl Distance<i8> for DistDot {
 // simd_dot_distance!(f64, f64x8, 8);
 // simd_dot_distance!(f32, f32x16, 16);
 
-pub fn l2_normalize(mut va: &mut [f32]) {
+pub fn l2_normalize(va: &mut [f32]) {
     let l2_norm: f32 = va.iter().map(|t: &f32| *t * *t).sum::<f32>().sqrt();
 
     if l2_norm > 0. {
-        for mut v in &mut va {
-            v /= l2_norm;
+        for i in 0..va.len() {
+            va[i] /= l2_norm;
         }
     }
 }

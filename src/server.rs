@@ -4,7 +4,6 @@ use anyhow::Result;
 use semantic_search::search::search;
 use semantic_search::ss::inference_server::{Inference, InferenceServer};
 use semantic_search::ss::{PredictRequest, PredictResponse};
-use tokio;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
@@ -28,12 +27,10 @@ async fn main() -> Result<()> {
     let addr: SocketAddr = "127.0.0.1:50051".parse()?;
     let service: VectorSearchService = VectorSearchService::default();
 
-    let server = Server::builder()
+    Server::builder()
         .add_service(InferenceServer::new(service))
         .serve(addr)
         .await?;
-
-    println!("SERVER : {:?}", server);
 
     Ok(())
 }
