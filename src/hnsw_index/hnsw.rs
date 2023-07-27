@@ -126,6 +126,7 @@ pub struct Point<T: Clone + Send + Sync> {
     /// a point id identifying point as stored in our structure
     p_id: PointId,
     /// neighbours info
+    #[allow(clippy::type_complexity)]
     pub(crate) neighbours: Arc<RwLock<Vec<Vec<Arc<PointWithOrder<T>>>>>>,
 }
 
@@ -1032,9 +1033,10 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     sorted_points.len()
                 );
             }
+
             // the heap conversion is useless beccause of the preceding test.
-            // sorted_points = from_positive_binaryheap_to_negative_binary_heap(&mut sorted_points);
-            //
+            // sorted_points = from_positive_binaryheap_to_negative_binary_heap(&sorted_points);
+
             if let Some(ep) = sorted_points.pop() {
                 // useful for projecting lower layer to upper layer. keep track of points
                 // encountered.
@@ -1074,7 +1076,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 sorted_points.len()
             );
 
-            sorted_points = from_positive_binaryheap_to_negative_binary_heap(&mut sorted_points);
+            sorted_points = from_positive_binaryheap_to_negative_binary_heap(&sorted_points);
             if !sorted_points.is_empty() {
                 let nb_conn: usize;
                 let extend_c: bool;
@@ -1087,6 +1089,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 }
                 let mut neighbours: Vec<Arc<PointWithOrder<T>>> =
                     Vec::<Arc<PointWithOrder<T>>>::with_capacity(nb_conn);
+
                 self.select_neighbours(
                     data,
                     &mut sorted_points,
@@ -1096,6 +1099,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     keep_pruned,
                     &mut neighbours,
                 );
+
                 // sort neighbours
                 neighbours.sort_unstable();
                 // we must add bidirecti*onal from data i.e new_point_id to neighbours
@@ -1203,6 +1207,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     // This is best explained in : Navarro. Searching in metric spaces by spatial approximation.
     /// simplest searh neighbours
     // The binary heaps here is with negative distance sorted.
+    #[allow(clippy::too_many_arguments)]
     fn select_neighbours(
         &self,
         data: &[T],
@@ -1355,7 +1360,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             let mut neighbours: BinaryHeap<Arc<PointWithOrder<T>>> =
                 self.search_layer(data, Arc::clone(&entry_point), 1, layer, None);
 
-            neighbours = from_positive_binaryheap_to_negative_binary_heap(&mut neighbours);
+            neighbours = from_positive_binaryheap_to_negative_binary_heap(&neighbours);
             if let Some(entry_point_tmp) = neighbours.pop() {
                 // get the lowest  distance point.
                 let tmp_dist: f32 = self.dist_f.eval(data, &entry_point_tmp.point_ref.v);
@@ -1567,7 +1572,7 @@ pub fn quantize_slice(vector: &[f32]) -> Vec<i8> {
 // The vector is sorted by construction
 #[allow(unused)]
 fn from_negative_binaryheap_to_sorted_vector<T: Send + Sync + Copy>(
-    heap_points: &mut BinaryHeap<Arc<PointWithOrder<T>>>,
+    heap_points: &BinaryHeap<Arc<PointWithOrder<T>>>,
 ) -> Vec<Arc<PointWithOrder<T>>> {
     let nb_points: usize = heap_points.len();
     let mut vec_points: Vec<Arc<PointWithOrder<T>>> =
@@ -1594,7 +1599,7 @@ fn from_negative_binaryheap_to_sorted_vector<T: Send + Sync + Copy>(
 // distance
 //
 fn from_positive_binaryheap_to_negative_binary_heap<T: Send + Sync + Clone>(
-    positive_heap: &mut BinaryHeap<Arc<PointWithOrder<T>>>,
+    positive_heap: &BinaryHeap<Arc<PointWithOrder<T>>>,
 ) -> BinaryHeap<Arc<PointWithOrder<T>>> {
     let nb_points: usize = positive_heap.len();
     let mut negative_heap: BinaryHeap<Arc<PointWithOrder<T>>> =

@@ -705,12 +705,14 @@ impl<T: Copy + Clone + Sized + Send + Sync> Distance<T> for DistCFFI<T> {
 //========================================================================================================
 
 /// This structure is to let user define their own distance with closures.
+#[allow(clippy::type_complexity)]
 pub struct DistFn<T: Copy + Clone + Sized + Send + Sync> {
     dist_function: Box<dyn Fn(&[T], &[T]) -> f32 + Send + Sync>,
 }
 
 impl<T: Copy + Clone + Sized + Send + Sync> DistFn<T> {
     /// construction of a DistFn
+    #[allow(clippy::type_complexity)]
     pub fn new(f: Box<dyn Fn(&[T], &[T]) -> f32 + Send + Sync>) -> Self {
         DistFn { dist_function: f }
     }

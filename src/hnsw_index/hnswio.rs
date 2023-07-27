@@ -346,6 +346,7 @@ fn dump_point<T: Serialize + Clone + Sized + Send + Sync, W: Write>(
 //  The graph part is loaded from graph_in file
 // the data vector itself is loaded from data_in
 //
+#[allow(clippy::type_complexity)]
 fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     graph_in: &mut dyn Read,
     descr: &Description,
