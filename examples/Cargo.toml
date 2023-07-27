@@ -1,0 +1,26 @@
+[workspace]
+members = [
+    "search",
+]
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+incremental = true
+lto = "fat"
+panic = "abort"
+debug = false
+debug-assertions = false
+overflow-checks = false
+rpath = false
+
+[profile.bench]
+opt-level = 3
+codegen-units = 1
+incremental = true
+lto = "fat"
+panic = "abort"
+debug = false
+debug-assertions = false
+overflow-checks = false
+rpath = false
