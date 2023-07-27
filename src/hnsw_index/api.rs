@@ -17,21 +17,31 @@ use crate::hnsw_index::hnswio::{DumpMode, HnswIO};
 pub trait AnnT {
     /// type of data vectors
     type Val;
+
     ///
+    #[allow(clippy::ptr_arg)]
     fn insert_data(&mut self, data: &Vec<Self::Val>, id: usize);
+
     ///
+    #[allow(clippy::ptr_arg)]
     fn search_neighbours(&self, data: &Vec<Self::Val>, knbn: usize, ef_s: usize) -> Vec<Neighbour>;
+
     ///
+    #[allow(clippy::ptr_arg)]
     fn parallel_insert_data(&mut self, data: &Vec<(&Vec<Self::Val>, usize)>);
+
     ///
+    #[allow(clippy::ptr_arg)]
     fn parallel_search_neighbours(
         &self,
         data: &Vec<Vec<Self::Val>>,
         knbn: usize,
         ef_s: usize,
     ) -> Vec<Vec<Neighbour>>;
+
     /// dumps a data and graph in 2 files.
     /// Datas are dumped in file filename.hnsw.data and graph in filename.hnsw.graph
+    #[allow(clippy::ptr_arg)]
     fn file_dump(&self, filename: &String) -> Result<i32, String>;
 }
 
@@ -120,14 +130,14 @@ where
 // macro export makes the macro export t the root of the crate
 #[macro_export]
 macro_rules! mapdist_t(
-    ("DistL1")       => (crate::dist::DistL1);
-    ("DistL2")       => (crate::dist::DistL2);
-    ("DistL2")       => (crate::dist::DistL2);
-    ("DistDot")      => (crate::dist::DistDot);
-    ("DistHamming")  => (crate::dist::DistHamming);
-    ("DistJaccard")  => (crate::dist::DistJaccard);
-    ("DistPtr")      => (crate::dist::DistPtr);
-    ("DistLevenshtein") => (crate::dist::DistLevenshtein);
-    ("DistJensenShannon") => (crate::dist::DistJensenShannon);
-    ("DistHellinger") => (crate::dist::DistHellinger);
+    ("DistL1")       => ($crate::dist::DistL1);
+    ("DistL2")       => ($crate::dist::DistL2);
+    ("DistL2")       => ($crate::dist::DistL2);
+    ("DistDot")      => ($crate::dist::DistDot);
+    ("DistHamming")  => ($crate::dist::DistHamming);
+    ("DistJaccard")  => ($crate::dist::DistJaccard);
+    ("DistPtr")      => ($crate::dist::DistPtr);
+    ("DistLevenshtein") => ($crate::dist::DistLevenshtein);
+    ("DistJensenShannon") => ($crate::dist::DistJensenShannon);
+    ("DistHellinger") => ($crate::dist::DistHellinger);
 );
