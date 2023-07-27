@@ -14,3 +14,6 @@ builder:
 
 example:
 	cargo +nightly run --release --bin main "Asia shares drift lower as investors factor in Fed rate hike." quantize
+
+lint:
+	cargo +nightly clippy
