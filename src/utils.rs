@@ -84,3 +84,32 @@ pub fn load_quantize_index(dataset: &str) -> Hnsw<i8, DistDot> {
 
     index
 }
+
+fn percentiles(ps: &[f32], lats: &Vec<u64>) -> Vec<(f32, u64)> {
+    ps.iter()
+        .map(|p: &f32| (*p, lats[((lats.len() as f32) * p) as usize]))
+        .collect()
+}
+
+pub fn log_stats(description: &str, i: usize, bs: usize, latencies: &Vec<u64>) {
+    let mut lats: Vec<u64> = latencies.to_owned();
+    lats.sort_unstable();
+
+    let mean: f64 = (lats.clone().iter().sum::<u64>() / i as u64) as f64 * 1e-6;
+    let max: f64 = *lats.clone().last().unwrap() as f64 * 1e-6;
+
+    let ps: Vec<String> = percentiles(&[0.5, 0.95, 0.99, 0.999], &lats)
+        .iter()
+        .map(|(p, x)| format!("p{:2.1}={:1.3} ms", 100.0 * p, *x as f64 * 1e-6))
+        .collect();
+
+    println!(
+        "{} latency : {} mean={:1.3} ms {} max={:1.3} ms QPS={:?}",
+        description,
+        i,
+        mean,
+        ps.join(" "),
+        max,
+        (1000.0 * (bs as f64 / mean)) as i32,
+    );
+}
