@@ -301,7 +301,7 @@ fn dump_point<T: Serialize + Clone + Sized + Send + Sync, W: Write>(
     // in any case nb_layers are dumped with possibly 0 neighbours at a layer, but this does not
     // occur by construction
     for (l, n) in neighborhood.iter().enumerate() {
-        let neighbours_at_l: &Vec<Neighbour> = &n;
+        let neighbours_at_l: &Vec<Neighbour> = n;
         // Caution : we dump number of neighbours as a usize, even if it cannot be so large!
         let nbg_l: usize = neighbours_at_l.len();
         log::trace!("\t dumping nbng : {} at l {}", nbg_l, l);

@@ -76,14 +76,11 @@ fn main() -> Result<()> {
             Hnsw::<i8, DistDot>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistDot {});
 
         let start: Instant = Instant::now();
-        let embeddings: Vec<Vec<i8>> = embeddings
-            .par_iter()
-            .map(|embedding: &Vec<f32>| quantize(embedding))
-            .collect();
+        let quantized_embeddings: Vec<Vec<i8>> = embeddings.par_iter().map(quantize).collect();
         println!("quantize : {:.3?}", start.elapsed());
 
         let embeddings_indices: Vec<(&Vec<i8>, usize)> =
-            embeddings.iter().zip(0..embeddings.len()).collect();
+            quantized_embeddings.iter().enumerate().collect();
 
         let start: Instant = Instant::now();
         index.parallel_insert(&embeddings_indices);

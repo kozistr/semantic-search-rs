@@ -21,7 +21,7 @@ fn main() {
     }
 
     let query: String = args[1].clone();
-    let do_quantize: bool = if args[2] == "quantize" { true } else { false };
+    let do_quantize: bool = args[2] == "quantize";
 
     println!("query : {:?}", query);
     println!("do quantize : {:?}", do_quantize);
@@ -60,7 +60,7 @@ fn main() {
             // let query_embeddings: Vec<Vec<f32>> = vec![query_embedding[0].clone(); bs];
             let mut search_lat: Vec<u64> = vec![0u64; n];
 
-            (0..n).into_iter().for_each(|i: usize| {
+            (0..n).for_each(|i: usize| {
                 let start: Instant = Instant::now();
                 _ = index.parallel_search(&query_embeddings, 10, 30);
                 search_lat[i] = start.elapsed().as_nanos() as u64;

@@ -6,7 +6,6 @@ use anyhow::Result;
 use rayon::prelude::*;
 use semantic_search::ss::inference_client::InferenceClient;
 use semantic_search::ss::{Features, PredictRequest, PredictResponse};
-use tokio;
 
 #[derive(Debug, Clone)]
 struct Config {
@@ -113,13 +112,13 @@ async fn main() -> Result<()> {
 }
 
 fn log_stats(description: &str, i: usize, bs: usize, latencies: &Vec<u64>) {
-    let mut lats: Vec<u64> = latencies.clone();
+    let mut lats: Vec<u64> = latencies.to_owned();
     lats.sort_unstable();
 
     let mean: f64 = (lats.clone().iter().sum::<u64>() / i as u64) as f64 * 1e-6;
     let max: f64 = *lats.clone().last().unwrap() as f64 * 1e-6;
 
-    let ps: Vec<String> = percentiles(&[0.5, 0.95, 0.99, 0.999], &mut lats)
+    let ps: Vec<String> = percentiles(&[0.5, 0.95, 0.99, 0.999], &lats)
         .par_iter()
         .map(|(p, x)| format!("p{:2.1}={:1.3} ms", 100.0 * p, *x as f64 * 1e-6))
         .collect();
@@ -135,7 +134,7 @@ fn log_stats(description: &str, i: usize, bs: usize, latencies: &Vec<u64>) {
     );
 }
 
-fn percentiles(ps: &[f32], lats: &mut Vec<u64>) -> Vec<(f32, u64)> {
+fn percentiles(ps: &[f32], lats: &Vec<u64>) -> Vec<(f32, u64)> {
     ps.par_iter()
         .map(|p: &f32| (*p, lats[((lats.len() as f32) * p) as usize]))
         .collect()

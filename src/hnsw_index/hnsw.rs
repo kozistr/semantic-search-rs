@@ -57,7 +57,7 @@ pub struct PointIdWithOrder {
 
 impl PartialEq for PointIdWithOrder {
     fn eq(&self, other: &PointIdWithOrder) -> bool {
-        return self.dist_to_ref == other.dist_to_ref;
+        self.dist_to_ref == other.dist_to_ref
     } // end eq
 }
 
@@ -142,7 +142,7 @@ impl<T: Clone + Send + Sync> Point<T> {
 
     /// get a reference to vector data
     pub fn get_v(&self) -> &[T] {
-        &self.v.as_slice()
+        self.v.as_slice()
     }
 
     /// return coordinates in indexation
@@ -186,7 +186,7 @@ impl<T: Clone + Send + Sync> Point<T> {
         println!(" neighbours : ...");
         let ref_neighbours = self.neighbours.read();
         for i in 0..ref_neighbours.len() {
-            if ref_neighbours[i].len() > 0usize {
+            if !ref_neighbours[i].is_empty() {
                 println!("neighbours at layer {:?}", i);
                 for n in &ref_neighbours[i] {
                     println!(" {:?}", n.point_ref.p_id);
@@ -211,7 +211,7 @@ pub(crate) struct PointWithOrder<T: Clone + Send + Sync> {
 
 impl<T: Clone + Send + Sync> PartialEq for PointWithOrder<T> {
     fn eq(&self, other: &PointWithOrder<T>) -> bool {
-        return self.dist_to_ref == other.dist_to_ref;
+        self.dist_to_ref == other.dist_to_ref
     } // end eq
 }
 
@@ -220,7 +220,7 @@ impl<T: Clone + Send + Sync> Eq for PointWithOrder<T> {}
 // order points by distance to self.
 impl<T: Clone + Send + Sync> PartialOrd for PointWithOrder<T> {
     fn partial_cmp(&self, other: &PointWithOrder<T>) -> Option<Ordering> {
-        self.dist_to_ref.partial_cmp(&other.dist_to_ref)
+        Some(self.cmp(other))
     } // end cmp
 } // end impl PartialOrd
 
@@ -336,13 +336,10 @@ impl<T: Clone + Send + Sync> Drop for PointIndexation<T> {
         }
 
         // clear entry point
-        match self.entry_point.write().as_ref() {
-            Some(i) => {
-                clear_neighborhoods(i.as_ref());
-            },
-            _ => {},
+        if let Some(i) = self.entry_point.write().as_ref() {
+            clear_neighborhoods(i.as_ref());
         }
-        //
+
         let nb_level: u8 = self.get_max_level_observed();
         for l in 0..=nb_level {
             log::trace!("clearing layer {}", l);
@@ -416,12 +413,14 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
         {
             // open a write lock on points_by_layer
             let mut points_by_layer_ref = self.points_by_layer.write();
-            let mut p_id: PointId = PointId { 0: level as u8, 1: -1 };
+            let mut p_id: PointId = PointId(level as u8, -1);
             p_id.1 = points_by_layer_ref[p_id.0 as usize].len() as i32;
+
             // make a Point and then an Arc<Point>
             let point: Point<T> = Point::new(data, origin_id, p_id);
             new_point = Arc::new(point);
             log::trace!("definitive pushing of point {:?}", p_id);
+
             points_by_layer_ref[p_id.0 as usize].push(Arc::clone(&new_point));
         } // close write lock on points_by_layer
         //
@@ -435,8 +434,9 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
             }
         }
         log::trace!(" setting number of points {:?} ", *self.nb_point);
+
         // Now possibly this is a point on a new layer that will have no neighbours in its layer
-        return (Arc::clone(&new_point), nb_point);
+        (Arc::clone(&new_point), nb_point)
     }
 
     // end of insert
@@ -500,12 +500,14 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
         if p_id.1 < 0 {
             return None;
         }
+
         let p: usize = std::convert::TryFrom::try_from(p_id.1).unwrap();
         let l: usize = p_id.0 as usize;
+
         if p_id.0 <= self.get_max_level_observed() && p < self.get_layer_nb_point(l) {
-            return Some(self.points_by_layer.read()[l][p].get_v().to_vec());
+            Some(self.points_by_layer.read()[l][p].get_v().to_vec())
         } else {
-            return None;
+            None
         }
     }
 
@@ -520,12 +522,14 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
         if p_id.1 < 0 {
             return None;
         }
+
         let p: usize = std::convert::TryFrom::try_from(p_id.1).unwrap();
         let l: usize = p_id.0 as usize;
+
         if p_id.0 <= self.get_max_level_observed() && p < self.get_layer_nb_point(l) {
-            return Some(self.points_by_layer.read()[l][p].clone());
+            Some(self.points_by_layer.read()[l][p].clone())
         } else {
-            return None;
+            None
         }
     }
 
@@ -533,7 +537,7 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
 
     /// get an iterator on the points stored in a given layer
     pub fn get_layer_iterator(&self, layer: usize) -> IterPointLayer<T> {
-        IterPointLayer::new(&self, layer)
+        IterPointLayer::new(self, layer)
     } // end of get_layer_iterator
 } // end of impl PointIndexation
 
@@ -568,7 +572,7 @@ impl<'a, T: Clone + Send + Sync> Iterator for IterPoint<'a, T> {
         if (self.slot_in_layer as usize) < self.pi_guard[self.layer as usize].len() {
             let slot: usize = self.slot_in_layer as usize;
             self.slot_in_layer += 1;
-            return Some(self.pi_guard[self.layer as usize][slot].clone());
+            Some(self.pi_guard[self.layer as usize][slot].clone())
         } else {
             self.slot_in_layer = 0;
             self.layer += 1;
@@ -578,7 +582,7 @@ impl<'a, T: Clone + Send + Sync> Iterator for IterPoint<'a, T> {
             let points_by_layer = self.point_indexation.points_by_layer.read();
             let entry_point_level: u8 = entry_point_ref.as_ref().unwrap().p_id.0;
             while (self.layer as u8) <= entry_point_level
-                && points_by_layer[self.layer as usize].len() == 0
+                && points_by_layer[self.layer as usize].is_empty()
             {
                 self.layer += 1;
             }
@@ -588,9 +592,9 @@ impl<'a, T: Clone + Send + Sync> Iterator for IterPoint<'a, T> {
             if (self.layer as u8) <= entry_point_level {
                 let slot: usize = self.slot_in_layer as usize;
                 self.slot_in_layer += 1;
-                return Some(points_by_layer[self.layer as usize][slot].clone());
+                Some(points_by_layer[self.layer as usize][slot].clone())
             } else {
-                return None;
+                None
             }
         }
     } // end of next
@@ -628,12 +632,12 @@ impl<'a, T: Clone + Send + Sync> Iterator for IterPointLayer<'a, T> {
 
     //
     fn next(&mut self) -> Option<Self::Item> {
-        if (self.slot_in_layer as usize) < self.pi_guard[self.layer as usize].len() {
-            let slot: usize = self.slot_in_layer as usize;
+        if self.slot_in_layer < self.pi_guard[self.layer].len() {
+            let slot: usize = self.slot_in_layer;
             self.slot_in_layer += 1;
-            return Some(self.pi_guard[self.layer as usize][slot].clone());
+            Some(self.pi_guard[self.layer][slot].clone())
         } else {
-            return None;
+            None
         }
     } // end of next
 } // end of impl Iterator
@@ -730,7 +734,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 
     /// return the maximum level reached in the layers.
     pub fn get_max_level_observed(&self) -> u8 {
-        self.layer_indexed_points.get_max_level_observed() as u8
+        self.layer_indexed_points.get_max_level_observed()
     }
 
     /// returns the maximum of links between a point and others points in each layer
@@ -788,7 +792,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             scale_modification, self.layer_indexed_points.layer_g.scale
         );
 
-        if scale_modification >= 0.5 && scale_modification <= 2. {
+        if (0.5..=2.).contains(&scale_modification) {
             self.layer_indexed_points
                 .layer_g
                 .set_scale_modification(scale_modification);
@@ -842,7 +846,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         let mut return_points: BinaryHeap<Arc<PointWithOrder<T>>> =
             BinaryHeap::<Arc<PointWithOrder<T>>>::with_capacity(skiplist_size);
 
-        if self.layer_indexed_points.points_by_layer.read()[layer as usize].len() == 0 {
+        if self.layer_indexed_points.points_by_layer.read()[layer as usize].is_empty() {
             // at the beginning we can have nothing in layer
             trace!("search layer {:?}, empty layer", layer);
             return return_points;
@@ -867,7 +871,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         return_points.push(Arc::new(PointWithOrder::new(&entry_point, dist_to_entry_point)));
 
         // at the beginning candidate_points contains point passed as arg in layer entry_point_id.0
-        while candidate_points.len() > 0 {
+        while !candidate_points.is_empty() {
             // get nearest point in candidate_points
             let c: Arc<PointWithOrder<T>> = candidate_points.pop().unwrap();
             // f farthest point to
@@ -905,10 +909,11 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 c_pid,
                 neighbours_c_l.len()
             );
+
             for e in neighbours_c_l {
                 // HERE WE SEE THAT neighbours should be stored as PointIdWithOrder !!
                 // CAVEAT what if several point_id with same distance to ref point?
-                if visited_point_id.contains_key(&e.point_ref.p_id) != true {
+                if !visited_point_id.contains_key(&e.point_ref.p_id) {
                     visited_point_id.insert(e.point_ref.p_id, Arc::clone(&e.point_ref));
                     log::trace!("             visited insertion {:?}", e.point_ref.p_id);
 
@@ -937,7 +942,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                             return_points.push(Arc::clone(&e_prime));
                         } else {
                             let id: &usize = &e_prime.point_ref.get_origin_id();
-                            if filter.as_ref().unwrap().hnsw_filter(&id) {
+                            if filter.as_ref().unwrap().hnsw_filter(id) {
                                 if return_points.len() == 1 {
                                     let only_id: usize =
                                         return_points.peek().unwrap().point_ref.origin_id;
@@ -966,7 +971,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     ///  The insertion method gives the point an internal id.
     #[inline]
     pub fn insert(&self, datav_with_id: (&Vec<T>, usize)) {
-        self.insert_slice((&datav_with_id.0.as_slice(), datav_with_id.1))
+        self.insert_slice(((datav_with_id.0.as_slice()), datav_with_id.1))
     }
 
     // Hnsw insert.
@@ -993,7 +998,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         {
             // I open a read lock on an option
             if let Some(arc_point) = self.layer_indexed_points.entry_point.read().as_ref() {
-                enter_point_copy = Some(Arc::clone(&arc_point));
+                enter_point_copy = Some(Arc::clone(arc_point));
                 if point_rank == 1 {
                     log::debug!("Hnsw  stored first point , direct return  {:?} ", new_point.p_id);
                     return;
@@ -1012,18 +1017,14 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         // we go from self.max_level_observed to level+1 included
         for l in ((level + 1)..(max_level_observed + 1)).rev() {
             // CAVEAT could bypass when layer empty, avoid  allocation..
-            let mut sorted_points = self.search_layer(
-                &data,
-                Arc::clone(enter_point_copy.as_ref().unwrap()),
-                1,
-                l,
-                None,
-            );
+            let mut sorted_points =
+                self.search_layer(data, Arc::clone(enter_point_copy.as_ref().unwrap()), 1, l, None);
             log::trace!(
                 "in insert :search_layer layer {:?}, returned {:?} points ",
                 l,
                 sorted_points.len()
             );
+
             if sorted_points.len() > 1 {
                 panic!(
                     "in insert : search_layer layer {:?}, returned {:?} points ",
@@ -1061,7 +1062,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             // when l == level, we cannot get new_point in sorted_points as it is seen only from
             // declared neighbours
             let mut sorted_points: BinaryHeap<Arc<PointWithOrder<T>>> = self.search_layer(
-                &data,
+                data,
                 Arc::clone(enter_point_copy.as_ref().unwrap()),
                 ef,
                 l,
@@ -1072,8 +1073,9 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 l,
                 sorted_points.len()
             );
+
             sorted_points = from_positive_binaryheap_to_negative_binary_heap(&mut sorted_points);
-            if sorted_points.len() > 0 {
+            if !sorted_points.is_empty() {
                 let nb_conn: usize;
                 let extend_c: bool;
                 if l == 0 {
@@ -1086,7 +1088,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 let mut neighbours: Vec<Arc<PointWithOrder<T>>> =
                     Vec::<Arc<PointWithOrder<T>>>::with_capacity(nb_conn);
                 self.select_neighbours(
-                    &data,
+                    data,
                     &mut sorted_points,
                     nb_conn,
                     extend_c,
@@ -1101,11 +1103,12 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 // this reverse neighbour update could be done here but we put it at end to gather
                 // all code requiring a mutex guard for multi threading.
                 // update ep for loop iteration. As we sorted neighbours the nearest
-                if neighbours.len() > 0 {
+                if !neighbours.is_empty() {
                     enter_point_copy = Some(Arc::clone(&neighbours[0].point_ref));
                 }
             }
         } // for l
+
         // new_point has been inserted at the beginning in table
         // so that we can call reverse_update_neighborhoodwe consitently
         // now reverse update of neighbours.
@@ -1156,7 +1159,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     // search_layer! this ensures that reverse updating do not
                     // add problems.
                     let l_n: usize = n_to_add.point_ref.p_id.0 as usize;
-                    let already: Option<usize> = q_point_neighbours[l_n as usize]
+                    let already: Option<usize> = q_point_neighbours[l_n]
                         .iter()
                         .position(|old| old.point_ref.p_id == new_point.p_id);
                     if already.is_some() {
@@ -1171,18 +1174,17 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     let nbn_at_l: usize = q_point_neighbours[l_n].len();
                     // if l < level, update upward chaining, insert does a sort! t_q has a neighbour
                     // not yet in global table of points!
-                    let threshold_shrinking: usize; // TODO optimize threshold
-                    if l_n > 0 {
-                        threshold_shrinking = self.max_nb_connection;
-                    } else {
-                        threshold_shrinking = 2 * self.max_nb_connection;
-                    }
-                    let shrink: bool = if nbn_at_l > threshold_shrinking { true } else { false };
+
+                    // TODO optimize threshold
+                    let threshold_shrinking: usize =
+                        if l_n > 0 { self.max_nb_connection } else { 2 * self.max_nb_connection };
+
+                    let shrink: bool = nbn_at_l > threshold_shrinking;
                     {
                         // sort and shring if necessary
-                        q_point_neighbours[l_n as usize].sort_unstable();
+                        q_point_neighbours[l_n].sort_unstable();
                         if shrink {
-                            q_point_neighbours[l_n as usize].pop();
+                            q_point_neighbours[l_n].pop();
                         }
                     }
                 } // end protection against point identity
@@ -1270,7 +1272,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 
         let mut discarded_points: BinaryHeap<Arc<PointWithOrder<T>>> =
             BinaryHeap::<Arc<PointWithOrder<T>>>::new();
-        while candidates.len() > 0 && neighbours_vec.len() < nb_neighbours_asked {
+        while !candidates.is_empty() && neighbours_vec.len() < nb_neighbours_asked {
             // compare distances of e to data. we do not need to recompute dists!
             if let Some(e_p) = candidates.pop() {
                 let mut e_to_insert: bool = true;
@@ -1278,7 +1280,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 assert!(e_p.dist_to_ref <= 0.);
 
                 // is e_p the nearest to reference? data than to previous neighbours
-                if neighbours_vec.len() > 0 {
+                if !neighbours_vec.is_empty() {
                     e_to_insert = !neighbours_vec
                         .iter()
                         .any(|d| self.dist_f.eval(e_point_v, &(d.point_ref.v)) <= -e_p.dist_to_ref);
@@ -1304,7 +1306,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         // not pruned are at the end of neighbours_vec which is not re-sorted , but discarded are
         // sorted.
         if keep_pruned {
-            while discarded_points.len() > 0 && neighbours_vec.len() < nb_neighbours_asked {
+            while !discarded_points.is_empty() && neighbours_vec.len() < nb_neighbours_asked {
                 let best_point: Arc<PointWithOrder<T>> = discarded_points.pop().unwrap();
                 // do not forget to reverse sign
                 assert!(best_point.dist_to_ref <= 0.);
@@ -1336,7 +1338,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     // The parameter ef controls the width of the search in the lowest level, it must be greater
     // than number of neighbours asked. A rule of thumb could be between knbn and max_nb_connection.
     #[allow(unused)]
-    fn search_general(&self, data: &Vec<T>, knbn: usize, ef_arg: usize) -> Vec<Neighbour> {
+    fn search_general(&self, data: &[T], knbn: usize, ef_arg: usize) -> Vec<Neighbour> {
         let mut entry_point: Arc<Point<T>>;
         {
             // a lock on an option an a Arc<Point>
@@ -1347,11 +1349,12 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 entry_point = Arc::clone((*entry_point_opt_ref).as_ref().unwrap());
             }
         }
-        //
+
         let mut dist_to_entry: f32 = self.dist_f.eval(data, &entry_point.as_ref().v);
         for layer in (1..=entry_point.p_id.0).rev() {
             let mut neighbours: BinaryHeap<Arc<PointWithOrder<T>>> =
                 self.search_layer(data, Arc::clone(&entry_point), 1, layer, None);
+
             neighbours = from_positive_binaryheap_to_negative_binary_heap(&mut neighbours);
             if let Some(entry_point_tmp) = neighbours.pop() {
                 // get the lowest  distance point.
@@ -1505,8 +1508,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 
         // make up requests
         let nb_request: usize = datas.len();
-        let requests: Vec<(usize, &Vec<T>)> =
-            (0..nb_request).into_iter().zip(datas.iter()).collect();
+        let requests: Vec<(usize, &Vec<T>)> = (0..nb_request).zip(datas.iter()).collect();
 
         requests.par_iter().for_each_with(
             sender,
@@ -1570,7 +1572,7 @@ fn from_negative_binaryheap_to_sorted_vector<T: Send + Sync + Copy>(
     let nb_points: usize = heap_points.len();
     let mut vec_points: Vec<Arc<PointWithOrder<T>>> =
         Vec::<Arc<PointWithOrder<T>>>::with_capacity(nb_points);
-    //
+
     for p in heap_points.iter() {
         assert!(p.dist_to_ref <= 0.);
 
@@ -1583,6 +1585,7 @@ fn from_negative_binaryheap_to_sorted_vector<T: Send + Sync + Copy>(
         nb_points,
         vec_points.len()
     );
+
     vec_points
 }
 
@@ -1596,7 +1599,7 @@ fn from_positive_binaryheap_to_negative_binary_heap<T: Send + Sync + Clone>(
     let nb_points: usize = positive_heap.len();
     let mut negative_heap: BinaryHeap<Arc<PointWithOrder<T>>> =
         BinaryHeap::<Arc<PointWithOrder<T>>>::with_capacity(nb_points);
-    //
+
     for p in positive_heap.iter() {
         assert!(p.dist_to_ref >= 0.);
         let reverse_p: Arc<PointWithOrder<T>> =
@@ -1608,6 +1611,7 @@ fn from_positive_binaryheap_to_negative_binary_heap<T: Send + Sync + Clone>(
         nb_points,
         negative_heap.len()
     );
+
     negative_heap
 }
 
@@ -1621,10 +1625,9 @@ where
     T2: Copy + Clone + Send + Sync,
     D2: Distance<T2> + Default + Send + Sync,
 {
-    //
     log::debug!("\n in check_graph_equality");
-    //
     assert_eq!(hnsw1.get_nb_point(), hnsw2.get_nb_point());
+
     // check for entry point
     assert!(
         hnsw1.layer_indexed_points.entry_point.read().is_some()

@@ -113,7 +113,7 @@ where
         databufw.flush().unwrap();
         log::debug!("\n end of dump");
 
-        return res;
+        res
     } // end of dump
 } // end of impl block AnnT for Hnsw<T,D>
 

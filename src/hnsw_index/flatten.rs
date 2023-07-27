@@ -15,7 +15,7 @@ use crate::hnsw_index::hnsw::Neighbour;
 
 impl PartialEq for Neighbour {
     fn eq(&self, other: &Neighbour) -> bool {
-        return self.distance == other.distance;
+        self.distance == other.distance
     } // end eq
 }
 
