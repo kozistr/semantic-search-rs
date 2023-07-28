@@ -252,17 +252,17 @@ use rand::prelude::*;
 /// The distribution is constrained to be in [0..maxlevel[
 pub struct LayerGenerator {
     rng: Arc<Mutex<rand::rngs::StdRng>>,
-    unif: Uniform<f64>,
-    scale: f64,
+    unif: Uniform<f32>,
+    scale: f32,
     maxlevel: usize,
 }
 
 impl LayerGenerator {
     pub fn new(max_nb_connection: usize, maxlevel: usize) -> Self {
-        let scale: f64 = 1. / (max_nb_connection as f64).ln();
+        let scale: f32 = 1. / (max_nb_connection as f32).ln();
         LayerGenerator {
             rng: Arc::new(Mutex::new(StdRng::from_entropy())),
-            unif: Uniform::<f64>::new(0., 1.),
+            unif: Uniform::<f32>::new(0., 1.),
             scale,
             maxlevel,
         }
@@ -271,16 +271,17 @@ impl LayerGenerator {
     // l=0 most densely packed layer
     // if S is scale we sample so that P(l=n) = exp(-n/S) - exp(- (n+1)/S)
     // with S = 1./ln(max_nb_connection) P(l >= maxlevel) = exp(-maxlevel * ln(max_nb_connection))
-    // for nb_conn = 10, even with maxlevel = 10,  we get P(l >= maxlevel) = 1.E-13
-    // In Malkov(2016) S = 1./log(max_nb_connection)
+    // for nb_conn = 10, even with maxlevel = 10,  we get P(l >= maxlevel) = 1.e-13
+    // In Malkov(2016) S = 1.0 / log(max_nb_connection)
     //
     /// generate a layer with given maxlevel. upper layers (higher index) are of decreasing
     /// probabilities. thread safe method.
     fn generate(&self) -> usize {
         let mut protected_rng = self.rng.lock();
-        let xsi: f64 = protected_rng.sample(self.unif);
-        let level: f64 = -xsi.ln() * self.scale;
+        let xsi: f32 = protected_rng.sample(self.unif);
+        let level: f32 = -xsi.ln() * self.scale;
         let mut ulevel: usize = level.floor() as usize;
+
         // we redispatch possibly sampled level  >= maxlevel to required range
         if ulevel >= self.maxlevel {
             // This occurs with very low probability. Cf commentary above.
@@ -290,7 +291,7 @@ impl LayerGenerator {
     }
 
     /// just to try some variations on exponential level sampling. Unused.
-    pub fn set_scale_modification(&mut self, scale_modification: f64) {
+    pub fn set_scale_modification(&mut self, scale_modification: f32) {
         self.scale = 1. / ((1. / self.scale) + scale_modification.ln());
     }
 } // end impl for LayerGenerator
@@ -768,7 +769,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     // more  than 1. gives more occupied layers. This is just to experiment
     // parameters variations on the algorithm but not general use.
     #[allow(unused)]
-    fn set_scale_modification(&mut self, scale_modification: f64) {
+    fn set_scale_modification(&mut self, scale_modification: f32) {
         println!(
             "\n scale modification factor {:?}, scale value : {:?} (factor must be between 0.5 \
              and 2.)",
@@ -1096,9 +1097,12 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     // search_layer! this ensures that reverse updating do not
                     // add problems.
                     let l_n: usize = n_to_add.point_ref.p_id.0 as usize;
-                    let already: Option<usize> = q_point_neighbours[l_n]
-                        .iter()
-                        .position(|old| old.point_ref.p_id == new_point.p_id);
+                    let already: Option<usize> =
+                        q_point_neighbours[l_n]
+                            .iter()
+                            .position(|old: &Arc<PointWithOrder<T>>| {
+                                old.point_ref.p_id == new_point.p_id
+                            });
                     if already.is_some() {
                         continue;
                     }
@@ -1115,7 +1119,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     let shrink: bool = nbn_at_l > threshold_shrinking;
                     {
                         // sort and shring if necessary
-                        q_point_neighbours[l_n].sort_unstable();
+                        q_point_neighbours[l_n].par_sort_unstable();
                         if shrink {
                             q_point_neighbours[l_n].pop();
                         }
@@ -1206,9 +1210,9 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 
                 // is e_p the nearest to reference? data than to previous neighbours
                 if !neighbours_vec.is_empty() {
-                    e_to_insert = !neighbours_vec
-                        .iter()
-                        .any(|d| self.dist_f.eval(e_point_v, &(d.point_ref.v)) <= -e_p.dist_to_ref);
+                    e_to_insert = !neighbours_vec.iter().any(|d: &Arc<PointWithOrder<T>>| {
+                        self.dist_f.eval(e_point_v, &(d.point_ref.v)) <= -e_p.dist_to_ref
+                    });
                 }
                 if e_to_insert {
                     neighbours_vec
@@ -1628,18 +1632,17 @@ mod tests {
         }
 
         hns.dump_layer_info();
+
         // now check iteration
         let mut ptiter = hns.get_point_indexation().into_iter();
         let mut nb_dumped: usize = 0;
         loop {
             if let Some(_point) = ptiter.next() {
-                //    println!("point : {:?}", _point.p_id);
                 nb_dumped += 1;
             } else {
                 break;
             }
         } // end while
-        //
         assert_eq!(nb_dumped, nbcolumn);
     } // end of test_iter_point
 
