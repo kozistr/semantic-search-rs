@@ -71,6 +71,25 @@ fn main() {
     let query_embedding: &Vec<f32> = &query_embedding[0];
 
     // find_documents(query_embedding, do_quantize);
-
     bench_search(query_embedding);
+
+    // let mut rng: rand::rngs::ThreadRng = thread_rng();
+    // let unif: Uniform<f32> = Uniform::<f32>::new(0., 1.);
+    // let nbcolumn: usize = 1000000;
+    // let nbrow: usize = 256;
+
+    // let mut data: Vec<Vec<f32>> = vec![Vec::with_capacity(nbrow); nbcolumn];
+    // (0..nbcolumn).for_each(|j: usize| {
+    //     for _ in 0..nbrow {
+    //         data[j].push(rng.sample(unif));
+    //     }
+    // });
+
+    // let indices: Vec<(&Vec<f32>, usize)> = data.iter().zip(0..data.len()).collect();
+
+    // let index: Hnsw<f32, DistDot> = Hnsw::<f32, DistDot>::new(16, nbcolumn, 16, 200, DistDot {});
+
+    // let start: Instant = Instant::now();
+    // _ = index.parallel_insert(&indices);
+    // println!("{:.3?}", start.elapsed());
 }
