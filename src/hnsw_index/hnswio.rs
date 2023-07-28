@@ -439,10 +439,7 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     data_in.read_exact(&mut it_slice)?;
     let serialized_len: u64 = u64::from_ne_bytes(it_slice);
 
-    let mut v_serialized: Vec<u8> = Vec::<u8>::new();
-
-    // TODO avoid initialization
-    v_serialized.resize(serialized_len as usize, 0);
+    let mut v_serialized: Vec<u8> = vec![0; serialized_len as usize];
     data_in.read_exact(&mut v_serialized)?;
 
     let v: Vec<T> = if std::any::TypeId::of::<T>() != std::any::TypeId::of::<NoData>() {
