@@ -1532,7 +1532,6 @@ where
     T2: Copy + Clone + Send + Sync,
     D2: Distance<T2> + Default + Send + Sync,
 {
-    log::debug!("\n in check_graph_equality");
     assert_eq!(hnsw1.get_nb_point(), hnsw2.get_nb_point());
 
     // check for entry point
@@ -1541,6 +1540,7 @@ where
             || hnsw1.layer_indexed_points.entry_point.read().is_some(),
         "one entry point is None"
     );
+
     let ep1_read = hnsw1.layer_indexed_points.entry_point.read();
     let ep2_read = hnsw2.layer_indexed_points.entry_point.read();
     let ep1: &Arc<Point<T1>> = ep1_read.as_ref().unwrap();
@@ -1551,6 +1551,7 @@ where
         ep1.origin_id, ep2.origin_id
     );
     assert_eq!(ep1.p_id, ep2.p_id, "origin id {:?} ", ep1.origin_id);
+
     // check layers
     let layers_1 = hnsw1.layer_indexed_points.points_by_layer.read();
     let layers_2 = hnsw2.layer_indexed_points.points_by_layer.read();
@@ -1582,8 +1583,6 @@ where
         } // end of for j
     } // end of for i
     assert_eq!(nb_point_checked, hnsw1.get_nb_point());
-    log::debug!("nb neighbours checked {:?}", nb_neighbours_checked);
-    log::debug!("exiting check_equality");
 } // end of check_reload
 
 #[cfg(test)]
