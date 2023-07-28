@@ -41,8 +41,8 @@ pub fn load_model() -> SentenceEmbeddingsModel {
 fn load_file(filename: &String) -> BufReader<File> {
     let path: PathBuf = PathBuf::from(filename);
     let res: File = OpenOptions::new().read(true).open(path).unwrap();
-    let reader: BufReader<File> = BufReader::new(res);
-    reader
+
+    BufReader::new(res)
 }
 
 #[allow(unused)]
