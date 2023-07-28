@@ -1,4 +1,4 @@
-.PHONY: format client server builder
+.PHONY: format client server builder lint
 
 format:
 	cargo +nightly fmt
