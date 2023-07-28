@@ -1,26 +1,23 @@
-//! This module provides a bidirectional link between a file in the format used for the dump of Data vectors filling the Hnsw structure.
-//! We mmap the file and provide
+//! This module provides a bidirectional link between a file in the format used for the dump of Data
+//! vectors filling the Hnsw structure. We mmap the file and provide
 //!     - a Hashmap from DataId to address
 //!     - an interface for retrieving just data vectors loaded in the hnsw structure.
 //!     - an interface for creating a Hnsw structure from the vectors stored in file
-//! 
 #![allow(unused)]
-use std::{
-    fs::{File, Metadata, OpenOptions},
-    path::PathBuf,
-    io::{BufReader, Error},
-};
+use std::default;
+use std::fs::{File, Metadata, OpenOptions};
+use std::io::{BufReader, Error};
+use std::path::PathBuf;
 
 use hashbrown::HashMap;
 use mmap_rs::{Mmap, MmapOptions};
 
-use crate::hnsw_index::{
-    hnsw::DataId,
-    hnswio::{load_description, MAGICDATAP, Hnsw, Description},
-};
+use crate::hnsw_index::hnsw::{DataId, Hnsw};
+use crate::hnsw_index::hnswio::{load_description, Description, MAGICDATAP};
 
 /// This structure uses the data part of the dump of a Hnsw structure to retrieve the data.
-/// The data is access via a mmap of the data file, so memory is spared at the expense of page loading.
+/// The data is access via a mmap of the data file, so memory is spared at the expense of page
+/// loading.
 // possibly to be used in graph to spare memory?
 pub struct DataMap {
     /// File containing Points data
@@ -31,16 +28,22 @@ pub struct DataMap {
     hmap: HashMap<DataId, usize>,
     /// type name of Data
     t_name: String,
+    /// dimenstion
+    dimension: usize,
 } // end of DataMap
 
 impl DataMap {
-    // TODO: specifiy mmap option 
-    pub fn from_hnswdump<T: std::fmt::Debug>(dir: &str, fname: &String) -> Result<DataMap, String> {
+    pub fn new<T: std::fmt::Debug>(dir: &str, fname: &str) -> Self {
+        Self::from_hnswdump::<T>(dir, fname).unwrap()
+    }
+
+    // TODO: specifiy mmap option
+    pub fn from_hnswdump<T: std::fmt::Debug>(dir: &str, fname: &str) -> Result<DataMap, String> {
         // we know data filename is hnswdump.hnsw.data
         let mut datapath: PathBuf = PathBuf::new();
         datapath.push(dir);
 
-        let mut filename: String = fname.clone();
+        let mut filename: String = fname.to_owned();
         filename.push_str(".hnsw.data");
         datapath.push(filename);
 
@@ -70,18 +73,15 @@ impl DataMap {
 
         let mmap: Mmap = mapping_res.unwrap();
 
-        log::info!("mmap done on file : {:?}", &datapath);
-
         // reload description to have data type
         let mut graphpath: PathBuf = PathBuf::new();
         graphpath.push(dir);
 
-        let mut filename: String = fname.clone();
+        let mut filename: String = fname.to_owned();
         filename.push_str(".hnsw.graph");
         graphpath.push(filename);
 
-        let graphfileres: Result<File, Error> =
-            OpenOptions::new().read(true).open(&graphpath);
+        let graphfileres: Result<File, Error> = OpenOptions::new().read(true).open(&graphpath);
         if graphfileres.is_err() {
             println!("DataMap: could not open file {:?}", graphpath.as_os_str());
             std::process::exit(1);
@@ -91,29 +91,37 @@ impl DataMap {
         let mut graph_in: BufReader<File> = BufReader::new(graphfile);
 
         // we need to call load_description first to get distance name
-        let hnsw_description = load_description(&mut graph_in).unwrap();
+        let hnsw_description: Description = load_description(&mut graph_in).unwrap();
         if hnsw_description.format_version <= 2 {
-            let msg = String::from("from_hnsw::from_hnsw : data mapping is only possible for dumps with the version >= 0.1.20 of this crate");
-            log::error!("from_hnsw::from_hnsw : data mapping is only possible for dumps with the version >= 0.1.20 of this crate");
-            return Err(msg);
+            log::error!(
+                "from_hnsw::from_hnsw : data mapping is only possible for dumps with the version \
+                 >= 0.1.20 of this crate"
+            );
+            return Err("from_hnsw::from_hnsw : data mapping is only possible for dumps with the \
+                        version >= 0.1.20 of this crate"
+                .to_owned());
         }
 
         let t_name: String = hnsw_description.get_typename();
         // get dimension as declared in description
-        let descr_dimension = hnsw_description.get_dimension();
+        let descr_dimension: usize = hnsw_description.get_dimension();
         drop(graph_in);
 
         // check typename coherence
-        log::info!("got typename from reload : {:?}", t_name); 
         if std::any::type_name::<T>() != t_name {
-            log::error!("description has typename {:?}, function type argument is : {:?}", t_name, std::any::type_name::<T>());
+            log::error!(
+                "description has typename {:?}, function type argument is : {:?}",
+                t_name,
+                std::any::type_name::<T>()
+            );
             return Err(String::from("type error"));
         }
 
         let mapped_slice: &[u8] = mmap.as_slice();
 
         // where are we in decoding mmap slice?
-        let mut current_mmap_addr = 0usize;
+        let mut current_mmap_addr: usize = 0usize;
+
         // check magic
         let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
         it_slice.copy_from_slice(
@@ -122,100 +130,108 @@ impl DataMap {
         current_mmap_addr += std::mem::size_of::<u32>();
         let magic: u32 = u32::from_ne_bytes(it_slice);
         assert_eq!(magic, MAGICDATAP, "magic not equal to MAGICDATAP in mmap");
-        log::debug!("got magic OK");
 
         // get dimension
+        let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
         it_slice.copy_from_slice(
             &mapped_slice[current_mmap_addr..current_mmap_addr + std::mem::size_of::<usize>()],
         );
         current_mmap_addr += std::mem::size_of::<usize>();
-        let dimension: usize = usize::from_ne_bytes(it_slice) as usize;
-        if dimension as usize != descr_dimension {
-            log::error!("description and data do not agree on dimension, data got : {:?}, description got : {:?}",dimension, descr_dimension);
+        let dimension: usize = usize::from_ne_bytes(it_slice);
+        if dimension != descr_dimension {
+            log::error!(
+                "description and data do not agree on dimension, data got : {:?}, description got \
+                 : {:?}",
+                dimension,
+                descr_dimension
+            );
             return Err(String::from("description and data do not agree on dimension"));
-        } else {
-            log::info!(" got dimension : {:?}", dimension);
         }
 
-        // now we know that each record consists in 
-        //   - MAGICDATAP (u32), DataId  (u64), serialized_len (lenght in bytes * dimension) 
-        let record_size = std::mem::size_of::<u32>() + 2 * std::mem::size_of::<u64>() + dimension * std::mem::size_of::<T>();
-        let residual = mmap.size() - current_mmap_addr;
-        log::info!("mmap size {}, current_mmap_addr {}, residual : {}", mmap.size(), current_mmap_addr, residual);
-    
-        let nb_record = residual / record_size;
-        log::debug!("record size : {}, nb_record : {}", record_size, nb_record);
+        // now we know that each record consists in
+        //   - MAGICDATAP (u32), DataId  (u64), serialized_len (lenght in bytes * dimension)
+        let record_size: usize = std::mem::size_of::<u32>()
+            + 2 * std::mem::size_of::<u64>()
+            + dimension * std::mem::size_of::<T>();
+        let residual: usize = mmap.size() - current_mmap_addr;
+
+        let nb_record: usize = residual / record_size;
 
         // allocate hmap with correct capacity
-        let mut hmap = HashMap::<DataId, usize>::with_capacity(nb_record);
+        let mut hmap: HashMap<usize, usize> = HashMap::<DataId, usize>::with_capacity(nb_record);
 
         // fill hmap to have address of each data point in file
-        let mut u64_slice = [0u8; std::mem::size_of::<u64>()];
+        let mut u64_slice: [u8; 8] = [0u8; std::mem::size_of::<u64>()];
 
-        //
         // now we loop on records
-        //
         for i in 0..nb_record {
-            log::info!("record i : {}, addr : {}", i, current_mmap_addr);
-            // decode Magic 
-            u32_slice.copy_from_slice(&mapped_slice[current_mmap_addr..current_mmap_addr+std::mem::size_of::<u32>()]);
+            // decode Magic
+            let mut u32_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
+            u32_slice.copy_from_slice(
+                &mapped_slice[current_mmap_addr..current_mmap_addr + std::mem::size_of::<u32>()],
+            );
             current_mmap_addr += std::mem::size_of::<u32>();
-            let magic = u32::from_ne_bytes(u32_slice);
+
+            let magic: u32 = u32::from_ne_bytes(u32_slice);
             assert_eq!(magic, MAGICDATAP, "magic not equal to MAGICDATAP in mmap");
 
             // decode DataId
-            u64_slice.copy_from_slice(&mapped_slice[current_mmap_addr..current_mmap_addr+std::mem::size_of::<u64>()]);
+            u64_slice.copy_from_slice(
+                &mapped_slice[current_mmap_addr..current_mmap_addr + std::mem::size_of::<u64>()],
+            );
             current_mmap_addr += std::mem::size_of::<u64>();
-            let data_id = u64::from_ne_bytes(u64_slice) as usize;
-            log::debug!("inserting in hmap : got dataid : {:?} current map address : {:?}", data_id, current_mmap_addr);
+            let data_id: usize = u64::from_ne_bytes(u64_slice) as usize;
 
-            // Note we store address where we have to decode dimension*size_of::<T>  and full bson encoded vector
+            // Note we store address where we have to decode dimension*size_of::<T> and full bson
+            // encoded vector
             hmap.insert(data_id, current_mmap_addr);
 
             // now read serialized length
-            u64_slice.copy_from_slice(&mapped_slice[current_mmap_addr..current_mmap_addr+std::mem::size_of::<u64>()]);
+            u64_slice.copy_from_slice(
+                &mapped_slice[current_mmap_addr..current_mmap_addr + std::mem::size_of::<u64>()],
+            );
             current_mmap_addr += std::mem::size_of::<u64>();
-            let serialized_len = u64::from_ne_bytes(u64_slice) as usize;
-            log::debug!("serialized bytes len to reload {:?}", serialized_len);
+            let serialized_len: usize = u64::from_ne_bytes(u64_slice) as usize;
 
-            let mut v_serialized = Vec::<u8>::with_capacity(serialized_len);
+            let mut v_serialized: Vec<u8> = vec![0; serialized_len];
+
             // TODO avoid initialization
-            v_serialized.resize(serialized_len as usize, 0);
-            v_serialized.copy_from_slice(&mapped_slice[current_mmap_addr..current_mmap_addr+serialized_len]);
+            v_serialized.copy_from_slice(
+                &mapped_slice[current_mmap_addr..current_mmap_addr + serialized_len],
+            );
 
             current_mmap_addr += serialized_len;
-            let slice_t = unsafe {std::slice::from_raw_parts(v_serialized.as_ptr() as *const T,dimension as usize) };            
-            log::debug!("deserialized v : {:?} address : {:?} ", slice_t, v_serialized.as_ptr() as *const T);
+            let slice_t: &[T] =
+                unsafe { std::slice::from_raw_parts(v_serialized.as_ptr() as *const T, dimension) };
         } // end of for on record
 
-        log::debug!("\n end of from_hnsw");
-  
-        let datamap: DataMap = DataMap{datapath, mmap, hmap, t_name, dimension: descr_dimension};
+        Ok(DataMap { datapath, mmap, hmap, t_name, dimension: descr_dimension })
+    }
 
-        return Ok(datamap);
-    } // end of new
+    // end of new
 
     /// return the data corresponding to dataid. Access is done via mmap
-    pub fn get_data<T:Clone + std::fmt::Debug>(&self, dataid : &DataId) -> Option<&[T]> {
-        log::trace!("in DataMap::get_data, dataid : {:?}", dataid);
-        let address = self.hmap.get(dataid);
-        if address.is_none() {
-            return None;
-        }
-        log::debug!(" adress for id : {}, address : {:?}", dataid, address);
+    pub fn get_data<T: Clone + std::fmt::Debug>(&self, dataid: &DataId) -> Option<&[T]> {
+        let address: usize = *self.hmap.get(dataid)?;
 
-        let mut current_mmap_addr = *address.unwrap();
-        let mapped_slice = self.mmap.as_slice();
-        let mut u64_slice = [0u8; std::mem::size_of::<u64>()];
-        u64_slice.copy_from_slice(&mapped_slice[current_mmap_addr..current_mmap_addr+std::mem::size_of::<u64>()]);
+        let mut current_mmap_addr: usize = address;
+        let mapped_slice: &[u8] = self.mmap.as_slice();
 
-        let serialized_len = u64::from_ne_bytes(u64_slice) as usize;
+        let mut u64_slice: [u8; 8] = [0u8; std::mem::size_of::<u64>()];
+        u64_slice.copy_from_slice(
+            &mapped_slice[current_mmap_addr..current_mmap_addr + std::mem::size_of::<u64>()],
+        );
+
+        let serialized_len: usize = u64::from_ne_bytes(u64_slice) as usize;
         current_mmap_addr += std::mem::size_of::<u64>();
-        log::debug!("serialized bytes len to reload {:?}", serialized_len);
 
-        let slice_t = unsafe { 
-            std::slice::from_raw_parts(mapped_slice[current_mmap_addr..].as_ptr() as *const T, self.dimension as usize) 
+        let slice_t: &[T] = unsafe {
+            std::slice::from_raw_parts(
+                mapped_slice[current_mmap_addr..].as_ptr() as *const T,
+                self.dimension,
+            )
         };
+
         Some(slice_t)
     }
 } // end of impl DataMap
@@ -225,14 +241,11 @@ impl DataMap {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-
-    use crate::dist;
-
-    pub use crate::api::AnnT;
-    use crate::prelude::*;
-
     use rand::distributions::{Distribution, Uniform};
+
+    use super::*;
+    pub use crate::hnsw_index::api::AnnT;
+    use crate::hnsw_index::dist;
 
     fn log_init_test() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -243,13 +256,13 @@ mod tests {
         println!("\n\n test_file_mmap");
         log_init_test();
         // generate a random test
-        let mut rng = rand::thread_rng();
-        let unif = Uniform::<f32>::new(0., 1.);
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
+        let unif: Uniform<f32> = Uniform::<f32>::new(0., 1.);
         // 1000 vectors of size 10 f32
-        let nbcolumn = 1000;
-        let nbrow = 10;
-        let mut xsi;
-        let mut data = Vec::with_capacity(nbcolumn);
+        let nbcolumn: usize = 1000;
+        let nbrow: usize = 10;
+        let mut xsi: f32;
+        let mut data: Vec<Vec<f32>> = Vec::with_capacity(nbcolumn);
         for j in 0..nbcolumn {
             data.push(Vec::with_capacity(nbrow));
             for _ in 0..nbrow {
@@ -258,9 +271,9 @@ mod tests {
             }
         }
         // define hnsw
-        let ef_construct = 25;
-        let nb_connection = 10;
-        let hnsw = Hnsw::<f32, dist::DistL1>::new(
+        let ef_construct: usize = 25;
+        let nb_connection: usize = 10;
+        let hnsw: Hnsw<f32, dist::DistL1> = Hnsw::<f32, dist::DistL1>::new(
             nb_connection,
             nbcolumn,
             16,
@@ -273,11 +286,9 @@ mod tests {
         // some loggin info
         hnsw.dump_layer_info();
         // dump in a file.  Must take care of name as tests runs in // !!!
-        let fname = String::from("mmap_test");
-        let _res = hnsw.file_dump(&fname);
-        //
-        //
-        //
-        let datamap = DataMap::new(".", &fname);
+        let fname: String = String::from("mmap_test");
+        let _res: Result<i32, String> = hnsw.file_dump(&fname);
+
+        let datamap: DataMap = DataMap::new::<i8>(".", fname.as_ref());
     } // end of test_file_mmap
 } // end of mod tests
