@@ -42,7 +42,7 @@ async fn execute(config: &Config) -> Result<Metrics> {
 
     let requests: PredictRequest = PredictRequest {
         features: vec![
-            Features { query: "The story about the school life".to_string() };
+            Features { query: "The story about the school life".to_owned() };
             config.bs
         ],
         k: config.k,
