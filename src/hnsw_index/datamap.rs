@@ -37,6 +37,8 @@ impl DataMap {
         Self::from_hnswdump::<T>(dir, fname).unwrap()
     }
 
+    // end of new
+
     // TODO: specifiy mmap option
     pub fn from_hnswdump<T: Clone + Send + Sync>(
         dir: &str,
@@ -164,11 +166,12 @@ impl DataMap {
         let mut hmap: HashMap<DataId, usize> = HashMap::<DataId, usize>::with_capacity(nb_record);
 
         // fill hmap to have address of each data point in file
+        let mut u32_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
+        let mut u64_slice: [u8; 8] = [0u8; std::mem::size_of::<u64>()];
 
         // now we loop on records
         for i in 0..nb_record {
             // decode Magic
-            let mut u32_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
             u32_slice.copy_from_slice(
                 &mapped_slice[current_mmap_addr..current_mmap_addr + std::mem::size_of::<u32>()],
             );
@@ -178,7 +181,6 @@ impl DataMap {
             assert_eq!(magic, MAGICDATAP, "magic not equal to MAGICDATAP in mmap");
 
             // decode DataId
-            let mut u64_slice: [u8; 8] = [0u8; std::mem::size_of::<DataId>()];
             u64_slice.copy_from_slice(
                 &mapped_slice[current_mmap_addr..current_mmap_addr + std::mem::size_of::<u64>()],
             );
@@ -196,22 +198,11 @@ impl DataMap {
             current_mmap_addr += std::mem::size_of::<u64>();
             let serialized_len: usize = u64::from_ne_bytes(u64_slice) as usize;
 
-            let mut v_serialized: Vec<u8> = vec![0; serialized_len];
-            v_serialized.copy_from_slice(
-                &mapped_slice[current_mmap_addr..current_mmap_addr + serialized_len],
-            );
             current_mmap_addr += serialized_len;
-
-            let slice_t: &[T] =
-                unsafe { std::slice::from_raw_parts(v_serialized.as_ptr() as *const T, dimension) };
-
-            let point: Point<T> = Point::new(slice_t, data_id, PointId(0, 0));
         } // end of for on record
 
         Ok(DataMap { datapath, mmap, hmap, t_name, dimension: descr_dimension })
     }
-
-    // end of new
 
     /// return the data corresponding to dataid. Access is done via mmap
     pub fn get_data<T: Clone + std::fmt::Debug>(&self, dataid: &DataId) -> Option<&[T]> {
