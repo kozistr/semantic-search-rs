@@ -137,6 +137,7 @@ impl<T: Clone + Send + Sync> Point<T> {
         for _ in 0..NB_LAYER_MAX {
             neighbours.push(Vec::<Arc<PointWithOrder<T>>>::new());
         }
+
         Point { v: v.to_vec(), origin_id, p_id, neighbours: Arc::new(RwLock::new(neighbours)) }
     }
 
