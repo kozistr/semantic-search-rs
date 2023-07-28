@@ -1034,7 +1034,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 );
 
                 // sort neighbours
-                neighbours.sort_unstable();
+                neighbours.par_sort_unstable();
 
                 // we must add bidirectional from data i.e new_point_id to neighbours
                 new_point.neighbours.write()[l as usize] = neighbours.clone();
