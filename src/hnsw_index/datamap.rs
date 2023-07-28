@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use hashbrown::HashMap;
 use mmap_rs::{Mmap, MmapOptions};
 
-use crate::hnsw_index::hnsw::{DataId, Hnsw};
+use crate::hnsw_index::hnsw::{DataId, Hnsw, Point, PointId};
 use crate::hnsw_index::hnswio::{load_description, Description, MAGICDATAP};
 
 /// This structure uses the data part of the dump of a Hnsw structure to retrieve the data.
@@ -33,12 +33,15 @@ pub struct DataMap {
 } // end of DataMap
 
 impl DataMap {
-    pub fn new<T: std::fmt::Debug>(dir: &str, fname: &str) -> Self {
+    pub fn new<T: Clone + Send + Sync>(dir: &str, fname: &str) -> Self {
         Self::from_hnswdump::<T>(dir, fname).unwrap()
     }
 
     // TODO: specifiy mmap option
-    pub fn from_hnswdump<T: std::fmt::Debug>(dir: &str, fname: &str) -> Result<DataMap, String> {
+    pub fn from_hnswdump<T: Clone + Send + Sync>(
+        dir: &str,
+        fname: &str,
+    ) -> Result<DataMap, String> {
         // we know data filename is hnswdump.hnsw.data
         let mut datapath: PathBuf = PathBuf::new();
         datapath.push(dir);
@@ -158,10 +161,9 @@ impl DataMap {
         let nb_record: usize = residual / record_size;
 
         // allocate hmap with correct capacity
-        let mut hmap: HashMap<usize, usize> = HashMap::<DataId, usize>::with_capacity(nb_record);
+        let mut hmap: HashMap<DataId, usize> = HashMap::<DataId, usize>::with_capacity(nb_record);
 
         // fill hmap to have address of each data point in file
-        let mut u64_slice: [u8; 8] = [0u8; std::mem::size_of::<u64>()];
 
         // now we loop on records
         for i in 0..nb_record {
@@ -176,11 +178,12 @@ impl DataMap {
             assert_eq!(magic, MAGICDATAP, "magic not equal to MAGICDATAP in mmap");
 
             // decode DataId
+            let mut u64_slice: [u8; 8] = [0u8; std::mem::size_of::<DataId>()];
             u64_slice.copy_from_slice(
                 &mapped_slice[current_mmap_addr..current_mmap_addr + std::mem::size_of::<u64>()],
             );
-            current_mmap_addr += std::mem::size_of::<u64>();
-            let data_id: usize = u64::from_ne_bytes(u64_slice) as usize;
+            current_mmap_addr += std::mem::size_of::<DataId>();
+            let data_id: usize = DataId::from_ne_bytes(u64_slice);
 
             // Note we store address where we have to decode dimension*size_of::<T> and full bson
             // encoded vector
@@ -194,15 +197,15 @@ impl DataMap {
             let serialized_len: usize = u64::from_ne_bytes(u64_slice) as usize;
 
             let mut v_serialized: Vec<u8> = vec![0; serialized_len];
-
-            // TODO avoid initialization
             v_serialized.copy_from_slice(
                 &mapped_slice[current_mmap_addr..current_mmap_addr + serialized_len],
             );
-
             current_mmap_addr += serialized_len;
+
             let slice_t: &[T] =
                 unsafe { std::slice::from_raw_parts(v_serialized.as_ptr() as *const T, dimension) };
+
+            let point: Point<T> = Point::new(slice_t, data_id, PointId(0, 0));
         } // end of for on record
 
         Ok(DataMap { datapath, mmap, hmap, t_name, dimension: descr_dimension })
