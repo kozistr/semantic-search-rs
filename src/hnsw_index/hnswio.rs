@@ -10,9 +10,13 @@ use std::any::type_name;
 use std::collections::HashMap;
 use std::io;
 use std::io::prelude::*;
+use std::io::BufWriter;
 use std::sync::Arc;
 
 use parking_lot::RwLock;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+
 ///
 // datafile
 // MAGICDATAP : u32
@@ -23,10 +27,10 @@ use parking_lot::RwLock;
 // possibly a hash value) and layer (u8) and rank_in_layer:i32.
 // In the data file the point dump consist in the triplet: (MAGICDATAP, origin_id , array of
 // values.)
-use serde::{de::DeserializeOwned, Serialize};
 
 #[allow(unused_imports)]
-use crate::hnsw_index::{dist::Distance, hnsw::*};
+use crate::hnsw_index::dist::Distance;
+use crate::hnsw_index::hnsw::*;
 
 // magic before each graph point data for each point
 const MAGICPOINT: u32 = 0x000a678f;
@@ -55,8 +59,8 @@ pub trait HnswIO {
     fn dump<W: Write>(
         &self,
         mode: DumpMode,
-        outgraph: &mut io::BufWriter<W>,
-        outdata: &mut io::BufWriter<W>,
+        outgraph: &mut BufWriter<W>,
+        outdata: &mut BufWriter<W>,
     ) -> Result<i32, String>;
 }
 
@@ -93,7 +97,7 @@ impl Description {
     /// . ef (search parameter used in construction) as usize
     /// . nb_point (the number points dumped) as a usize
     /// . the name of distance used. (nb byes as a usize then list of bytes)
-    fn dump<W: Write>(&self, argmode: DumpMode, out: &mut io::BufWriter<W>) -> Result<i32, String> {
+    fn dump<W: Write>(&self, argmode: DumpMode, out: &mut BufWriter<W>) -> Result<i32, String> {
         log::info!("in dump of description");
         out.write_all(&MAGICDESCR_3.to_ne_bytes()).unwrap();
         let mode: u8 = match argmode {
@@ -174,7 +178,6 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
     log::debug!(" magic {:X} ", magic);
 
     if magic != MAGICDESCR_2 && magic != MAGICDESCR_3 {
-        log::info!("bad magic");
         return Err(io::Error::new(io::ErrorKind::Other, "bad magic at descr beginning"));
     } else if magic == MAGICDESCR_2 {
         descr.format_version = 2;
@@ -249,7 +252,7 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
     tnamev.resize(len, 0);
     io_in.read_exact(tnamev.as_mut_slice())?;
 
-    let t_name = String::from_utf8(tnamev).unwrap();
+    let t_name: String = String::from_utf8(tnamev).unwrap();
     log::debug!("T type name {:?} ", t_name);
 
     descr.t_name = t_name;
@@ -278,10 +281,11 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
 fn dump_point<T: Serialize + Clone + Sized + Send + Sync, W: Write>(
     point: &Point<T>,
     mode: DumpMode,
-    graphout: &mut io::BufWriter<W>,
-    dataout: &mut io::BufWriter<W>,
+    graphout: &mut BufWriter<W>,
+    dataout: &mut BufWriter<W>,
 ) -> Result<i32, String> {
     graphout.write_all(&MAGICPOINT.to_ne_bytes()).unwrap();
+
     // dump ext_id: usize , layer : u8 , rank in layer : i32
     graphout
         .write_all(&point.get_origin_id().to_ne_bytes())
@@ -292,7 +296,6 @@ fn dump_point<T: Serialize + Clone + Sized + Send + Sync, W: Write>(
         graphout.write_all(&p_id.0.to_ne_bytes()).unwrap();
         graphout.write_all(&p_id.1.to_ne_bytes()).unwrap();
     }
-    log::trace!(" point dump {:?} {:?}  ", p_id, point.get_origin_id());
 
     // then dump neighborhood info : nb neighbours : u32 , then list of origin_id, layer,
     // rank_in_layer
@@ -300,11 +303,10 @@ fn dump_point<T: Serialize + Clone + Sized + Send + Sync, W: Write>(
 
     // in any case nb_layers are dumped with possibly 0 neighbours at a layer, but this does not
     // occur by construction
-    for (l, n) in neighborhood.iter().enumerate() {
+    for n in neighborhood.iter() {
         let neighbours_at_l: &Vec<Neighbour> = n;
         // Caution : we dump number of neighbours as a usize, even if it cannot be so large!
         let nbg_l: usize = neighbours_at_l.len();
-        log::trace!("\t dumping nbng : {} at l {}", nbg_l, l);
 
         graphout.write_all(&nbg_l.to_ne_bytes()).unwrap();
         for n in neighbours_at_l {
@@ -315,8 +317,6 @@ fn dump_point<T: Serialize + Clone + Sized + Send + Sync, W: Write>(
                 graphout.write_all(&n.p_id.1.to_ne_bytes()).unwrap();
             }
             graphout.write_all(&n.distance.to_ne_bytes()).unwrap();
-            //                log::debug!("        voisins  {:?}  {:?}  {:?}", n.p_id,  n.d_id ,
-            // n.distance);
         }
     }
 
@@ -332,7 +332,6 @@ fn dump_point<T: Serialize + Clone + Sized + Send + Sync, W: Write>(
             std::mem::size_of_val(point.get_v()),
         )
     };
-    log::debug!("serializing len {:?}", serialized.len());
 
     let len_64: u64 = serialized.len() as u64;
     dataout.write_all(&len_64.to_ne_bytes()).unwrap();
@@ -358,9 +357,9 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
 
     let magic: u32 = u32::from_ne_bytes(it_slice);
     if magic != MAGICPOINT {
-        log::debug!("got instead of MAGICPOINT {:x}", magic);
         return Err(io::Error::new(io::ErrorKind::Other, "bad magic at point beginning"));
     }
+
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<DataId>()];
     graph_in.read_exact(&mut it_slice).unwrap();
     let origin_id: usize = DataId::from_ne_bytes(it_slice);
@@ -379,18 +378,21 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     let nb_layer: u8 = descr.nb_layer;
     let mut neighborhood: Vec<Vec<Neighbour>> =
         Vec::<Vec<Neighbour>>::with_capacity(NB_LAYER_MAX as usize);
+
     for _l in 0..nb_layer {
         let mut neighbour: Neighbour = Default::default();
         // read nb_neighbour as usize!!! CAUTION, then nb_neighbours times identity(depends on Full
         // or Light) distance : f32
         let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<usize>()];
         graph_in.read_exact(&mut it_slice)?;
+
         let nb_neighbours: usize = usize::from_ne_bytes(it_slice);
         let mut neighborhood_l: Vec<Neighbour> = Vec::with_capacity(nb_neighbours);
         for _j in 0..nb_neighbours {
             let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<DataId>()];
             graph_in.read_exact(&mut it_slice)?;
             neighbour.d_id = DataId::from_ne_bytes(it_slice);
+
             if descr.dumpmode == 1 {
                 let mut it_slice: [u8; 1] = [0u8; std::mem::size_of::<u8>()];
                 graph_in.read_exact(&mut it_slice)?;
@@ -400,11 +402,11 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
                 graph_in.read_exact(&mut it_slice)?;
                 neighbour.p_id.1 = i32::from_ne_bytes(it_slice);
             }
+
             let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<f32>()];
             graph_in.read_exact(&mut it_slice)?;
             neighbour.distance = f32::from_ne_bytes(it_slice);
-            //  log::debug!("        voisins  load {:?} {:?} {:?} ", neighbour.p_id, neighbour.d_id
-            // , neighbour.distance); now we have a new neighbour, we must really fill
+
             // neighbourhood info, so it means going from Neighbour to PointWithOrder
             neighborhood_l.push(neighbour);
         }
@@ -416,7 +418,6 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     }
 
     // construct a point from data_in
-    //
     let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
     data_in.read_exact(&mut it_slice)?;
     let magic: u32 = u32::from_ne_bytes(it_slice);
@@ -436,9 +437,9 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<u64>()];
     data_in.read_exact(&mut it_slice)?;
     let serialized_len: u64 = u64::from_ne_bytes(it_slice);
-    log::debug!("serialized len to reload {:?}", serialized_len);
 
     let mut v_serialized: Vec<u8> = Vec::<u8>::new();
+
     // TODO avoid initialization
     v_serialized.resize(serialized_len as usize, 0);
     data_in.read_exact(&mut v_serialized)?;
@@ -465,12 +466,6 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     };
 
     let point: Point<T> = Point::<T>::new(&v, origin_id, p_id);
-    log::trace!(
-        "load_point  origin {:?} allocated size {:?}, dim {:?}",
-        origin_id,
-        point.get_v().len(),
-        descr.dimension
-    );
 
     Ok((Arc::new(point), neighborhood))
 } // end of load_point
@@ -489,8 +484,8 @@ impl<T: Serialize + DeserializeOwned + Clone + Send + Sync> HnswIO for PointInde
     fn dump<W: Write>(
         &self,
         mode: DumpMode,
-        graphout: &mut io::BufWriter<W>,
-        dataout: &mut io::BufWriter<W>,
+        graphout: &mut BufWriter<W>,
+        dataout: &mut BufWriter<W>,
     ) -> Result<i32, String> {
         // dump max_layer
         let layers = self.points_by_layer.read();
@@ -509,6 +504,7 @@ impl<T: Serialize + DeserializeOwned + Clone + Send + Sync> HnswIO for PointInde
                 dump_point(&layers[i][j], mode, graphout, dataout)?;
             }
         }
+
         // dump id of entry point
         let ep_read = self.entry_point.read();
         assert!(ep_read.is_some());
@@ -523,8 +519,7 @@ impl<T: Serialize + DeserializeOwned + Clone + Send + Sync> HnswIO for PointInde
             graphout.write_all(&p_id.0.to_ne_bytes()).unwrap();
             graphout.write_all(&p_id.1.to_ne_bytes()).unwrap();
         }
-        log::info!("dumped entry_point origin_d {:?}, p_id {:?} ", ep.get_origin_id(), p_id);
-        //
+
         Ok(1)
     } // end of dump for PointIndexation<T>
 } // end of impl HnswIO
@@ -536,8 +531,6 @@ fn load_point_indexation<
     descr: &Description,
     data_in: &mut dyn Read,
 ) -> io::Result<PointIndexation<T>> {
-    //
-    log::debug!(" in load_point_indexation");
     // now we check that except for the case NoData, the typename are the sames.
     if std::any::TypeId::of::<T>() != std::any::TypeId::of::<NoData>()
         && std::any::type_name::<T>() != descr.t_name
@@ -549,14 +542,15 @@ fn load_point_indexation<
         );
         panic!("incohrent size of T in description");
     }
-    //
+
     let mut points_by_layer: Vec<Vec<Arc<Point<T>>>> = Vec::with_capacity(NB_LAYER_MAX as usize);
     let mut neighbourhood_map: HashMap<PointId, Vec<Vec<Neighbour>>> = HashMap::new();
+
     // load max layer
     let mut it_slice: [u8; 1] = [0u8; ::std::mem::size_of::<u8>()];
     graph_in.read_exact(&mut it_slice)?;
+
     let nb_layer: u8 = u8::from_ne_bytes(it_slice);
-    log::debug!("nb layer {:?}", nb_layer);
     if nb_layer > NB_LAYER_MAX {
         return Err(io::Error::new(io::ErrorKind::Other, "inconsistent number of layErrers"));
     }
@@ -565,18 +559,18 @@ fn load_point_indexation<
 
     for l in 0..nb_layer as usize {
         // read and check magic
-        log::debug!("loading layer {:?}", l);
         let mut it_slice: [u8; 4] = [0u8; ::std::mem::size_of::<u32>()];
         graph_in.read_exact(&mut it_slice)?;
+
         let magic: u32 = u32::from_ne_bytes(it_slice);
         if magic != MAGICLAYER {
             return Err(io::Error::new(io::ErrorKind::Other, "bad magic at layer beginning"));
         }
+
         let mut it_slice: [u8; 8] = [0u8; ::std::mem::size_of::<usize>()];
         graph_in.read_exact(&mut it_slice)?;
 
         let nbpoints: usize = usize::from_ne_bytes(it_slice);
-        log::debug!(" layer {:?} , nb points {:?}", l, nbpoints);
         let mut vlayer: Vec<Arc<Point<T>>> = Vec::with_capacity(nbpoints);
         for r in 0..nbpoints {
             // load graph and data part of point. Points are dumped in the same order.
@@ -629,39 +623,23 @@ fn load_point_indexation<
             log::debug!("reloading nb_points neighbourhood completed : {}", nbp);
         }
     } // end loop in neighbourhood_map
+
     // get id of entry_point
     // load entry point
-    log::info!(
-        "\n end of layer loading, allocating PointIndexation, nb points loaded {:?}",
-        nb_points_loaded
-    );
-
-    //
     let mut it_slice: [u8; 8] = [0u8; std::mem::size_of::<DataId>()];
     graph_in.read_exact(&mut it_slice)?;
-    let origin_id: usize = DataId::from_ne_bytes(it_slice);
-    //
+
     let mut it_slice: [u8; 1] = [0u8; ::std::mem::size_of::<u8>()];
     graph_in.read_exact(&mut it_slice)?;
     let layer: u8 = u8::from_ne_bytes(it_slice);
-    //
+
     let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<i32>()];
     graph_in.read_exact(&mut it_slice)?;
+
     let rank_in_l: i32 = i32::from_ne_bytes(it_slice);
-    //
-    log::info!(
-        "found entry point, origin_id {:?} , layer {:?}, rank in layer {:?} ",
-        origin_id,
-        layer,
-        rank_in_l
-    );
+
     let entry_point: Arc<Point<T>> =
         Arc::clone(&points_by_layer[layer as usize][rank_in_l as usize]);
-    log::info!(
-        " loaded entry point, origin_id {:} p_id {:?}",
-        entry_point.get_origin_id(),
-        entry_point.get_point_id()
-    );
 
     let point_indexation: PointIndexation<T> = PointIndexation {
         max_nb_connection: descr.max_nb_connection as usize,
@@ -673,7 +651,6 @@ fn load_point_indexation<
                                                             * increment graph ? */
         entry_point: Arc::new(RwLock::new(Some(entry_point))),
     };
-    log::debug!("\n exiting load_pointIndexation");
 
     Ok(point_indexation)
 } // end of load_pointIndexation
@@ -692,8 +669,8 @@ impl<T: Serialize + DeserializeOwned + Clone + Sized + Send + Sync, D: Distance<
     fn dump<W: Write>(
         &self,
         mode: DumpMode,
-        graphout: &mut io::BufWriter<W>,
-        dataout: &mut io::BufWriter<W>,
+        graphout: &mut BufWriter<W>,
+        dataout: &mut BufWriter<W>,
     ) -> Result<i32, String> {
         // dump description , then PointIndexation
         let dumpmode: u8 = match mode {
@@ -714,7 +691,6 @@ impl<T: Serialize + DeserializeOwned + Clone + Sized + Send + Sync, D: Distance<
             distname: self.get_distance_name(),
             t_name: type_name::<T>().to_string(),
         };
-        log::debug!("dump  obtained typename {:?}", type_name::<T>());
         description.dump(mode, graphout)?;
 
         // We must dump a header for dataout.
@@ -722,6 +698,7 @@ impl<T: Serialize + DeserializeOwned + Clone + Sized + Send + Sync, D: Distance<
         dataout.write_all(&datadim.to_ne_bytes()).unwrap();
 
         self.layer_indexed_points.dump(mode, graphout, dataout)?;
+
         Ok(1)
     }
 } // end impl block for Hnsw
@@ -762,10 +739,6 @@ pub fn load_hnsw<
     // for that we check for short names equality stripping
     log::debug!("distance in description = {:?}", distname);
     let d_type_name: String = type_name::<D>().to_string();
-    let v: Vec<&str> = d_type_name.rsplit_terminator("::").collect();
-    for s in v {
-        log::info!(" distname in generic type argument {:?}", s);
-    }
 
     if (std::any::TypeId::of::<T>() != std::any::TypeId::of::<NoData>())
         && (d_type_name != distname)
@@ -781,14 +754,12 @@ pub fn load_hnsw<
         log::error!("error , dump is for distance = {:?}", distname);
         return Err(io::Error::new(io::ErrorKind::Other, errmsg));
     }
-    let t_type: String = description.t_name.clone();
-    log::debug!("T type name in dump = {:?}", t_type);
 
     let layer_point_indexation: PointIndexation<T> =
         load_point_indexation(graph_in, description, data_in)?;
     let data_dim: usize = layer_point_indexation.get_data_dimension();
 
-    let hnsw: Hnsw<T, D> = Hnsw {
+    Ok(Hnsw {
         max_nb_connection: description.max_nb_connection as usize,
         ef_construction: description.ef,
         extend_candidates: true,
@@ -798,11 +769,7 @@ pub fn load_hnsw<
         data_dimension: data_dim,
         dist_f: D::default(),
         searching: false,
-    };
-
-    log::debug!("load_hnsw completed");
-
-    Ok(hnsw)
+    })
 } // end of load_hnsw
 
 /// This function makes reload of a Hnsw dump with a given Dist.  
@@ -1046,12 +1013,14 @@ mod tests {
             std::panic::panic_any("test_dump_reload : could not open file".to_string());
         }
         let datafile: std::fs::File = datafileres.unwrap();
-        //
+
         let mut graph_in: BufReader<std::fs::File> = BufReader::new(graphfile);
         let mut data_in: BufReader<std::fs::File> = BufReader::new(datafile);
+
         // we need to call load_description first to get distance name
         let hnsw_description: Description = load_description(&mut graph_in).unwrap();
-        let mydist = dist::DistPtr::<f32, f32>::new(my_fn);
+        let mydist: DistPtr<f32, f32> = dist::DistPtr::<f32, f32>::new(my_fn);
+
         // we reload with the same function, no control (yet?)
         let _hnsw_loaded: Hnsw<f32, DistPtr<f32, f32>> =
             load_hnsw_with_dist(&mut graph_in, &hnsw_description, mydist, &mut data_in).unwrap();

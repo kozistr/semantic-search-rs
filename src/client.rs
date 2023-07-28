@@ -41,10 +41,7 @@ async fn execute(config: &Config) -> Result<Metrics> {
         InferenceClient::connect("http://127.0.0.1:50051").await?;
 
     let requests: PredictRequest = PredictRequest {
-        features: vec![
-            Features { query: "The story about the school life".to_owned() };
-            config.bs
-        ],
+        features: vec![Features { query: "The story about the school life".to_owned() }; config.bs],
         k: config.k,
     };
 
