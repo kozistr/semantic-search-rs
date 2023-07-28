@@ -165,7 +165,7 @@ impl<T: Clone + Send + Sync> Point<T> {
         for i in 0..nb_layer {
             let mut neighbours: Vec<Neighbour> = Vec::<Neighbour>::new();
             let nb_ngbh: usize = ref_neighbours[i].len();
-            if nb_ngbh > 0usize {
+            if nb_ngbh > 0 {
                 neighbours.reserve(nb_ngbh);
                 for pointwo in &ref_neighbours[i] {
                     neighbours.push(Neighbour::new(
@@ -356,12 +356,14 @@ impl<T: Clone + Send + Sync> Drop for PointIndexation<T> {
 impl<T: Clone + Send + Sync> PointIndexation<T> {
     pub fn new(max_nb_connection: usize, max_layer: usize, max_elements: usize) -> Self {
         let mut points_by_layer: Vec<Vec<Arc<Point<T>>>> = Vec::with_capacity(max_layer);
+
+        let max_layer_f32: f32 = max_layer as f32;
         for i in 0..max_layer {
             // recall that range are right extremeity excluded
             // compute fraction of points going into layer i and do expected memory reservation
-            let frac: f64 =
-                (-(i as f64) / (max_layer as f64)).exp() - (-((i + 1) as f64) / (max_layer as f64));
-            let expected_size: usize = ((frac * max_elements as f64).round()) as usize;
+            let frac: f32 =
+                (-(i as f32) / max_layer_f32).exp() - (-((i + 1) as f32) / max_layer_f32);
+            let expected_size: usize = (frac * max_elements as f32).round() as usize;
             points_by_layer.push(Vec::with_capacity(expected_size));
         }
 
@@ -572,7 +574,7 @@ impl<'a, T: Clone + Send + Sync> Iterator for IterPoint<'a, T> {
                 self.layer += 1;
             }
 
-            // now here either  (self.layer as u8) > self.point_indexation.max_level_observed
+            // now here either (self.layer as u8) > self.point_indexation.max_level_observed
             // or self.point_indexation.points_by_layer[self.layer as usize ].len() > 0
             if (self.layer as u8) <= entry_point_level {
                 let slot: usize = self.slot_in_layer as usize;
