@@ -420,6 +420,7 @@ fn load_point<T: 'static + DeserializeOwned + Clone + Sized + Send + Sync>(
     // construct a point from data_in
     let mut it_slice: [u8; 4] = [0u8; std::mem::size_of::<u32>()];
     data_in.read_exact(&mut it_slice)?;
+
     let magic: u32 = u32::from_ne_bytes(it_slice);
     assert_eq!(
         magic, MAGICDATAP,
@@ -738,7 +739,7 @@ pub fn load_hnsw<
     // We must ensure that the distance stored matches the one asked for in loading hnsw
     // for that we check for short names equality stripping
     log::debug!("distance in description = {:?}", distname);
-    let d_type_name: String = type_name::<D>().to_string();
+    let d_type_name: String = type_name::<D>().to_owned();
 
     if (std::any::TypeId::of::<T>() != std::any::TypeId::of::<NoData>())
         && (d_type_name != distname)
