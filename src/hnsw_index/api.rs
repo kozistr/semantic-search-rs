@@ -4,7 +4,7 @@
 
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
-use std::io::{BufWriter, Error};
+use std::io::BufWriter;
 use std::path::PathBuf;
 
 use serde::de::DeserializeOwned;
