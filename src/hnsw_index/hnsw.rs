@@ -271,25 +271,26 @@ impl LayerGenerator {
     }
 
     // l=0 most densely packed layer
-    // if S is scale we sample so that P(l=n) = exp(-n/S) - exp(- (n+1)/S)
+    // if S is scale we sample so that P(l=n) = exp(-n/S) - exp(-(n+1)/S)
     // with S = 1./ln(max_nb_connection) P(l >= maxlevel) = exp(-maxlevel * ln(max_nb_connection))
     // for nb_conn = 10, even with maxlevel = 10,  we get P(l >= maxlevel) = 1.e-13
     // In Malkov(2016) S = 1.0 / log(max_nb_connection)
     //
     /// generate a layer with given maxlevel. upper layers (higher index) are of decreasing
     /// probabilities. thread safe method.
-    fn generate(&self) -> usize {
+    fn generate(&self) -> u8 {
         let mut protected_rng = self.rng.lock();
         let xsi: f32 = protected_rng.sample(self.unif);
         let level: f32 = -xsi.ln() * self.scale;
-        let mut ulevel: usize = level.floor() as usize;
+        let ulevel: usize = level.floor() as usize;
 
         // we redispatch possibly sampled level >= maxlevel to required range
         if ulevel >= self.max_level as usize {
             // This occurs with very low probability. Cf commentary above.
-            ulevel = protected_rng.sample(Uniform::<usize>::new(0, self.max_level as usize));
+            protected_rng.sample(Uniform::<u8>::new(0, self.max_level))
+        } else {
+            ulevel as u8
         }
-        ulevel
     }
 
     /// just to try some variations on exponential level sampling. Unused.
@@ -407,15 +408,13 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
     // The function is called by Hnsw insert method
     fn generate_new_point(&self, data: &[T], origin_id: usize) -> (Arc<Point<T>>, usize) {
         // get a write lock at the beginning of the function
-        let level: usize = self.layer_g.generate();
+        let level: u8 = self.layer_g.generate();
 
         let new_point: Arc<Point<T>>;
         {
             // open a write lock on points_by_layer
             let mut points_by_layer_ref = self.points_by_layer.write();
-            let mut p_id: PointId = PointId(level as u8, -1);
-            p_id.1 = points_by_layer_ref[p_id.0 as usize].len() as i32;
-            let p_id: PointId = PointId(level as u8, points_by_layer_ref[level].len() as i32);
+            let p_id: PointId = PointId(level, points_by_layer_ref[level as usize].len() as i32);
 
             // make a Point and then an Arc<Point>
             let point: Point<T> = Point::new(data, origin_id, p_id);
@@ -1459,7 +1458,6 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 } // end of Hnsw
 
 /// quantize from f32 into i8 vector (SIMD version)
-#[allow(unused)]
 pub fn quantize(vector: &Vec<f32>) -> Vec<i8> {
     // assume the given vector is l2 normalized vector.
     let mut quantized_vector: Vec<i8> = Vec::with_capacity(vector.len());
