@@ -266,7 +266,7 @@ mod tests {
         }
         // define hnsw
         let ef_construct: usize = 25;
-        let nb_connection: usize = 10;
+        let nb_connection: u8 = 10;
         let hnsw: Hnsw<f32, DistL1> =
             Hnsw::<f32, DistL1>::new(nb_connection, nbcolumn, 16, ef_construct, DistL1 {});
         for i in 0..data.len() {

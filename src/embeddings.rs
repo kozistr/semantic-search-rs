@@ -56,9 +56,9 @@ fn main() -> Result<()> {
     println!("inference : {:.3?}", pb.elapsed());
 
     let nb_elem: usize = data.len();
-    let max_nb_connection: usize = 16;
+    let max_nb_connection: u8 = 16;
     let ef_c: usize = 200;
-    let nb_layer: usize = 16;
+    let nb_layer: u8 = 16;
 
     if do_quantize {
         let index: Hnsw<f32, DistDot> =

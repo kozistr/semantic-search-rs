@@ -638,13 +638,12 @@ fn load_point_indexation<
         Arc::clone(&points_by_layer[layer as usize][rank_in_l as usize]);
 
     let point_indexation: PointIndexation<T> = PointIndexation {
-        max_nb_connection: descr.max_nb_connection as usize,
-        max_layer: NB_LAYER_MAX as usize,
+        max_nb_connection: descr.max_nb_connection,
+        max_layer: NB_LAYER_MAX,
         points_by_layer: Arc::new(RwLock::new(points_by_layer)),
-        layer_g: LayerGenerator::new(descr.max_nb_connection as usize, NB_LAYER_MAX as usize),
-        nb_point: Arc::new(RwLock::new(nb_points_loaded)), /* CAVEAT , we should increase , the
-                                                            * whole thing is to be able to
-                                                            * increment graph ? */
+        layer_g: LayerGenerator::new(descr.max_nb_connection, NB_LAYER_MAX),
+        // CAVEAT, we should increase , the whole thing is to be able to increment graph?
+        nb_point: Arc::new(RwLock::new(nb_points_loaded)),
         entry_point: Arc::new(RwLock::new(Some(entry_point))),
     };
 
@@ -668,22 +667,22 @@ impl<T: Serialize + DeserializeOwned + Clone + Sized + Send + Sync, D: Distance<
         graphout: &mut BufWriter<W>,
         dataout: &mut BufWriter<W>,
     ) -> Result<i32, String> {
-        // dump description , then PointIndexation
+        // dump description, then PointIndexation
         let dumpmode: u8 = match mode {
             DumpMode::Full => 1,
             _ => 0,
         };
-        let datadim: usize = self.layer_indexed_points.get_data_dimension();
+
+        let dimension: usize = self.layer_indexed_points.get_data_dimension();
 
         let description: Description = Description {
             format_version: 3,
-            ///  value is 1 for Full 0 for Light
             dumpmode,
             max_nb_connection: self.get_max_nb_connection(),
-            nb_layer: self.get_max_level() as u8,
+            nb_layer: self.get_max_level(),
             ef: self.get_ef_construction(),
             nb_point: self.get_nb_point(),
-            dimension: datadim,
+            dimension,
             distname: self.get_distance_name(),
             t_name: type_name::<T>().to_string(),
         };
@@ -691,7 +690,7 @@ impl<T: Serialize + DeserializeOwned + Clone + Sized + Send + Sync, D: Distance<
 
         // We must dump a header for dataout.
         dataout.write_all(&MAGICDATAP.to_ne_bytes()).unwrap();
-        dataout.write_all(&datadim.to_ne_bytes()).unwrap();
+        dataout.write_all(&dimension.to_ne_bytes()).unwrap();
 
         self.layer_indexed_points.dump(mode, graphout, dataout)?;
 
@@ -745,9 +744,6 @@ pub fn load_hnsw<
         errmsg.push_str(&distname);
         errmsg.push_str(" asked distance in loading is : ");
         errmsg.push_str(&d_type_name);
-
-        log::error!(" distance in type argument : {:?}", d_type_name);
-        log::error!("error , dump is for distance = {:?}", distname);
         return Err(io::Error::new(io::ErrorKind::Other, errmsg));
     }
 
@@ -756,11 +752,11 @@ pub fn load_hnsw<
     let data_dim: usize = layer_point_indexation.get_data_dimension();
 
     Ok(Hnsw {
-        max_nb_connection: description.max_nb_connection as usize,
+        max_nb_connection: description.max_nb_connection,
         ef_construction: description.ef,
         extend_candidates: true,
         keep_pruned: false,
-        max_layer: description.nb_layer as usize,
+        max_layer: description.nb_layer,
         layer_indexed_points: layer_point_indexation,
         data_dimension: data_dim,
         dist_f: D::default(),
@@ -825,11 +821,11 @@ pub fn load_hnsw_with_dist<
     let data_dim: usize = layer_point_indexation.get_data_dimension();
 
     let hnsw: Hnsw<T, D> = Hnsw {
-        max_nb_connection: description.max_nb_connection as usize,
+        max_nb_connection: description.max_nb_connection,
         ef_construction: description.ef,
         extend_candidates: true,
         keep_pruned: false,
-        max_layer: description.nb_layer as usize,
+        max_layer: description.nb_layer,
         layer_indexed_points: layer_point_indexation,
         data_dimension: data_dim,
         dist_f: f,
@@ -894,7 +890,7 @@ mod tests {
         }
         // define hnsw
         let ef_construct: usize = 25;
-        let nb_connection: usize = 10;
+        let nb_connection: u8 = 10;
         let hnsw: Hnsw<f32, DistL1> =
             Hnsw::<f32, DistL1>::new(nb_connection, nbcolumn, 16, ef_construct, DistL1 {});
         for i in 0..data.len() {
@@ -963,7 +959,7 @@ mod tests {
         }
         // define hnsw
         let ef_construct: usize = 25;
-        let nb_connection: usize = 10;
+        let nb_connection: u8 = 10;
         let mydist: DistPtr<f32, f32> = DistPtr::<f32, f32>::new(my_fn);
         let hnsw: Hnsw<f32, DistPtr<f32, f32>> =
             Hnsw::<f32, DistPtr<f32, f32>>::new(nb_connection, nbcolumn, 16, ef_construct, mydist);
@@ -1034,7 +1030,7 @@ mod tests {
         }
         // define hnsw
         let ef_construct: usize = 25;
-        let nb_connection: usize = 10;
+        let nb_connection: u8 = 10;
         let hnsw: Hnsw<f32, DistL1> =
             Hnsw::<f32, DistL1>::new(nb_connection, nbcolumn, 16, ef_construct, DistL1 {});
         for i in 0..data.len() {

@@ -256,17 +256,17 @@ pub struct LayerGenerator {
     rng: Arc<Mutex<rand::rngs::StdRng>>,
     unif: Uniform<f32>,
     scale: f32,
-    maxlevel: usize,
+    max_level: u8,
 }
 
 impl LayerGenerator {
-    pub fn new(max_nb_connection: usize, maxlevel: usize) -> Self {
-        let scale: f32 = 1. / (max_nb_connection as f32).ln();
+    pub fn new(max_nb_connection: u8, max_level: u8) -> Self {
+        let scale: f32 = 1.0 / (max_nb_connection as f32).ln();
         LayerGenerator {
             rng: Arc::new(Mutex::new(StdRng::from_entropy())),
-            unif: Uniform::<f32>::new(0., 1.),
+            unif: Uniform::<f32>::new(0.0, 1.0),
             scale,
-            maxlevel,
+            max_level,
         }
     }
 
@@ -284,17 +284,17 @@ impl LayerGenerator {
         let level: f32 = -xsi.ln() * self.scale;
         let mut ulevel: usize = level.floor() as usize;
 
-        // we redispatch possibly sampled level  >= maxlevel to required range
-        if ulevel >= self.maxlevel {
+        // we redispatch possibly sampled level >= maxlevel to required range
+        if ulevel >= self.max_level as usize {
             // This occurs with very low probability. Cf commentary above.
-            ulevel = protected_rng.sample(Uniform::<usize>::new(0, self.maxlevel));
+            ulevel = protected_rng.sample(Uniform::<usize>::new(0, self.max_level as usize));
         }
         ulevel
     }
 
     /// just to try some variations on exponential level sampling. Unused.
     pub fn set_scale_modification(&mut self, scale_modification: f32) {
-        self.scale = 1. / ((1. / self.scale) + scale_modification.ln());
+        self.scale = 1.0 / ((1.0 / self.scale) + scale_modification.ln());
     }
 } // end impl for LayerGenerator
 
@@ -307,9 +307,9 @@ type Layer<T> = Vec<Arc<Point<T>>>;
 #[allow(unused)]
 pub struct PointIndexation<T: Clone + Send + Sync> {
     /// max number of connection for a point at a layer
-    pub(crate) max_nb_connection: usize,
+    pub(crate) max_nb_connection: u8,
     ///
-    pub(crate) max_layer: usize,
+    pub(crate) max_layer: u8,
     /// needs at least one representation of points. points_by_layers\[i\] gives the points in
     /// layer i
     pub(crate) points_by_layer: Arc<RwLock<Vec<Layer<T>>>>,
@@ -356,8 +356,8 @@ impl<T: Clone + Send + Sync> Drop for PointIndexation<T> {
 } // end implementation Drop
 
 impl<T: Clone + Send + Sync> PointIndexation<T> {
-    pub fn new(max_nb_connection: usize, max_layer: usize, max_elements: usize) -> Self {
-        let mut points_by_layer: Vec<Vec<Arc<Point<T>>>> = Vec::with_capacity(max_layer);
+    pub fn new(max_nb_connection: u8, max_layer: u8, max_elements: usize) -> Self {
+        let mut points_by_layer: Vec<Vec<Arc<Point<T>>>> = Vec::with_capacity(max_layer as usize);
 
         let max_layer_f32: f32 = max_layer as f32;
         for i in 0..max_layer {
@@ -641,15 +641,15 @@ pub struct Hnsw<T: Clone + Send + Sync, D: Distance<T>> {
     /// asked number of candidates in search
     pub(crate) ef_construction: usize,
     /// maximum number of connection by layer for a point
-    pub(crate) max_nb_connection: usize,
+    pub(crate) max_nb_connection: u8,
     /// flag to enforce that we have ef candidates as pruning strategy can discard some points
     /// Can be set to true with method :set_extend_candidates
     /// When set to true used only in base layer.
     pub(crate) extend_candidates: bool,
     /// defuault to false
     pub(crate) keep_pruned: bool,
-    /// max layer , recall rust is in 0..maxlevel right bound excluded
-    pub(crate) max_layer: usize,
+    /// max layer, recall rust is in 0..maxlevel right bound excluded
+    pub(crate) max_layer: u8,
     /// The global table containing points
     pub(crate) layer_indexed_points: PointIndexation<T>,
     /// dimension data stored in points
@@ -671,34 +671,28 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     /// . max_elements : hint to speed up allocation tables. number of elements expected.
     /// . f : the distance function
     pub fn new(
-        max_nb_connection: usize,
+        max_nb_connection: u8,
         max_elements: usize,
-        max_layer: usize,
+        max_layer: u8,
         ef_construction: usize,
         f: D,
     ) -> Self {
-        let adjusted_max_layer: usize = (NB_LAYER_MAX as usize).min(max_layer);
+        // max_nb_connection must be smaller than 256.
+
+        let adjusted_max_layer: u8 = NB_LAYER_MAX.min(max_layer);
         let layer_indexed_points: PointIndexation<T> =
             PointIndexation::<T>::new(max_nb_connection, adjusted_max_layer, max_elements);
-        let extend_candidates: bool = false;
-        let keep_pruned: bool = false;
-
-        if max_nb_connection > 256 {
-            println!("error max_nb_connection must be less equal than 256");
-            std::process::exit(1);
-        }
 
         log::info!("Hnsw max_nb_connection {:?}", max_nb_connection);
         log::info!("Hnsw nb elements {:?}", max_elements);
         log::info!("Hnsw ef_construction {:?}", ef_construction);
         log::info!("Hnsw distance {:?}", type_name::<D>());
-        log::info!("Hnsw extend candidates {:?}", extend_candidates);
 
         Hnsw {
             max_nb_connection,
             ef_construction,
-            extend_candidates,
-            keep_pruned,
+            extend_candidates: false,
+            keep_pruned: false,
             max_layer: adjusted_max_layer,
             layer_indexed_points,
             data_dimension: 0,
@@ -715,7 +709,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     }
 
     /// returns the maximum layer authorized in construction
-    pub fn get_max_level(&self) -> usize {
+    pub fn get_max_level(&self) -> u8 {
         self.max_layer
     }
 
@@ -726,7 +720,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 
     /// returns the maximum of links between a point and others points in each layer
     pub fn get_max_nb_connection(&self) -> u8 {
-        self.max_nb_connection as u8
+        self.max_nb_connection
     }
 
     /// returns number of points stored in hnsw structure
@@ -1018,10 +1012,10 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 let nb_conn: usize;
                 let extend_c: bool;
                 if l == 0 {
-                    nb_conn = 2 * self.max_nb_connection;
+                    nb_conn = 2 * self.max_nb_connection as usize;
                     extend_c = self.extend_candidates;
                 } else {
-                    nb_conn = self.max_nb_connection;
+                    nb_conn = self.max_nb_connection as usize;
                     extend_c = false;
                 }
                 let mut neighbours: Vec<Arc<PointWithOrder<T>>> =
@@ -1116,8 +1110,11 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     // not yet in global table of points!
 
                     // TODO optimize threshold
-                    let threshold_shrinking: usize =
-                        if l_n > 0 { self.max_nb_connection } else { 2 * self.max_nb_connection };
+                    let threshold_shrinking: usize = if l_n > 0 {
+                        self.max_nb_connection as usize
+                    } else {
+                        2 * self.max_nb_connection as usize
+                    };
 
                     let shrink: bool = nbn_at_l > threshold_shrinking;
                     {
@@ -1594,7 +1591,7 @@ mod tests {
     use rand::distributions::Uniform;
 
     use super::*;
-    use crate::hnsw_index::dist;
+    use crate::hnsw_index::dist::DistL1;
 
     #[test]
 
@@ -1617,14 +1614,9 @@ mod tests {
         }
         // check insertion
         let ef_construct: usize = 25;
-        let nb_connection: usize = 10;
-        let hns: Hnsw<f32, dist::DistL1> = Hnsw::<f32, dist::DistL1>::new(
-            nb_connection,
-            nbcolumn,
-            16,
-            ef_construct,
-            dist::DistL1 {},
-        );
+        let nb_connection: u8 = 10;
+        let hns: Hnsw<f32, DistL1> =
+            Hnsw::<f32, DistL1>::new(nb_connection, nbcolumn, 16, ef_construct, DistL1 {});
         for i in 0..data.len() {
             hns.insert((&data[i], i));
         }
@@ -1664,14 +1656,9 @@ mod tests {
         }
         // check insertion
         let ef_construct: usize = 25;
-        let nb_connection: usize = 10;
-        let hns: Hnsw<f32, dist::DistL1> = Hnsw::<f32, dist::DistL1>::new(
-            nb_connection,
-            nbcolumn,
-            16,
-            ef_construct,
-            dist::DistL1 {},
-        );
+        let nb_connection: u8 = 10;
+        let hns: Hnsw<f32, DistL1> =
+            Hnsw::<f32, DistL1>::new(nb_connection, nbcolumn, 16, ef_construct, DistL1 {});
         for i in 0..data.len() {
             hns.insert((&data[i], i));
         }
