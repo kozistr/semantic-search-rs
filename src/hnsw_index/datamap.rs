@@ -18,7 +18,6 @@ use crate::hnsw_index::hnswio::{load_description, Description, MAGICDATAP};
 /// This structure uses the data part of the dump of a Hnsw structure to retrieve the data.
 /// The data is access via a mmap of the data file, so memory is spared at the expense of page
 /// loading.
-// possibly to be used in graph to spare memory?
 pub struct DataMap {
     /// File containing Points data
     datapath: PathBuf,
@@ -33,8 +32,8 @@ pub struct DataMap {
 } // end of DataMap
 
 impl DataMap {
-    pub fn new<T: Clone + Send + Sync>(dir: &str, fname: &str) -> Self {
-        Self::from_hnswdump::<T>(dir, fname).unwrap()
+    pub fn new<T: Clone + Send + Sync>(dir: &str, filename: &str) -> Self {
+        Self::from_hnswdump::<T>(dir, filename).unwrap()
     }
 
     // end of new
@@ -42,69 +41,33 @@ impl DataMap {
     // TODO: specifiy mmap option
     pub fn from_hnswdump<T: Clone + Send + Sync>(
         dir: &str,
-        fname: &str,
+        filename: &str,
     ) -> Result<DataMap, String> {
-        // we know data filename is hnswdump.hnsw.data
-        let mut datapath: PathBuf = PathBuf::new();
-        datapath.push(dir);
+        let datapath: PathBuf = PathBuf::from(format!("{}{}.hnsw.data", dir, filename));
 
-        let mut filename: String = fname.to_owned();
-        filename.push_str(".hnsw.data");
-        datapath.push(filename);
-
-        let meta: Result<Metadata, Error> = std::fs::metadata(&datapath);
-        if meta.is_err() {
-            log::error!("could not open file : {:?}", &datapath);
-            std::process::exit(1);
-        }
-        let fsize: usize = meta.unwrap().len().try_into().unwrap();
-
-        let file_res: Result<File, Error> = File::open(&datapath);
-        if file_res.is_err() {
-            log::error!("could not open file : {:?}", &datapath);
-            std::process::exit(1);
-        }
-
-        let file: File = file_res.unwrap();
+        let file: File = File::open(&datapath).unwrap();
+        let filesize: usize = file.metadata().unwrap().len().try_into().unwrap();
         let offset: u64 = 0;
 
-        let mmap_opt: MmapOptions<'_> = MmapOptions::new(fsize).unwrap();
+        let mmap_opt: MmapOptions<'_> = MmapOptions::new(filesize).unwrap();
         let mmap_opt: MmapOptions<'_> = unsafe { mmap_opt.with_file(&file, offset) };
-        let mapping_res: Result<Mmap, mmap_rs::Error> = mmap_opt.map();
-        if mapping_res.is_err() {
+        let mmap: Mmap = mmap_opt.map().unwrap_or_else(|_| {
             log::error!("could not memory map : {:?}", &datapath);
             std::process::exit(1);
-        }
-
-        let mmap: Mmap = mapping_res.unwrap();
+        });
 
         // reload description to have data type
-        let mut graphpath: PathBuf = PathBuf::new();
-        graphpath.push(dir);
-
-        let mut filename: String = fname.to_owned();
-        filename.push_str(".hnsw.graph");
-        graphpath.push(filename);
-
-        let graphfileres: Result<File, Error> = OpenOptions::new().read(true).open(&graphpath);
-        if graphfileres.is_err() {
-            println!("DataMap: could not open file {:?}", graphpath.as_os_str());
-            std::process::exit(1);
-        }
-
-        let graphfile: File = graphfileres.unwrap();
+        let graphpath: PathBuf = PathBuf::from(format!("{}{}.hnsw.graph", dir, filename));
+        let graphfile: File = OpenOptions::new().read(true).open(&graphpath).unwrap();
         let mut graph_in: BufReader<File> = BufReader::new(graphfile);
 
         // we need to call load_description first to get distance name
         let hnsw_description: Description = load_description(&mut graph_in).unwrap();
         if hnsw_description.format_version <= 2 {
-            log::error!(
+            return Err(String::from(
                 "from_hnsw::from_hnsw : data mapping is only possible for dumps with the version \
-                 >= 0.1.20 of this crate"
-            );
-            return Err("from_hnsw::from_hnsw : data mapping is only possible for dumps with the \
-                        version >= 0.1.20 of this crate"
-                .to_owned());
+                 >= 0.1.20 of this crate",
+            ));
         }
 
         let t_name: String = hnsw_description.get_typename();
@@ -114,11 +77,6 @@ impl DataMap {
 
         // check typename coherence
         if std::any::type_name::<T>() != t_name {
-            log::error!(
-                "description has typename {:?}, function type argument is : {:?}",
-                t_name,
-                std::any::type_name::<T>()
-            );
             return Err(String::from("type error"));
         }
 
@@ -144,12 +102,6 @@ impl DataMap {
         current_mmap_addr += std::mem::size_of::<usize>();
         let dimension: usize = usize::from_ne_bytes(it_slice);
         if dimension != descr_dimension {
-            log::error!(
-                "description and data do not agree on dimension, data got : {:?}, description got \
-                 : {:?}",
-                dimension,
-                descr_dimension
-            );
             return Err(String::from("description and data do not agree on dimension"));
         }
 
@@ -264,6 +216,7 @@ mod tests {
                 data[j].push(xsi);
             }
         }
+
         // define hnsw
         let ef_construct: usize = 25;
         let nb_connection: u8 = 10;
@@ -274,10 +227,10 @@ mod tests {
         }
         // some loggin info
         hnsw.dump_layer_info();
-        // dump in a file.  Must take care of name as tests runs in // !!!
-        let fname: String = String::from("mmap_test");
-        let _res: Result<i32, String> = hnsw.file_dump(&fname);
 
-        let datamap: DataMap = DataMap::new::<i8>(".", fname.as_ref());
+        // dump in a file. Must take care of name as tests runs in // !!!
+        _ = hnsw.file_dump("mmap_test");
+
+        let datamap: DataMap = DataMap::new::<i8>(".", "mmap_test");
     } // end of test_file_mmap
 } // end of mod tests
