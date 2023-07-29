@@ -411,8 +411,7 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
         {
             // open a write lock on points_by_layer
             let mut points_by_layer_ref = self.points_by_layer.write();
-            let mut p_id: PointId = PointId(level as u8, -1);
-            p_id.1 = points_by_layer_ref[p_id.0 as usize].len() as i32;
+            let p_id: PointId = PointId(level as u8, points_by_layer_ref[level].len() as i32);
 
             // make a Point and then an Arc<Point>
             let point: Point<T> = Point::new(data, origin_id, p_id);
