@@ -238,8 +238,8 @@ mod tests {
     use rand::distributions::{Distribution, Uniform};
 
     use super::*;
-    pub use crate::hnsw_index::api::AnnT;
-    use crate::hnsw_index::dist;
+    use crate::hnsw_index::api::AnnT;
+    use crate::hnsw_index::dist::DistL1;
 
     fn log_init_test() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -267,13 +267,8 @@ mod tests {
         // define hnsw
         let ef_construct: usize = 25;
         let nb_connection: usize = 10;
-        let hnsw: Hnsw<f32, dist::DistL1> = Hnsw::<f32, dist::DistL1>::new(
-            nb_connection,
-            nbcolumn,
-            16,
-            ef_construct,
-            dist::DistL1 {},
-        );
+        let hnsw: Hnsw<f32, DistL1> =
+            Hnsw::<f32, DistL1>::new(nb_connection, nbcolumn, 16, ef_construct, DistL1 {});
         for i in 0..data.len() {
             hnsw.insert((&data[i], i));
         }

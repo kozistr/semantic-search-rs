@@ -27,8 +27,6 @@ use serde::Serialize;
 // possibly a hash value) and layer (u8) and rank_in_layer:i32.
 // In the data file the point dump consist in the triplet: (MAGICDATAP, origin_id , array of
 // values.)
-
-#[allow(unused_imports)]
 use crate::hnsw_index::dist::Distance;
 use crate::hnsw_index::hnsw::*;
 
@@ -856,9 +854,9 @@ mod tests {
     use rand::distributions::{Distribution, Uniform};
 
     use super::*;
-    pub use crate::hnsw_index::api::AnnT;
-    use crate::hnsw_index::dist;
-    pub use crate::hnsw_index::dist::*;
+    use crate::hnsw_index::api::AnnT;
+    use crate::hnsw_index::dist::{DistL1, DistPtr, NoDist};
+    use crate::hnsw_index::hnswio::load_hnsw;
 
     fn log_init_test() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -897,13 +895,8 @@ mod tests {
         // define hnsw
         let ef_construct: usize = 25;
         let nb_connection: usize = 10;
-        let hnsw: Hnsw<f32, DistL1> = Hnsw::<f32, dist::DistL1>::new(
-            nb_connection,
-            nbcolumn,
-            16,
-            ef_construct,
-            dist::DistL1 {},
-        );
+        let hnsw: Hnsw<f32, DistL1> =
+            Hnsw::<f32, DistL1>::new(nb_connection, nbcolumn, 16, ef_construct, DistL1 {});
         for i in 0..data.len() {
             hnsw.insert((&data[i], i));
         }
@@ -940,6 +933,7 @@ mod tests {
         //
         let mut graph_in: BufReader<std::fs::File> = BufReader::new(graphfile);
         let mut data_in: BufReader<std::fs::File> = BufReader::new(datafile);
+
         // we need to call load_description first to get distance name
         let hnsw_description: Description = load_description(&mut graph_in).unwrap();
         let hnsw_loaded: Hnsw<f32, DistL1> =
@@ -970,14 +964,9 @@ mod tests {
         // define hnsw
         let ef_construct: usize = 25;
         let nb_connection: usize = 10;
-        let mydist: DistPtr<f32, f32> = dist::DistPtr::<f32, f32>::new(my_fn);
-        let hnsw: Hnsw<f32, DistPtr<f32, f32>> = Hnsw::<f32, dist::DistPtr<f32, f32>>::new(
-            nb_connection,
-            nbcolumn,
-            16,
-            ef_construct,
-            mydist,
-        );
+        let mydist: DistPtr<f32, f32> = DistPtr::<f32, f32>::new(my_fn);
+        let hnsw: Hnsw<f32, DistPtr<f32, f32>> =
+            Hnsw::<f32, DistPtr<f32, f32>>::new(nb_connection, nbcolumn, 16, ef_construct, mydist);
         for i in 0..data.len() {
             hnsw.insert((&data[i], i));
         }
@@ -1017,7 +1006,7 @@ mod tests {
 
         // we need to call load_description first to get distance name
         let hnsw_description: Description = load_description(&mut graph_in).unwrap();
-        let mydist: DistPtr<f32, f32> = dist::DistPtr::<f32, f32>::new(my_fn);
+        let mydist: DistPtr<f32, f32> = DistPtr::<f32, f32>::new(my_fn);
 
         // we reload with the same function, no control (yet?)
         let _hnsw_loaded: Hnsw<f32, DistPtr<f32, f32>> =
@@ -1046,13 +1035,8 @@ mod tests {
         // define hnsw
         let ef_construct: usize = 25;
         let nb_connection: usize = 10;
-        let hnsw: Hnsw<f32, DistL1> = Hnsw::<f32, dist::DistL1>::new(
-            nb_connection,
-            nbcolumn,
-            16,
-            ef_construct,
-            dist::DistL1 {},
-        );
+        let hnsw: Hnsw<f32, DistL1> =
+            Hnsw::<f32, DistL1>::new(nb_connection, nbcolumn, 16, ef_construct, DistL1 {});
         for i in 0..data.len() {
             hnsw.insert((&data[i], i));
         }

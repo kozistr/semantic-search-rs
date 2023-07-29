@@ -2,9 +2,9 @@
 //! This file provides a trait to be used as an opaque pointer for C or Julia calls used in file
 //! libext.rs
 
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
-use std::io::BufWriter;
+use std::io::{BufWriter, Error};
 use std::path::PathBuf;
 
 use serde::de::DeserializeOwned;
@@ -79,65 +79,30 @@ where
     /// It will generate two files one for the graph part of the data. The other for the real data
     /// points of the structure.
     fn file_dump(&self, filename: &String) -> Result<i32, String> {
-        log::debug!("\n in file_dump : {:?}", filename);
-
-        let mut graphname: String = filename.clone();
-        graphname.push_str(".hnsw.graph");
-
-        let graphpath: PathBuf = PathBuf::from(graphname);
-        let fileres: Result<std::fs::File, std::io::Error> = OpenOptions::new()
+        let graphpath: PathBuf = PathBuf::from(format!("{}.hnsw.graph", filename));
+        let graph: File = OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(&graphpath);
+            .open(graphpath)
+            .unwrap();
 
-        if fileres.is_err() {
-            log::error!("api::file_dump could not open file {:?}", graphpath.as_os_str());
-            println!("api::file_dump: could not open file {:?}", graphpath.as_os_str());
-            return Err("api::file_dump could not open file".to_string());
-        }
-
-        let graphfile: std::fs::File = fileres.unwrap();
-
-        let mut dataname: String = filename.clone();
-        dataname.push_str(".hnsw.data");
-
-        let datapath: PathBuf = PathBuf::from(dataname);
-        let fileres: Result<std::fs::File, std::io::Error> = OpenOptions::new()
+        let datapath: PathBuf = PathBuf::from(format!("{}.hnsw.data", filename));
+        let data: File = OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(&datapath);
+            .open(datapath)
+            .unwrap();
 
-        if fileres.is_err() {
-            println!("api::file_dumpcould not open file {:?}", datapath.as_os_str());
-            return Err("api::file_dump could not open file".to_string());
-        }
-        let datafile: std::fs::File = fileres.unwrap();
-        let mut graphbufw: BufWriter<std::fs::File> =
-            BufWriter::with_capacity(50_000_000, graphfile);
-        let mut databufw: BufWriter<std::fs::File> = BufWriter::with_capacity(50_000_000, datafile);
-        let res: Result<i32, String> = self.dump(DumpMode::Full, &mut graphbufw, &mut databufw);
+        let mut graph_buf: BufWriter<File> = BufWriter::with_capacity(50_000_000, graph);
+        let mut data_buf: BufWriter<File> = BufWriter::with_capacity(50_000_000, data);
 
-        graphbufw.flush().unwrap();
-        databufw.flush().unwrap();
-        log::debug!("\n end of dump");
+        let res: Result<i32, String> = self.dump(DumpMode::Full, &mut graph_buf, &mut data_buf);
+
+        graph_buf.flush().unwrap();
+        data_buf.flush().unwrap();
 
         res
-    } // end of dump
+    }
 } // end of impl block AnnT for Hnsw<T,D>
-
-// macro export makes the macro export t the root of the crate
-#[macro_export]
-macro_rules! mapdist_t(
-    ("DistL1")       => ($crate::dist::DistL1);
-    ("DistL2")       => ($crate::dist::DistL2);
-    ("DistL2")       => ($crate::dist::DistL2);
-    ("DistDot")      => ($crate::dist::DistDot);
-    ("DistHamming")  => ($crate::dist::DistHamming);
-    ("DistJaccard")  => ($crate::dist::DistJaccard);
-    ("DistPtr")      => ($crate::dist::DistPtr);
-    ("DistLevenshtein") => ($crate::dist::DistLevenshtein);
-    ("DistJensenShannon") => ($crate::dist::DistJensenShannon);
-    ("DistHellinger") => ($crate::dist::DistHellinger);
-);
