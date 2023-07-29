@@ -1511,22 +1511,16 @@ fn from_negative_binaryheap_to_sorted_vector<T: Send + Sync + Copy>(
 // This function takes a binary heap with points declared with a positive distance
 // and returns a binary_heap of points with their correct negative distance to some reference
 // distance
-//
 fn from_positive_binaryheap_to_negative_binary_heap<T: Send + Sync + Clone>(
     positive_heap: &BinaryHeap<Arc<PointWithOrder<T>>>,
 ) -> BinaryHeap<Arc<PointWithOrder<T>>> {
-    let nb_points: usize = positive_heap.len();
-    let mut negative_heap: BinaryHeap<Arc<PointWithOrder<T>>> =
-        BinaryHeap::<Arc<PointWithOrder<T>>>::with_capacity(nb_points);
-
-    for p in positive_heap.iter() {
-        assert!(p.dist_to_ref >= 0.);
-        let reverse_p: Arc<PointWithOrder<T>> =
-            Arc::new(PointWithOrder::new(&p.point_ref, -p.dist_to_ref));
-        negative_heap.push(reverse_p);
-    }
-
-    negative_heap
+    positive_heap
+        .iter()
+        .map(|p: &Arc<PointWithOrder<T>>| {
+            assert!(p.dist_to_ref >= 0.);
+            Arc::new(PointWithOrder::new(&p.point_ref, -p.dist_to_ref))
+        })
+        .collect()
 }
 
 // essentialy to check dump/reload conssistency
@@ -1562,26 +1556,30 @@ where
     // check layers
     let layers_1 = hnsw1.layer_indexed_points.points_by_layer.read();
     let layers_2 = hnsw2.layer_indexed_points.points_by_layer.read();
+
     let mut nb_point_checked: usize = 0;
     let mut nb_neighbours_checked: i32 = 0;
     for i in 0..NB_LAYER_MAX as usize {
-        log::debug!("\n checking layer {:?}", i);
         assert_eq!(layers_1[i].len(), layers_2[i].len());
         for j in 0..layers_1[i].len() {
             let p1: &Arc<Point<T1>> = &layers_1[i][j];
             let p2: &Arc<Point<T2>> = &layers_2[i][j];
             assert_eq!(p1.origin_id, p2.origin_id);
             assert_eq!(p1.p_id, p2.p_id, "\n checking origin_id point {:?} ", p1.origin_id);
+
             nb_point_checked += 1;
+
             // check neighborhood
             let nbgh1 = p1.neighbours.read();
             let nbgh2 = p2.neighbours.read();
             assert_eq!(nbgh1.len(), nbgh2.len());
+
             for k in 0..nbgh1.len() {
                 assert_eq!(nbgh1[k].len(), nbgh2[k].len());
                 for l in 0..nbgh1[k].len() {
                     assert_eq!(nbgh1[k][l].point_ref.origin_id, nbgh2[k][l].point_ref.origin_id);
                     assert_eq!(nbgh1[k][l].point_ref.p_id, nbgh2[k][l].point_ref.p_id);
+
                     // CAVEAT for precision with f32
                     assert_eq!(nbgh1[k][l].dist_to_ref, nbgh2[k][l].dist_to_ref);
                     nb_neighbours_checked += 1;
