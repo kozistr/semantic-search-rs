@@ -413,6 +413,8 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
         {
             // open a write lock on points_by_layer
             let mut points_by_layer_ref = self.points_by_layer.write();
+            let mut p_id: PointId = PointId(level as u8, -1);
+            p_id.1 = points_by_layer_ref[p_id.0 as usize].len() as i32;
             let p_id: PointId = PointId(level as u8, points_by_layer_ref[level].len() as i32);
 
             // make a Point and then an Arc<Point>
@@ -850,7 +852,6 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
             // get nearest point in candidate_points
             let c: Arc<PointWithOrder<T>> = candidate_points.pop().unwrap();
             assert!(c.dist_to_ref <= 0.);
-
             // f farthest point to
             let f: &Arc<PointWithOrder<T>> = return_points.peek().unwrap();
             assert!(f.dist_to_ref >= 0.);
@@ -1506,13 +1507,18 @@ fn from_negative_binaryheap_to_sorted_vector<T: Send + Sync + Copy>(
 fn from_positive_binaryheap_to_negative_binary_heap<T: Send + Sync + Clone>(
     positive_heap: &BinaryHeap<Arc<PointWithOrder<T>>>,
 ) -> BinaryHeap<Arc<PointWithOrder<T>>> {
-    positive_heap
-        .iter()
-        .map(|p: &Arc<PointWithOrder<T>>| {
-            assert!(p.dist_to_ref >= 0.);
-            Arc::new(PointWithOrder::new(&p.point_ref, -p.dist_to_ref))
-        })
-        .collect()
+    let nb_points: usize = positive_heap.len();
+    let mut negative_heap: BinaryHeap<Arc<PointWithOrder<T>>> =
+        BinaryHeap::<Arc<PointWithOrder<T>>>::with_capacity(nb_points);
+
+    for p in positive_heap.iter() {
+        assert!(p.dist_to_ref >= 0.);
+        let reverse_p: Arc<PointWithOrder<T>> =
+            Arc::new(PointWithOrder::new(&p.point_ref, -p.dist_to_ref));
+        negative_heap.push(reverse_p);
+    }
+
+    negative_heap
 }
 
 // essentialy to check dump/reload conssistency
