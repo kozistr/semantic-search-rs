@@ -309,17 +309,44 @@ fn dot_f32(va: &[f32], vb: &[f32]) -> f32 {
         .sum()
 }
 
+// #[allow(unreachable_code)]
+// fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
+//     va.chunks_exact(16)
+//         .map(i8x16::from_slice_unaligned)
+//         .zip(vb.chunks_exact(16).map(i8x16::from_slice_unaligned))
+//         .map(|(a, b)| {
+//             let d: packed_simd_2::Simd<[i32; 16]> = i32x16::from_cast(a) * i32x16::from_cast(b);
+//             d
+//         })
+//         .sum::<i32x16>()
+//         .wrapping_sum()
+// }
+
 #[allow(unreachable_code)]
 fn dot_i8(va: &[i8], vb: &[i8]) -> i32 {
-    va.chunks_exact(16)
-        .map(i8x16::from_slice_unaligned)
-        .zip(vb.chunks_exact(16).map(i8x16::from_slice_unaligned))
-        .map(|(a, b)| {
-            let d: packed_simd_2::Simd<[i32; 16]> = i32x16::from_cast(a) * i32x16::from_cast(b);
-            d
-        })
-        .sum::<i32x16>()
-        .wrapping_sum()
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    #[target_feature(enable = "avx2")]
+    unsafe fn compute_r_avx2(x: &[i8], y: &[i8]) -> i32 {
+        compute_r_fallback(x, y)
+    }
+
+    #[inline(always)]
+    fn compute_r_fallback(x: &[i8], y: &[i8]) -> i32 {
+        let mut r: i32 = 0i32;
+
+        (0..x.len()).for_each(|i: usize| r += i32::from(x[i]) * i32::from(y[i]));
+
+        r
+    }
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        if is_x86_feature_detected!("avx2") {
+            return unsafe { compute_r_avx2(va, vb) };
+        }
+    }
+
+    compute_r_fallback(va, vb)
 }
 
 impl Distance<f32> for DistDot {
