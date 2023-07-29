@@ -1493,19 +1493,13 @@ pub fn quantize_slice(vector: &[f32]) -> Vec<i8> {
 fn from_negative_binaryheap_to_sorted_vector<T: Send + Sync + Copy>(
     heap_points: &BinaryHeap<Arc<PointWithOrder<T>>>,
 ) -> Vec<Arc<PointWithOrder<T>>> {
-    let nb_points: usize = heap_points.len();
-    let mut vec_points: Vec<Arc<PointWithOrder<T>>> =
-        Vec::<Arc<PointWithOrder<T>>>::with_capacity(nb_points);
-
-    for p in heap_points.iter() {
-        assert!(p.dist_to_ref <= 0.);
-
-        let reverse_p: Arc<PointWithOrder<T>> =
-            Arc::new(PointWithOrder::new(&p.point_ref, -p.dist_to_ref));
-        vec_points.push(reverse_p);
-    }
-
-    vec_points
+    heap_points
+        .iter()
+        .map(|p: &Arc<PointWithOrder<T>>| {
+            assert!(p.dist_to_ref <= 0.);
+            Arc::new(PointWithOrder::new(&p.point_ref, -p.dist_to_ref))
+        })
+        .collect()
 }
 
 // This function takes a binary heap with points declared with a positive distance
