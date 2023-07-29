@@ -20,7 +20,7 @@ semantic search demo with gRPC server in Rust
 * [x] modify [hnswlib-rs](https://github.com/jean-pierreBoth/hnswlib-rs)
   * [x] resolve build issue
   * [x] re-implement distance functions with SIMD (more effective, support more types, x2 faster)
-  * [x] support quantization & i8 simd vector search
+  * [x] support quantization & i8 vector search with SIMD
   * [x] more parallizations
 * [ ] memmap the `.data` (offload to the local disk) to reduce the memory usage
 * [ ] separate embedding and search part as a different micro service
