@@ -135,7 +135,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> From<&Hnsw<T, D>> for
 
 mod tests {
 
-    use std::fs::OpenOptions;
+    use std::fs::{File, OpenOptions};
     use std::io::BufReader;
     use std::path::PathBuf;
 
@@ -201,26 +201,26 @@ mod tests {
         // from now on we test with DistL1
         let graphfname: String = String::from("dumpreloadtestflat.hnsw.graph");
         let graphpath: PathBuf = PathBuf::from(graphfname);
-        let graphfileres: Result<std::fs::File, std::io::Error> =
+        let graphfileres: Result<File, std::io::Error> =
             OpenOptions::new().read(true).open(&graphpath);
         if graphfileres.is_err() {
             println!("test_dump_reload: could not open file {:?}", graphpath.as_os_str());
             std::panic::panic_any("test_dump_reload: could not open file".to_string());
         }
-        let graphfile: std::fs::File = graphfileres.unwrap();
+        let graphfile: File = graphfileres.unwrap();
 
         let datafname: String = String::from("dumpreloadtestflat.hnsw.data");
         let datapath: PathBuf = PathBuf::from(datafname);
-        let datafileres: Result<std::fs::File, std::io::Error> =
+        let datafileres: Result<File, std::io::Error> =
             OpenOptions::new().read(true).open(&datapath);
         if datafileres.is_err() {
             println!("test_dump_reload : could not open file {:?}", datapath.as_os_str());
             std::panic::panic_any("test_dump_reload : could not open file".to_string());
         }
-        let datafile: std::fs::File = datafileres.unwrap();
+        let datafile: File = datafileres.unwrap();
 
-        let mut graph_in: BufReader<std::fs::File> = BufReader::new(graphfile);
-        let mut data_in: BufReader<std::fs::File> = BufReader::new(datafile);
+        let mut graph_in: BufReader<File> = BufReader::new(graphfile);
+        let mut data_in: BufReader<File> = BufReader::new(datafile);
 
         // we need to call load_description first to get distance name
         let hnsw_description: Description = load_description(&mut graph_in).unwrap();
