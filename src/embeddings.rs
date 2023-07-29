@@ -15,16 +15,12 @@ use semantic_search::utils::{load_data, load_model};
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
-    let do_quantize: bool = args.len() < 2;
+    let do_quantize: bool = args[1] == "quantize";
     println!("do quantize (f32 to i8) : {:?}", do_quantize);
 
-    let start: Instant = Instant::now();
     let model: SentenceEmbeddingsModel = load_model();
-    println!("load model : {:.3?}", start.elapsed());
 
-    let start: Instant = Instant::now();
     let data: Vec<String> = load_data();
-    println!("load data : {:.3?}", start.elapsed());
 
     let mut embeddings: Vec<Vec<f32>> = Vec::with_capacity(data.len());
 
