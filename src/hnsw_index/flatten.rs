@@ -1,15 +1,17 @@
-//! This module provides conversion of a Point structure to a FlatPoint containing just the Id of a point
-//! and those of its neighbours.
-//! The whole Hnsw structure is then flattened into a Hashtable associating the data ID of a point to
-//! its corresponding FlatPoint.   
+//! This module provides conversion of a Point structure to a FlatPoint containing just the Id of a
+//! point and those of its neighbours.
+//! The whole Hnsw structure is then flattened into a Hashtable associating the data ID of a point
+//! to its corresponding FlatPoint.   
 //! It can be used, for example, when reloading only the graph part of the data to have knowledge
 //! of relative proximity of points as described just by their DataId
-//!
 
-use hashbrown::HashMap;
 use std::cmp::Ordering;
 
-use crate::hnsw_index::hnsw::{Neighbour, Point};
+use hashbrown::HashMap;
+use rayon::prelude::*;
+
+use crate::hnsw_index::dist::Distance;
+use crate::hnsw_index::hnsw::{DataId, Hnsw, Neighbour, Point, PointId};
 
 // an ordering of Neighbour of a Point
 
@@ -24,7 +26,7 @@ impl Eq for Neighbour {}
 // order points by distance to self.
 impl PartialOrd for Neighbour {
     fn partial_cmp(&self, other: &Neighbour) -> Option<Ordering> {
-        self.distance.partial_cmp(&other.distance)
+        Some(self.cmp(other))
     } // end cmp
 } // end impl PartialOrd
 
@@ -53,7 +55,6 @@ pub struct FlatPoint {
 }
 
 impl FlatPoint {
-
     /// returns the neighbours orderded by distance.
     pub fn get_neighbours(&self) -> &Vec<Neighbour> {
         &self.neighbours
@@ -74,14 +75,13 @@ fn flatten_point<T: Clone + Send + Sync>(point: &Point<T>) -> FlatPoint {
     let neighbours: Vec<Vec<Neighbour>> = point.get_neighborhood_id();
 
     // now we flatten neighbours
-    let mut flat_neighbours = Vec::<Neighbour>::new();
-    for layer in neighbours {
-        for neighbour in layer {
-            flat_neighbours.push(neighbour);
-        }
-    }
+    let mut flat_neighbours: Vec<Neighbour> = neighbours
+        .iter()
+        .flat_map(|layer: &Vec<Neighbour>| layer.iter())
+        .cloned()
+        .collect();
 
-    flat_neighbours.sort_unstable();
+    flat_neighbours.par_sort_unstable();
 
     FlatPoint {
         origin_id: point.get_origin_id(),
@@ -90,8 +90,8 @@ fn flatten_point<T: Clone + Send + Sync>(point: &Point<T>) -> FlatPoint {
     }
 } // end of flatten_point
 
-/// A structure providing neighbourhood information of a point stored in the Hnsw structure given its DataId.  
-/// The structure uses the [FlatPoint] structure.  
+/// A structure providing neighbourhood information of a point stored in the Hnsw structure given
+/// its DataId. The structure uses the [FlatPoint] structure.  
 /// This structure can be obtained by FlatNeighborhood::from<&Hnsw<T,D>>
 pub struct FlatNeighborhood {
     hash_t: HashMap<DataId, FlatPoint>,
@@ -101,34 +101,31 @@ impl FlatNeighborhood {
     /// get neighbour of a point given its id.  
     /// The neighbours are sorted in increasing distance from data_id.
     pub fn get_neighbours(&self, p_id: DataId) -> Option<Vec<Neighbour>> {
-        match self.hash_t.get(&p_id) {
-            Some(point) => Some(point.get_neighbours().clone()),
-            _ => None,
-        }
+        self.hash_t
+            .get(&p_id)
+            .map(|point: &FlatPoint| point.get_neighbours().clone())
     }
 } // end impl block for FlatNeighborhood
 
 impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> From<&Hnsw<T, D>> for FlatNeighborhood {
-    /// extract from the Hnsw strucure a hashtable mapping original DataId into a FlatPoint structure gathering its neighbourhood information.  
-    /// Useful after reloading from a dump with T=NoData and D = NoDist as points are then reloaded with neighbourhood information only.
+    /// extract from the Hnsw strucure a hashtable mapping original DataId into a FlatPoint
+    /// structure gathering its neighbourhood information. Useful after reloading from a dump
+    /// with T=NoData and D = NoDist as points are then reloaded with neighbourhood information
+    /// only.
     fn from(hnsw: &Hnsw<T, D>) -> Self {
-        let mut hash_t = HashMap::new();
-        let mut ptiter = hnsw.get_point_indexation().into_iter();
+        let mut hash_t: HashMap<usize, FlatPoint> = HashMap::new();
 
-        loop {
-            if let Some(point) = ptiter.next() {
-                let res_insert = hash_t.insert(point.get_origin_id(), flatten_point(&point));
-                match res_insert {
-                    Some(old_point) => {
-                        println!("2 points with same origin id {:?}", old_point.origin_id);
-                        log::error!("2 points with same origin id {:?}", old_point.origin_id);
-                    }
-                    _ => (),
-                } // end match
-            } else {
-                break;
+        let ptiter = hnsw.get_point_indexation().into_iter();
+
+        for point in ptiter {
+            let res_insert: Option<FlatPoint> =
+                hash_t.insert(point.get_origin_id(), flatten_point(&point));
+
+            if let Some(old_point) = res_insert {
+                println!("2 points with same origin id {:?}", old_point.origin_id);
+                log::error!("2 points with same origin id {:?}", old_point.origin_id);
             }
-        } // end while
+        }
 
         FlatNeighborhood { hash_t }
     }
@@ -138,18 +135,17 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> From<&Hnsw<T, D>> for
 
 mod tests {
 
-    use super::*;
-    use crate::hnsw_index::dist;
-
     use std::fs::OpenOptions;
     use std::io::BufReader;
     use std::path::PathBuf;
 
-    pub use crate::hnsw_index::api::AnnT;
-    pub use crate::hnsw_index::dist::*;
-
-    use crate::hnsw_index::hnswio::*;
     use rand::distributions::{Distribution, Uniform};
+
+    use super::*;
+    use crate::hnsw_index::api::AnnT;
+    use crate::hnsw_index::dist::{DistL1, NoDist};
+    use crate::hnsw_index::hnsw::{check_graph_equality, NoData};
+    use crate::hnsw_index::hnswio::{load_description, load_hnsw, Description};
 
     fn log_init_test() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -160,13 +156,14 @@ mod tests {
         println!("\n\n test_dump_reload_graph_flatten");
         log_init_test();
         // generate a random test
-        let mut rng = rand::thread_rng();
-        let unif = Uniform::<f32>::new(0., 1.);
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
+        let unif: Uniform<f32> = Uniform::<f32>::new(0., 1.);
+
         // 1000 vectors of size 10 f32
-        let nbcolumn = 1000;
-        let nbrow = 10;
-        let mut xsi;
-        let mut data = Vec::with_capacity(nbcolumn);
+        let nbcolumn: usize = 1000;
+        let nbrow: usize = 10;
+        let mut xsi: f32;
+        let mut data: Vec<Vec<f32>> = Vec::with_capacity(nbcolumn);
         for j in 0..nbcolumn {
             data.push(Vec::with_capacity(nbrow));
             for _ in 0..nbrow {
@@ -176,15 +173,10 @@ mod tests {
         }
 
         // define hnsw
-        let ef_construct = 25;
-        let nb_connection = 10;
-        let hnsw = Hnsw::<f32, dist::DistL1>::new(
-            nb_connection,
-            nbcolumn,
-            16,
-            ef_construct,
-            dist::DistL1 {},
-        );
+        let ef_construct: usize = 25;
+        let nb_connection: usize = 10;
+        let hnsw: Hnsw<f32, DistL1> =
+            Hnsw::<f32, DistL1>::new(nb_connection, nbcolumn, 16, ef_construct, DistL1 {});
         for i in 0..data.len() {
             hnsw.insert((&data[i], i));
         }
@@ -193,53 +185,49 @@ mod tests {
         hnsw.dump_layer_info();
 
         // get flat neighbours of point 3
-        let neighborhood_before_dump = FlatNeighborhood::from(&hnsw);
-        let nbg_2_before = neighborhood_before_dump.get_neighbours(2).unwrap();
+        let neighborhood_before_dump: FlatNeighborhood = FlatNeighborhood::from(&hnsw);
+        let nbg_2_before: Vec<Neighbour> = neighborhood_before_dump.get_neighbours(2).unwrap();
         println!("voisins du point 2 {:?}", nbg_2_before);
 
         // dump in a file. Must take care of name as tests runs in // !!!
-        let fname = String::from("dumpreloadtestflat");
-        let _res = hnsw.file_dump(&fname);
+        let fname: String = String::from("dumpreloadtestflat");
+        let _res: Result<i32, String> = hnsw.file_dump(&fname);
         // This will dump in 2 files named dumpreloadtest.hnsw.graph and dumpreloadtest.hnsw.data
         //
         // reload
         log::debug!("\n\n  hnsw reload");
-    
+
         // we will need a procedural macro to get from distance name to its instanciation.
         // from now on we test with DistL1
-        let graphfname = String::from("dumpreloadtestflat.hnsw.graph");
-        let graphpath = PathBuf::from(graphfname);
-        let graphfileres = OpenOptions::new().read(true).open(&graphpath);
+        let graphfname: String = String::from("dumpreloadtestflat.hnsw.graph");
+        let graphpath: PathBuf = PathBuf::from(graphfname);
+        let graphfileres: Result<std::fs::File, std::io::Error> =
+            OpenOptions::new().read(true).open(&graphpath);
         if graphfileres.is_err() {
-            println!(
-                "test_dump_reload: could not open file {:?}",
-                graphpath.as_os_str()
-            );
+            println!("test_dump_reload: could not open file {:?}", graphpath.as_os_str());
             std::panic::panic_any("test_dump_reload: could not open file".to_string());
         }
-        let graphfile = graphfileres.unwrap();
+        let graphfile: std::fs::File = graphfileres.unwrap();
 
-        let datafname = String::from("dumpreloadtestflat.hnsw.data");
-        let datapath = PathBuf::from(datafname);
-        let datafileres = OpenOptions::new().read(true).open(&datapath);
+        let datafname: String = String::from("dumpreloadtestflat.hnsw.data");
+        let datapath: PathBuf = PathBuf::from(datafname);
+        let datafileres: Result<std::fs::File, std::io::Error> =
+            OpenOptions::new().read(true).open(&datapath);
         if datafileres.is_err() {
-            println!(
-                "test_dump_reload : could not open file {:?}",
-                datapath.as_os_str()
-            );
+            println!("test_dump_reload : could not open file {:?}", datapath.as_os_str());
             std::panic::panic_any("test_dump_reload : could not open file".to_string());
         }
-        let datafile = datafileres.unwrap();
+        let datafile: std::fs::File = datafileres.unwrap();
 
-        let mut graph_in = BufReader::new(graphfile);
-        let mut data_in = BufReader::new(datafile);
+        let mut graph_in: BufReader<std::fs::File> = BufReader::new(graphfile);
+        let mut data_in: BufReader<std::fs::File> = BufReader::new(datafile);
 
         // we need to call load_description first to get distance name
-        let hnsw_description = load_description(&mut graph_in).unwrap();
+        let hnsw_description: Description = load_description(&mut graph_in).unwrap();
         let hnsw_loaded: Hnsw<NoData, NoDist> =
             load_hnsw(&mut graph_in, &hnsw_description, &mut data_in).unwrap();
-        let neighborhood_after_dump = FlatNeighborhood::from(&hnsw_loaded);
-        let nbg_2_after = neighborhood_after_dump.get_neighbours(2).unwrap();
+        let neighborhood_after_dump: FlatNeighborhood = FlatNeighborhood::from(&hnsw_loaded);
+        let nbg_2_after: Vec<Neighbour> = neighborhood_after_dump.get_neighbours(2).unwrap();
         println!("voisins du point 2 {:?}", nbg_2_after);
 
         // test equality of neighborhood
