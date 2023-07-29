@@ -41,8 +41,7 @@ pub trait AnnT {
 
     /// dumps a data and graph in 2 files.
     /// Datas are dumped in file filename.hnsw.data and graph in filename.hnsw.graph
-    #[allow(clippy::ptr_arg)]
-    fn file_dump(&self, filename: &String) -> Result<i32, String>;
+    fn file_dump(&self, filename: &str) -> Result<i32, String>;
 }
 
 impl<T, D> AnnT for Hnsw<T, D>
@@ -78,7 +77,7 @@ where
     /// The main entry point to do a dump.  
     /// It will generate two files one for the graph part of the data. The other for the real data
     /// points of the structure.
-    fn file_dump(&self, filename: &String) -> Result<i32, String> {
+    fn file_dump(&self, filename: &str) -> Result<i32, String> {
         let graphpath: PathBuf = PathBuf::from(format!("{}.hnsw.graph", filename));
         let graph: File = OpenOptions::new()
             .write(true)

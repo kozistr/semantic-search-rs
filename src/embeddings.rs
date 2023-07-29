@@ -71,7 +71,7 @@ fn main() -> Result<()> {
         index.parallel_insert(&embeddings_indices);
         println!("parallel insert : {:.3?}", start.elapsed());
 
-        _ = index.file_dump(&"news".to_string());
+        _ = index.file_dump("news");
     } else {
         let index: Hnsw<i8, DistDot> =
             Hnsw::<i8, DistDot>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistDot {});
@@ -89,7 +89,7 @@ fn main() -> Result<()> {
         index.parallel_insert(&embeddings_indices);
         println!("parallel insert : {:.3?}", start.elapsed());
 
-        _ = index.file_dump(&"news_q".to_string());
+        _ = index.file_dump("news_q");
     }
 
     Ok(())
