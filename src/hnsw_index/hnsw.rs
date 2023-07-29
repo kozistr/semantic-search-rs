@@ -35,7 +35,7 @@ pub struct NoData;
 pub(crate) const NB_LAYER_MAX: u8 = 16; // so max layer is 15!!
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-/// The 2-uple represent layer as u8  and rank in layer as a i32 as stored in our structure
+/// The 2-uple represent layer as u8 and rank in layer as a i32 as stored in our structure
 pub struct PointId(pub u8, pub i32);
 
 /// this type is for an identificateur of each data vector, given by client.
@@ -677,8 +677,6 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         ef_construction: usize,
         f: D,
     ) -> Self {
-        // max_nb_connection must be smaller than 256.
-
         let adjusted_max_layer: u8 = NB_LAYER_MAX.min(max_layer);
         let layer_indexed_points: PointIndexation<T> =
             PointIndexation::<T>::new(max_nb_connection, adjusted_max_layer, max_elements);
@@ -1091,8 +1089,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                         PointWithOrder::<T>::new(&Arc::clone(&new_point), q.dist_to_ref);
 
                     // must be sure that we add a point at the correct level. See the comment to
-                    // search_layer! this ensures that reverse updating do not
-                    // add problems.
+                    // search_layer! this ensures that reverse updating do not add problems.
                     let l_n: usize = n_to_add.point_ref.p_id.0 as usize;
                     let already: Option<usize> =
                         q_point_neighbours[l_n]
@@ -1346,7 +1343,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 let neighbours: &Vec<Arc<PointWithOrder<T>>> =
                     &pivot.neighbours.read()[layer as usize];
                 for n in neighbours {
-                    // get the lowest  distance point.
+                    // get the lowest distance point.
                     let tmp_dist: f32 = self.dist_f.eval(data, &n.point_ref.v);
                     if tmp_dist < dist_to_entry {
                         new_pivot = Some(Arc::clone(&n.point_ref));
