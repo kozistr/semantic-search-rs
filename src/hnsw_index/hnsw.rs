@@ -390,7 +390,6 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
         }
     }
 
-    ///
     fn debug_dump(&self) {
         println!(" debug dump of PointIndexation");
         let max_level_observed: u8 = self.get_max_level_observed();
@@ -407,6 +406,7 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
     fn generate_new_point(&self, data: &[T], origin_id: usize) -> (Arc<Point<T>>, usize) {
         // get a write lock at the beginning of the function
         let level: usize = self.layer_g.generate();
+
         let new_point: Arc<Point<T>>;
         {
             // open a write lock on points_by_layer
@@ -472,11 +472,10 @@ impl<T: Clone + Send + Sync> PointIndexation<T> {
     /// returns the size of data vector in graph if any, else return 0
     pub fn get_data_dimension(&self) -> usize {
         let ep = self.entry_point.read();
-        let dim: usize = match ep.as_ref() {
+        match ep.as_ref() {
             Some(point) => point.get_v().len(),
             None => 0,
-        };
-        dim
+        }
     }
 
     /// returns (**by cloning**) the data inside a point given it PointId, or None if PointId is not
@@ -591,7 +590,6 @@ impl<'a, T: Clone + Send + Sync> IntoIterator for &'a PointIndexation<T> {
     type IntoIter = IterPoint<'a, T>;
     type Item = Arc<Point<T>>;
 
-    //
     fn into_iter(self) -> Self::IntoIter {
         IterPoint::new(self)
     }
@@ -850,10 +848,11 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         while !candidate_points.is_empty() {
             // get nearest point in candidate_points
             let c: Arc<PointWithOrder<T>> = candidate_points.pop().unwrap();
+            assert!(c.dist_to_ref <= 0.);
+
             // f farthest point to
             let f: &Arc<PointWithOrder<T>> = return_points.peek().unwrap();
             assert!(f.dist_to_ref >= 0.);
-            assert!(c.dist_to_ref <= 0.);
 
             if -c.dist_to_ref > f.dist_to_ref {
                 // this comparison requires that we are sure that distances compared are distances
@@ -1161,6 +1160,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 while !candidates.is_empty() {
                     let p: Arc<PointWithOrder<T>> = candidates.pop().unwrap();
                     assert!(-p.dist_to_ref >= 0.);
+
                     neighbours_vec
                         .push(Arc::new(PointWithOrder::new(&p.point_ref, -p.dist_to_ref)));
                 }
@@ -1169,8 +1169,6 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                 extend_candidates = true;
             }
         }
-
-        // extend_candidates = true;
 
         if extend_candidates {
             let mut candidates_set: HashMap<PointId, Arc<Point<T>>> =
@@ -1206,9 +1204,10 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         while !candidates.is_empty() && neighbours_vec.len() < nb_neighbours_asked {
             // compare distances of e to data. we do not need to recompute dists!
             if let Some(e_p) = candidates.pop() {
+                assert!(e_p.dist_to_ref <= 0.);
+
                 let mut e_to_insert: bool = true;
                 let e_point_v: &Vec<T> = &e_p.point_ref.v;
-                assert!(e_p.dist_to_ref <= 0.);
 
                 // is e_p the nearest to reference? data than to previous neighbours
                 if !neighbours_vec.is_empty() {
@@ -1237,8 +1236,9 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
         if keep_pruned {
             while !discarded_points.is_empty() && neighbours_vec.len() < nb_neighbours_asked {
                 let best_point: Arc<PointWithOrder<T>> = discarded_points.pop().unwrap();
-                // do not forget to reverse sign
                 assert!(best_point.dist_to_ref <= 0.);
+
+                // do not forget to reverse sign
                 neighbours_vec.push(Arc::new(PointWithOrder::new(
                     &best_point.point_ref,
                     -best_point.dist_to_ref,
@@ -1300,7 +1300,8 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 
         // get the min of K and ef points into a vector.
         let last: usize = knbn.min(ef).min(neighbours.len());
-        let knn_neighbours: Vec<Neighbour> = neighbours[0..last]
+
+        neighbours[0..last]
             .iter()
             .map(|p: &Arc<PointWithOrder<T>>| {
                 Neighbour::new(
@@ -1309,9 +1310,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     p.as_ref().point_ref.p_id,
                 )
             })
-            .collect();
-
-        knn_neighbours
+            .collect()
     }
 
     // end of knn_search
@@ -1375,7 +1374,8 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 
         // get the min of K and ef points into a vector.
         let last: usize = knbn.min(ef).min(neighbours.len());
-        let knn_neighbours: Vec<Neighbour> = neighbours[0..last]
+
+        neighbours[0..last]
             .iter()
             .map(|p: &Arc<PointWithOrder<T>>| {
                 Neighbour::new(
@@ -1384,9 +1384,7 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
                     p.as_ref().point_ref.p_id,
                 )
             })
-            .collect();
-
-        knn_neighbours
+            .collect()
     }
 
     // end of search_filter
