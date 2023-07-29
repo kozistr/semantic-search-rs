@@ -15,7 +15,7 @@
 use std::os::raw::*;
 
 use num_traits::float::*;
-use packed_simd_2::{f32x16, f64x8, i32x16, i8x16, FromCast};
+use packed_simd_2::{f32x16, f64x8};
 
 #[allow(unused)]
 enum DistKind {
@@ -365,7 +365,7 @@ impl Distance<f64> for DistDot {
 
 impl Distance<i8> for DistDot {
     fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
-        let dot: i32 = i32::MAX - dot_i8(va, vb);
+        let dot: i32 = 16384 - dot_i8(va, vb);
         dot.max(0) as f32
     } // end of eval
 }
