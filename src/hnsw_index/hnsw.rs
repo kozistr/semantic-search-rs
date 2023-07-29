@@ -7,10 +7,12 @@ use std::cmp::Ordering;
 use std::collections::binary_heap::BinaryHeap;
 #[allow(unused)]
 use std::collections::HashSet;
+use std::mem;
 use std::sync::{mpsc, Arc};
 
 use dashmap::DashMap;
 use hashbrown::HashMap;
+use packed_simd_2::{f32x16, i8x16, FromCast};
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -1461,27 +1463,26 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
     // end of insert_parallel
 } // end of Hnsw
 
-/// quantize from f32 into i8 vector
+/// quantize from f32 into i8 vector (SIMD version)
 #[allow(unused)]
 pub fn quantize(vector: &Vec<f32>) -> Vec<i8> {
     // assume the given vector is l2 normalized vector.
-    let mut v: Vec<i8> = Vec::with_capacity(vector.len());
-    v.extend(vector.iter().copied().map(|x: f32| (x * MAX_QVALUE) as i8));
-    v
+    let mut quantized_vector: Vec<i8> = Vec::with_capacity(vector.len());
+
+    vector
+        .chunks_exact(16)
+        .map(f32x16::from_slice_aligned)
+        .for_each(|v: packed_simd_2::Simd<[f32; 16]>| {
+            let qv: packed_simd_2::Simd<[i8; 16]> = i8x16::from_cast(v * MAX_QVALUE);
+            let qv: [i8; 16] = unsafe { mem::transmute(qv) };
+
+            quantized_vector.extend_from_slice(&qv);
+        });
+
+    quantized_vector
 }
 
 // end of quantize
-
-/// quantize from f32 into i8 vector
-#[allow(unused)]
-pub fn quantize_slice(vector: &[f32]) -> Vec<i8> {
-    // assume the given vector is l2 normalized vector.
-    let mut v: Vec<i8> = Vec::with_capacity(vector.len());
-    v.extend(vector.iter().copied().map(|x: f32| (x * MAX_QVALUE) as i8));
-    v
-}
-
-// end of quantize_slice
 
 // This function takes a binary heap with points declared with a negative distance
 // and returns a vector of points with their correct positive distance to some reference distance
