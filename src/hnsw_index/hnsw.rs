@@ -12,7 +12,7 @@ use std::sync::{mpsc, Arc};
 
 use dashmap::DashMap;
 use hashbrown::HashMap;
-use packed_simd_2::{f32x16, i8x16, FromCast};
+use packed_simd_2::{f32x16, i8x16, FromCast, Simd};
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -1465,8 +1465,8 @@ pub fn quantize(vector: &Vec<f32>) -> Vec<i8> {
     vector
         .chunks_exact(16)
         .map(f32x16::from_slice_aligned)
-        .for_each(|v: packed_simd_2::Simd<[f32; 16]>| {
-            let qv: packed_simd_2::Simd<[i8; 16]> = i8x16::from_cast(v * MAX_QVALUE);
+        .for_each(|v: Simd<[f32; 16]>| {
+            let qv: Simd<[i8; 16]> = i8x16::from_cast(v * MAX_QVALUE);
             let qv: [i8; 16] = unsafe { mem::transmute(qv) };
 
             quantized_vector.extend_from_slice(&qv);
