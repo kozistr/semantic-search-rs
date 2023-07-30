@@ -567,17 +567,17 @@ impl Distance<f32> for DistHamming {
 
 impl Distance<i8> for DistHamming {
     fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
-        let dist: i16 = va
+        let dist: i32 = va
             .chunks_exact(64)
             .map(i8x64::from_slice_unaligned)
             .zip(vb.chunks_exact(64).map(i8x64::from_slice_unaligned))
             .map(|(a, b)| {
                 let c: Simd<[m8; 64]> = a.ne(b);
-                i8x64::from_cast(c).wrapping_sum() as i16
+                i8x64::from_cast(c).wrapping_sum() as i32
             })
             .sum();
 
-        dist as f32 / va.len() as f32
+        -dist as f32 / va.len() as f32
     } // end of eval
 } // end implementation Distance<f32>
 
