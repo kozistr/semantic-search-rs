@@ -13,7 +13,6 @@ semantic search demo with gRPC server in Rust
 * distributed & sharded index building and searching
 * utilize any vector database or engine products
 * implement various indexing algorithms
-* reduce the embedding dimension
 
 ## To-Do
 
@@ -22,7 +21,6 @@ semantic search demo with gRPC server in Rust
   * [x] re-implement distance functions with SIMD (more effective, support more types, x2 faster)
   * [x] support quantization & i8 vector search with SIMD
   * [x] more parallelizations
-* [ ] mmap the `.data` (offload to the local disk) to reduce the memory usage
 * [ ] separate embedding and search part as a different microservice
 
 ## Architecture
