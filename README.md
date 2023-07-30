@@ -4,40 +4,40 @@ semantic search demo with gRPC server in Rust
 
 ## Goals
 
-* cost-effective billion-scale vector serach in a single digit latency (< 10 ms)
-* stateless vector searcher
-* software & hardware-level optimizations to effectively utilize the resources
+* Cost-effective billion-scale vector search in a single-digit latency (< 10 ms)
+* Stateless vector searcher
+* Software & hardware-level optimizations to effectively utilize the resources
 
 ## Non-Goals
 
-* distributed & sharded index building & searching
-* utilze any vector database or engine products
-* support various indexing algorithms
+* distributed & sharded index building and searching
+* utilize any vector database or engine products
+* implement various indexing algorithms
 * reduce the embedding dimension
 
 ## To-Do
 
 * [x] modify [hnswlib-rs](https://github.com/jean-pierreBoth/hnswlib-rs)
-  * [x] resolve build issue
+  * [x] resolve the build issue
   * [x] re-implement distance functions with SIMD (more effective, support more types, x2 faster)
   * [x] support quantization & i8 vector search with SIMD
-  * [x] more parallizations
-* [ ] memmap the `.data` (offload to the local disk) to reduce the memory usage
-* [ ] separate embedding and search part as a different micro service
+  * [x] more parallelizations
+* [ ] mmap the `.data` (offload to the local disk) to reduce the memory usage
+* [ ] separate embedding and search part as a different microservice
 
 ## Architecture
 
 ### Features
 
 * gRPC server
-* dynamic batch inference (both of model & search)
-* inference a LM in a real time on the GPU.
+* dynamic batch inference (both model & search)
+* inference an Language Model in real time on the GPU.
   * model info : [hf - Mini-LM L12 v2](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)
 * vector quantization (post-quantization)
   * rescale f32 to i8
 * ANN (modified hnswlib-rs)
   * multi-threaded insertion and search
-  * SIMD accelrated distance calculation (re-implemented)
+  * SIMD accelerated distance calculation (re-implemented)
   * HNSW index
 
 ### Data
@@ -48,7 +48,7 @@ semantic search demo with gRPC server in Rust
 ## Requirements
 
 * Intel (modern) CPU (which supports AVX2, FMA instructions)
-  * some of distance measures doesn't support M1 Silcon or AMD CPUs.
+  * some distance measures don't support M1 Silicon or AMD CPUs.
 * [Rust (nightly)](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html)
 * [libtorch 2.0](https://github.com/LaurentMazare/tch-rs#libtorch-manual-install)
 * [protobuf](https://github.com/protocolbuffers/protobuf)
@@ -63,7 +63,7 @@ Extract embeddings from the given documents and build & save an index to the loc
 cargo +nightly run --release --features progress --bin embedding
 ```
 
-If you want i8 vector (quantized vector), pass `quantize` to the argument.
+If you want the quantized (i8) vector, pass `quantize` to the argument.
 
 ```shell
 cargo +nightly run --release --features progress --bin embedding quantize
@@ -71,7 +71,7 @@ cargo +nightly run --release --features progress --bin embedding quantize
 
 ### gRPC Server
 
-Build & Run gRPC server (for model & search inference).
+Build & Run the gRPC server (for model & search inference).
 
 ```shell
 make server
@@ -93,7 +93,7 @@ cargo +nightly run --release --bin client 1 1000 128 10
 
 ### Example
 
-Run example with the given query. (there must be a built index with `ag_news` dataset)
+Run an example with the given query. (there must be a built index with the `ag_news` dataset)
 
 ```shell
 cargo +nightly run --release --features progress --bin main "query"
@@ -106,14 +106,14 @@ cargo +nightly run --release --features progress --bin main "query"
 * Info
   * compiled with `AVX2`, `FMA` flags
   * indexing : HNSW
-  * embedding dimenstion : 384
+  * embedding dimension : 384
   * embedding data type : f32, i8
   * distance measure : L2, Cosine
   * k : 10
   * num of documents : 127.6K documents
-  * warm up with 11 times
+  * warm up 11 times
 
-% latency is bit different by rust version. In the recent version (1.73.0 nightly), the speed becomes slower (2.275 ms -> 3.000 ms).
+% latency is a bit different from the Rust version. In the recent version (1.73.0 nightly), the speed becomes slower (2.275 ms -> 3.000 ms).
 
 % i8 is benchmarked with 1.73.0.
 
