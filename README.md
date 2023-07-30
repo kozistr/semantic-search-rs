@@ -42,7 +42,7 @@ semantic search demo with gRPC server in Rust
 
 ### Data
 
-* Input  : queries. list of String.
+* Input  : queries. List of String.
 * Output : top k indices. 2d list of int32.
 
 ## Requirements
@@ -63,7 +63,7 @@ Extract embeddings from the given documents and build & save an index to the loc
 cargo +nightly run --release --features progress --bin embedding
 ```
 
-If you want the quantized (i8) vector, pass `quantize` to the argument.
+If you want a quantization, pass `quantize` to the argument.
 
 ```shell
 cargo +nightly run --release --features progress --bin embedding quantize
