@@ -8,7 +8,7 @@ use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel,
 };
 
-use crate::hnsw_index::dist::DistDot;
+use crate::hnsw_index::dist::{DistDot, DistHamming};
 use crate::hnsw_index::hnsw::Hnsw;
 use crate::hnsw_index::hnswio::{load_description, load_hnsw, Description};
 
@@ -66,17 +66,18 @@ pub fn load_index(dataset: &str) -> Hnsw<f32, DistDot> {
 }
 
 #[allow(unused)]
-pub fn load_quantize_index(dataset: &str) -> Hnsw<i8, DistDot> {
+pub fn load_quantize_index(dataset: &str) -> Hnsw<i8, DistHamming> {
     println!("load quantize index");
 
-    let index: Hnsw<i8, DistDot> = {
+    let index: Hnsw<i8, DistHamming> = {
         let mut graph: BufReader<File> = load_file(&format!("{}_q.hnsw.graph", dataset));
         // todo: offload to the disk (memmmap) to save the memmory
         let mut data: BufReader<File> = load_file(&format!("{}_q.hnsw.data", dataset));
 
         let description: Description = load_description(&mut graph).unwrap();
 
-        let mut index: Hnsw<i8, DistDot> = load_hnsw(&mut graph, &description, &mut data).unwrap();
+        let mut index: Hnsw<i8, DistHamming> =
+            load_hnsw(&mut graph, &description, &mut data).unwrap();
         index.set_searching_mode(true);
 
         index
