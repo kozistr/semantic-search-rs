@@ -12,10 +12,10 @@
 ///
 ///
 /// The L1 and Cosine distance are implemented for u16, i32, i64, f32, f64
-use std::os::raw::*;
+use std::{ops::Mul, os::raw::*};
 
 use num_traits::float::*;
-use packed_simd_2::{f32x16, f64x8};
+use packed_simd_2::{f32x16, f64x8, i8x64, m8, FromCast, Simd};
 
 #[allow(unused)]
 enum DistKind {
@@ -83,9 +83,7 @@ macro_rules! simd_l1_distance (
             fn eval(&self, va: &[$data_type], vb: &[$data_type]) -> f32 {
                 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
                 {
-                    let size: usize = va.len() - (va.len() % $size);
-
-                    let c: $data_type = va
+                    let dist: $data_type = va
                         .chunks_exact($size)
                         .map($simd_type::from_slice_unaligned)
                         .zip(vb.chunks_exact($size).map($simd_type::from_slice_unaligned))
@@ -93,13 +91,7 @@ macro_rules! simd_l1_distance (
                         .sum::<$simd_type>()
                         .sum();
 
-                    let d: $data_type = va[size..]
-                        .iter()
-                        .zip(&vb[size..])
-                        .map(|(p, q)| (p - q).abs())
-                        .sum();
-
-                    return (c + d) as f32;
+                    return dist as f32;
                 }
 
                 va.iter()
@@ -315,7 +307,7 @@ fn dot_f32(va: &[f32], vb: &[f32]) -> f32 {
 //         .map(i8x16::from_slice_unaligned)
 //         .zip(vb.chunks_exact(16).map(i8x16::from_slice_unaligned))
 //         .map(|(a, b)| {
-//             let d: packed_simd_2::Simd<[i32; 16]> = i32x16::from_cast(a) * i32x16::from_cast(b);
+//             let d: Simd<[i32; 16]> = i32x16::from_cast(a) * i32x16::from_cast(b);
 //             d
 //         })
 //         .sum::<i32x16>()
@@ -363,6 +355,7 @@ impl Distance<f64> for DistDot {
     }
 }
 
+// not recommended
 impl Distance<i8> for DistDot {
     fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
         let dot: i32 = 16384 - dot_i8(va, vb);
@@ -392,8 +385,8 @@ fn hellinger_f64(va: &[f64], vb: &[f64]) -> f64 {
         .map(f64x8::from_slice_unaligned)
         .zip(vb.chunks_exact(8).map(f64x8::from_slice_unaligned))
         .map(|(a, b)| {
-            let c: packed_simd_2::Simd<[f64; 8]> = (a * b).sqrt();
-            c * c
+            let c: Simd<[f64; 8]> = (a * b).sqrt();
+            c.mul(c)
         })
         .sum::<f64x8>()
         .sum()
@@ -404,8 +397,8 @@ fn hellinger_f32(va: &[f32], vb: &[f32]) -> f32 {
         .map(f32x16::from_slice_unaligned)
         .zip(vb.chunks_exact(16).map(f32x16::from_slice_unaligned))
         .map(|(a, b)| {
-            let c = (a * b).sqrt();
-            c * c
+            let c: Simd<[f32; 16]> = (a * b).sqrt();
+            c.mul(c)
         })
         .sum::<f32x16>()
         .sum()
@@ -452,9 +445,12 @@ macro_rules! implementJeffreysDistance (
 
     impl Distance<$ty> for DistJeffreys {
         fn eval(&self, va: &[$ty], vb: &[$ty]) -> f32 {
-        // RUSTFLAGS = "-C opt-level=3 -C target-cpu=native"
-        let dist = va.iter().zip(vb.iter()).map(|t| (*t.0 - *t.1) * ((*t.0).max(M_MIN as f64)/ (*t.1).max(M_MIN as f64)).ln() as f64).fold(0., |acc , t| (acc + t*t));
-        dist as f32
+            let dist = va
+                .iter()
+                .zip(vb.iter())
+                .map(|t| (*t.0 - *t.1) * ((*t.0).max(M_MIN as f64) / (*t.1).max(M_MIN as f64)).ln() as f64)
+                .fold(0., |acc , t| (acc + t * t));
+            dist as f32
         } // end of compute
     } // end of impl block
     )  // end of pattern matching
@@ -487,18 +483,17 @@ macro_rules! implementDistJensenShannon (
         impl Distance<$ty> for DistJensenShannon {
             fn eval(&self, va: &[$ty], vb: &[$ty]) -> f32 {
                 let mut dist = 0.;
-                //
-                assert_eq!(va.len(), vb.len());
-                //
+
                 for i in 0..va.len() {
                     let mean_ab = 0.5 * (va[i] + vb[i]);
                     if va[i] > 0. {
-                        dist += va[i] * (va[i]/mean_ab).ln();
+                        dist += va[i] * (va[i] / mean_ab).ln();
                     }
                     if vb[i] > 0. {
-                        dist += vb[i] * (vb[i]/mean_ab).ln();
+                        dist += vb[i] * (vb[i] / mean_ab).ln();
                     }
                 }
+
                 (0.5 * dist).sqrt() as f32
             } // end eval
         }  // end impl Distance<$ty>
@@ -524,8 +519,6 @@ macro_rules! implementHammingDistance (
 
     impl Distance<$ty> for DistHamming  {
         fn eval(&self, va: &[$ty], vb: &[$ty]) -> f32 {
-        // RUSTFLAGS = "-C opt-level=3 -C target-cpu=native"
-            assert_eq!(va.len(), vb.len());
             let norm : f32 = va.iter().zip(vb.iter()).filter(|t| t.0 != t.1).count() as f32;
             norm / va.len() as f32
         } // end of compute
@@ -549,7 +542,6 @@ impl Distance<i32> for DistHamming {
 /// Could be made generic with unstable source as there is implementation of PartialEq for f64
 impl Distance<f64> for DistHamming {
     fn eval(&self, va: &[f64], vb: &[f64]) -> f32 {
-        assert_eq!(va.len(), vb.len());
         let dist: usize = va
             .iter()
             .zip(vb.iter())
@@ -564,7 +556,6 @@ impl Distance<f64> for DistHamming {
 impl Distance<f32> for DistHamming {
     fn eval(&self, va: &[f32], vb: &[f32]) -> f32 {
         // in fact simd comparaison seems slower than simple iter
-        assert_eq!(va.len(), vb.len());
         let dist: usize = va
             .iter()
             .zip(vb.iter())
@@ -574,12 +565,28 @@ impl Distance<f32> for DistHamming {
     } // end of eval
 } // end implementation Distance<f32>
 
+impl Distance<i8> for DistHamming {
+    fn eval(&self, va: &[i8], vb: &[i8]) -> f32 {
+        let dist: i16 = va
+            .chunks_exact(64)
+            .map(i8x64::from_slice_unaligned)
+            .zip(vb.chunks_exact(64).map(i8x64::from_slice_unaligned))
+            .map(|(a, b)| {
+                let c: Simd<[m8; 64]> = a.ne(b);
+                i8x64::from_cast(c).wrapping_sum() as i16
+            })
+            .sum();
+
+        dist as f32 / va.len() as f32
+    } // end of eval
+} // end implementation Distance<f32>
+
 implementHammingDistance!(u64);
 implementHammingDistance!(u32);
 implementHammingDistance!(u16);
 implementHammingDistance!(u8);
 implementHammingDistance!(i16);
-implementHammingDistance!(i8);
+// implementHammingDistance!(i8);
 
 //====================================================================================
 //   Jaccard Distance
