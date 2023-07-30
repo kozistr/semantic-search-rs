@@ -7,7 +7,7 @@ use indicatif::ProgressBar;
 use rayon::prelude::*;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use semantic_search::hnsw_index::api::AnnT;
-use semantic_search::hnsw_index::dist::DistDot;
+use semantic_search::hnsw_index::dist::{DistDot, DistHamming};
 use semantic_search::hnsw_index::hnsw::{quantize, Hnsw};
 use semantic_search::utils::{load_data, load_model};
 
@@ -56,7 +56,7 @@ fn main() -> Result<()> {
     let ef_c: usize = 200;
     let nb_layer: u8 = 16;
 
-    if do_quantize {
+    if !do_quantize {
         let index: Hnsw<f32, DistDot> =
             Hnsw::<f32, DistDot>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistDot {});
 
@@ -69,8 +69,13 @@ fn main() -> Result<()> {
 
         _ = index.file_dump("news");
     } else {
-        let index: Hnsw<i8, DistDot> =
-            Hnsw::<i8, DistDot>::new(max_nb_connection, nb_elem, nb_layer, ef_c, DistDot {});
+        let index: Hnsw<i8, DistHamming> = Hnsw::<i8, DistHamming>::new(
+            max_nb_connection,
+            nb_elem,
+            nb_layer,
+            ef_c,
+            DistHamming {},
+        );
 
         let start: Instant = Instant::now();
         let quantized_embeddings: Vec<Vec<i8>> = embeddings.par_iter().map(quantize).collect();
