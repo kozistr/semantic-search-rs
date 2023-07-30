@@ -37,14 +37,14 @@ fn find_documents(query_embedding: &Vec<f32>, do_quantize: bool) {
 }
 
 #[allow(dead_code)]
-fn bench_search(query_embedding: &Vec<f32>) {
-    // let index: Hnsw<f32, DistDot> = load_index("news");
-    let index: Hnsw<i8, DistHamming> = load_quantize_index("news");
-    let query_embedding: Vec<i8> = quantize(query_embedding);
+fn bench_search(query_embedding: &[f32]) {
+    let index: Hnsw<f32, DistDot> = load_index("news");
+    // let index: Hnsw<i8, DistHamming> = load_quantize_index("news");
+    // let query_embedding: Vec<i8> = quantize(query_embedding);
 
     for bs in [1024, 2048, 4096, 8192] {
-        let query_embeddings: Vec<Vec<i8>> = vec![query_embedding.clone(); bs];
-        // let query_embeddings: Vec<Vec<f32>> = vec![query_embedding[0].clone(); bs];
+        // let query_embeddings: Vec<Vec<i8>> = vec![query_embedding.clone(); bs];
+        let query_embeddings: Vec<Vec<f32>> = vec![query_embedding.to_vec(); bs];
         let mut search_lat: Vec<u64> = vec![0u64; BENCH_SIZE];
 
         (0..BENCH_SIZE).for_each(|i: usize| {
@@ -73,7 +73,7 @@ fn main() {
 
     let model: SentenceEmbeddingsModel = load_model();
     let query_embedding: Vec<Vec<f32>> = model.encode(&[query]).unwrap();
-    let query_embedding: &Vec<f32> = &query_embedding[0];
+    let query_embedding: &[f32] = &query_embedding[0];
 
     // find_documents(query_embedding, do_quantize);
     bench_search(query_embedding);
