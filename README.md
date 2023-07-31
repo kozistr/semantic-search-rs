@@ -16,6 +16,10 @@ semantic search demo with gRPC server in Rust
 
 ## To-Do
 
+* [ ] remove `src/hnsw_index` (`hnswlib-rs`) from this project and import it from the crate.
+  * [ ] PR 1 : distance implementations with `std::simd` (`packed_simd_2`)
+  * [ ] PR 2 : more parallelizations
+  * [ ] PR 3 : formatting & refactoring
 * [x] modify [hnswlib-rs](https://github.com/jean-pierreBoth/hnswlib-rs)
   * [x] resolve the build issue
   * [x] re-implement distance functions with SIMD (more effective, support more types, x2 faster)
