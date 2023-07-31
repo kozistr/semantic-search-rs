@@ -99,7 +99,7 @@ cargo +nightly run --release --features progress --bin main "query"
 
 ## Benchmarks
 
-* GPU : GTX 1060 6G (CUDA 11.8, CuDNN 8.8.x)
+* GPU : GTX 1060 6G (CUDA 11.8, CuDNN 8.8.0)
 * CPU : i7-7700K (4 cores 8 threads, not overclocked)
 * Info
   * compiled with `AVX2`, `FMA` flags
@@ -135,8 +135,12 @@ cargo +nightly run --release --features progress --bin main "query"
 
 ### Search Latency
 
-* testing with large batch size (>= 1024)
-* quantized vector (i8) is about 20% faster and saving about 4x times memory than f32 vector
+* tested with large batch size (over 1024)
+* tested on the two types of CPU.
+  * i7-7700K, 4 cores 8 threads (not overclocked)
+  * Macbook Pro 16-inch 2019, i9-9880H 8 cores 16 threads (base clock 2.3 GHz)
+* quantized vector is about **2 ~ 40% faster** and saving about **4x times memory** than f32 vector
+* int8 cosine distance is a bit weird, but I want to compare only the SIMD performance by data type.
 
 |   p   | dist  |  bs   |  reqs  |   k   |    mean    |    p50     |    p95     |     p99    |    p99.9   |    max     |   QPS   |
 | :---: | :---: | :---: |  :---: | :---: |    :---:   |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |  :---:  |
@@ -149,10 +153,12 @@ cargo +nightly run --release --features progress --bin main "query"
 |       |       | 4096  |   2k   |  10   |  35.772 ms |  35.488 ms |  38.246 ms |  40.089 ms |  41.745 ms |  43.144 ms |  114503 |
 |       |       | 8192  |   2k   |  10   |  71.447 ms |  70.790 ms |  76.420 ms |  78.610 ms |  94.783 ms | 122.490 ms |  114659 |
 
-* Macbook Pro 16-inch 2019, i9 8 cores 16 threads (2.3 GHz)
-
 |   p   | dist  |  bs   |  reqs  |   k   |    mean    |    p50     |    p95     |     p99    |    p99.9   |    max     |   QPS   |
 | :---: | :---: | :---: |  :---: | :---: |    :---:   |    :---:   |    :---:   |    :---:   |    :---:   |   :---:    |  :---:  |
+|  f32  |  cos  | 1024  |   2k   |  10   |   9.459 ms |   9.033 ms |  11.412 ms |  11.842 ms |  12.753 ms |  12.819 ms |  108252 |
+|       |       | 2048  |   2k   |  10   |  19.620 ms |  19.708 ms |  21.072 ms |  22.023 ms |  24.704 ms |  24.881 ms |  104383 |
+|       |       | 4096  |   2k   |  10   |  38.269 ms |  38.237 ms |  40.505 ms |  42.475 ms |  45.439 ms |  45.691 ms |  107030 |
+|       |       | 8192  |   2k   |  10   |  75.385 ms |  74.877 ms |  80.448 ms |  84.589 ms |  89.629 ms |  89.887 ms |  108668 |
 |   i8  |  cos  | 1024  |   2k   |  10   |   7.003 ms |   6.700 ms |   8.270 ms |   8.668 ms |   9.655 ms |  10.011 ms |  146223 |
 |       |       | 2048  |   2k   |  10   |  14.388 ms |  14.419 ms |  15.637 ms |  16.067 ms |  19.237 ms |  20.231 ms |  142341 |
 |       |       | 4096  |   2k   |  10   |  27.894 ms |  27.815 ms |  29.818 ms |  31.213 ms |  39.733 ms |  40.387 ms |  146842 |
@@ -213,7 +219,7 @@ top 10 | id : 76632, dist : 0.8489096
 Asian Stocks Ease After China Rate Rise (Reuters) Reuters - China's surprise interest rate rise\weighed down Asian stocks on Friday as investors sold shares of\miners, shippers and other firms whose fortunes have been\closely linked to the country's rapid growth.
 ```
 
-Cosine distance w/ i8 (quantized)
+Cosine distance w/ i8 (not scaled)
 
 ```text
 top 1 | id : 70945, dist : 8807
