@@ -227,8 +227,7 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
         return Err(io::Error::new(io::ErrorKind::Other, "bad lenght for distance name"));
     }
 
-    let mut distv: Vec<u8> = Vec::<u8>::new();
-    distv.resize(len, 0);
+    let mut distv: Vec<u8> = vec![0; len];
     io_in.read_exact(distv.as_mut_slice())?;
 
     let distname: String = String::from_utf8(distv).unwrap();
@@ -246,8 +245,7 @@ pub fn load_description(io_in: &mut dyn Read) -> io::Result<Description> {
         return Err(io::Error::new(io::ErrorKind::Other, "bad lenght for T name"));
     }
 
-    let mut tnamev: Vec<u8> = Vec::<u8>::new();
-    tnamev.resize(len, 0);
+    let mut tnamev: Vec<u8> = vec![0; len];
     io_in.read_exact(tnamev.as_mut_slice())?;
 
     let t_name: String = String::from_utf8(tnamev).unwrap();
