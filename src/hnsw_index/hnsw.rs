@@ -12,7 +12,7 @@ use std::sync::{mpsc, Arc};
 
 use dashmap::DashMap;
 use hashbrown::HashMap;
-use packed_simd_2::{f32x16, i8x16, FromCast, Simd};
+use packed_simd::{f32x16, i8x16, FromCast, Simd};
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -1438,6 +1438,19 @@ impl<T: Clone + Send + Sync, D: Distance<T> + Send + Sync> Hnsw<T, D> {
 
         // now sort to respect the key order of input
         let mut answers: Vec<Vec<Neighbour>> = Vec::<Vec<Neighbour>>::with_capacity(datas.len());
+
+        // get a map from request id to rank
+        // let mut req_hash: HashMap<usize, usize> = HashMap::<usize, usize>::new();
+
+        // (0..req_res.len()).for_each(|i: usize| {
+        //     // the response of request req_res[i].0 is at rank i
+        //     req_hash.insert(req_res[i].0, i);
+        // });
+
+        // (0..datas.len()).for_each(|i: usize| {
+        //     let answer_i: usize = *req_hash.get_key_value(&i).unwrap().1;
+        //     answers.push((req_res[answer_i].1).clone());
+        // });
 
         // get a map from request id to rank
         let req_hash: DashMap<usize, usize> = DashMap::<usize, usize>::with_capacity(req_res.len());
