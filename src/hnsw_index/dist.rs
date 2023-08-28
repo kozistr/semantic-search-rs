@@ -15,7 +15,7 @@
 use std::{ops::Mul, os::raw::*};
 
 use num_traits::float::*;
-use packed_simd_2::{f32x16, f64x8, i8x64, m8, FromCast, Simd};
+use packed_simd::{f32x16, f64x8, i8x64, m8, FromCast, Simd};
 
 #[allow(unused)]
 enum DistKind {
