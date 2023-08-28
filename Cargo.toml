@@ -47,7 +47,7 @@ mmap-rs = "^0.6.0"
 log = "*"
 rand = "^0.8.5"
 env_logger = "*"
-packed_simd_2 = "^0.3.8"
+packed_simd = "^0.3.9"
 indicatif = { version = "^0.17.5", optional = true }
 csv = "^1.2.2"
 
@@ -55,20 +55,20 @@ csv = "^1.2.2"
 tonic-build = "^0.9.2"
 
 [profile.dev]
+incremental = true
 opt-level = 0
 codegen-units = 4
-incremental = true
 lto = false
 panic = "unwind"
-debug = 1
+debug = true
 debug-assertions = true
 overflow-checks = false
 rpath = false
 
 [profile.release]
+incremental = true
 opt-level = 3
 codegen-units = 1
-incremental = true
 lto = "fat"
 panic = "abort"
 debug = false
