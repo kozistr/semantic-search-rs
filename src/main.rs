@@ -1,7 +1,7 @@
 use std::time::Instant;
 use std::{env, process};
 
-// use packed_simd_2::{i8x64, m8, FromCast, Simd};
+// use packed_simd::{i8x64, m8, FromCast, Simd};
 // use rand::distributions::Uniform;
 // use rand::rngs::ThreadRng;
 // use rand::{thread_rng, Rng};
